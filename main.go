@@ -40,6 +40,11 @@ var buildFS embed.FS
 //go:embed web/dist/index.html
 var indexPage []byte
 
+// [uiweb] Clay Edition frontend, served under /u/*. See router/uiweb-router.go.
+//
+//go:embed uiweb/dist
+var uiwebFS embed.FS
+
 func main() {
 	startTime := time.Now()
 
@@ -183,7 +188,7 @@ func main() {
 	InjectGoogleAnalytics()
 
 	// 设置路由
-	router.SetRouter(server, buildFS, indexPage)
+	router.SetRouter(server, buildFS, indexPage, uiwebFS)
 	var port = os.Getenv("PORT")
 	if port == "" {
 		port = strconv.Itoa(*common.Port)

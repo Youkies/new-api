@@ -1,0 +1,22 @@
+# 工作日志
+
+- [2026-04-20 16:06] 初始化记忆库，记录部署架构分析（4C4G/650 用户/MySQL 同机部署足够）
+- [2026-04-20 16:06] 记录前端美化方案：推荐 CSS 变量换皮 + 覆盖层策略，保持可跟随上游更新
+- [2026-04-20 16:06] 清空并重新 clone 了 newapi 仓库（git clean state）
+- [2026-04-23 23:07] 排查 new_api_tools 模型状态监控，确认其直接依赖 logs 表，且与 newapi 的 LOG_SQL_DSN/消费日志开关存在兼容风险
+- [2026-04-23 23:18] 用真实 MySQL 数据复现 new_api_tools 模型状态 SQL 报错，确认别名 `empty` 在 MySQL 上触发语法错误，并已在本地修复
+- [2026-04-24 00:12] 复核 newapi 前端接入与认证模型，确认当前仅内嵌 `web/dist`，后台以前端 session + `New-API-User` 为主，独立 `uiweb` 更适合同源或同站反代
+- [2026-04-24 00:18] 确认 newapi 的迁移与后台任务受 `NODE_TYPE` 控制，可通过"旧实例 master + 新实例 slave + 共享 MySQL"完成低风险并行验证
+- [2026-04-24 02:20] 切换 origin 到 Youkies/new-api 并 fast-forward 到 65b16547（39 commits，主要涉及 tiered billing / token 迁移 / passkey）；复核记忆库，修正 i18n 语言数 6→7
+- [2026-04-24 02:50] 敲定黏土风 uiweb 技术选型（Vite + React + Tailwind + 自研 clay 组件，/u/* 前缀，原 web 不动）；完成 Stage 0 骨架：package.json / vite 配置 / tailwind clay 主题 / Home demo 页 / NotFound；npm install + build 通过
+- [2026-04-24 03:05] Go 端接入：main.go 加 uiweb embed，新建 router/uiweb-router.go（SPA fallback + 资产 404 分流），Dockerfile 加 uiweb-builder 并行 stage，.dockerignore 更新；go build 通过
+- [2026-04-24 03:25] Stage 1 完成：12 个访客页面 + 9 个 clay 组件 + 4 个 layout 组件 + 3 个 Context + auth/pricing services；dev server 全部 12 路由 HTTP 200，构建 256KB JS + 29KB CSS
+- [2026-04-24 03:50] Stage 2 完成：新增 Dashboard/TopUp/PersonalSetting/Chat2Link 4 个登录后页面；补 6 个组件；ClayConsoleShell + ProtectedRoute；4 个 services + utils/quota；构建 301KB JS + 35KB CSS
+- [2026-04-24 04:20] 修复余额显示 bug：StatusContext.jsx 添加 persistStatusFields(s) 调用，使 quotaToDisplay 能正确读取 localStorage 中的 quota_per_unit 等字段
+- [2026-04-24 04:30] 确认用户业务约束：仅 QQ 邮箱注册、仅兑换码充值、仅中文界面；不需要 i18n/2FA/Passkey/Turnstile/OAuth/在线支付
+- [2026-04-24 04:55] Stage 2+ 完成：新增 TokenManage（令牌 CRUD）、LogList（调用日志表格）、Checkin（签到日历）3 个页面；补 tokens/logs/checkin 3 个 service；导航从 3→6 项，LEGACY 仅剩 Playground；修复签到 API 路径 404（/api/user/self/checkin → /api/user/checkin）；构建 319KB JS + 37KB CSS
+- [2026-04-24 05:30] Stage 2++ 页面打磨：Pricing 增加分组展示、Token 增加详细列、Log 合并用量列+着色、TopUp 增加购买链接卡片
+- [2026-04-24 06:00] 新增模型状态监控功能：controller/model_status.go + /api/model-status 路由 + ModelStatus.jsx 公开页面 + ClayNav 导航；修复 LogSqlType 默认 SQLite 导致 MySQL FLOOR 语法错误；修复旧 newapi.exe 占端口导致新二进制启动失败；API 返回 33 个模型状态数据
+- [2026-04-24 14:10] ModelStatus 页从 3 列改为 2 列网格（用户反馈密度太高）
+- [2026-04-24 14:20] TopUp 页兑换码+购买卡片改为并排等高布局，与上方统计卡片宽度对齐
+- [2026-04-24 14:25] 总结并归档部署链教训（vite build → go build → 杀进程 → PowerShell 启动），写入 feedback_build_deploy.md

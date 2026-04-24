@@ -1,0 +1,102 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --clay-bg: #e0e5ec;
+  --clay-surface: #e0e5ec;
+  --clay-text: #4a5568;
+  --clay-text-soft: #718096;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: 'Nunito', 'Quicksand', 'Rounded Mplus 1c', ui-sans-serif, system-ui, sans-serif;
+  background-color: var(--clay-bg);
+  color: var(--clay-text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+}
+
+@layer components {
+  .clay-surface {
+    @apply bg-clay-bg text-clay-ink;
+  }
+
+  .clay-card {
+    @apply bg-clay-bg rounded-[35px] p-10 shadow-clay transition-all duration-300 ease-clay border-2 border-white/20;
+  }
+
+  .clay-card-interactive {
+    @apply clay-card hover:-translate-y-2 hover:shadow-clay-hover cursor-pointer;
+  }
+
+  .clay-btn {
+    @apply inline-flex items-center justify-center gap-2 px-8 py-3 font-extrabold rounded-clay-pill
+           shadow-clay transition-all duration-200 ease-clay
+           active:scale-95 active:shadow-clay-active select-none;
+  }
+
+  .clay-btn-primary {
+    @apply clay-btn bg-clay-blue-100;
+    color: #43658b;
+  }
+
+  .clay-btn-secondary {
+    @apply clay-btn bg-clay-pink-100;
+    color: #8a4860;
+  }
+
+  .clay-btn-accent {
+    @apply clay-btn bg-clay-green-100;
+    color: #3d6b4f;
+  }
+
+  .clay-btn-ghost {
+    @apply clay-btn bg-clay-bg text-clay-ink;
+  }
+
+  .clay-input {
+    @apply w-full px-6 py-4 rounded-[25px] bg-clay-bg text-clay-ink
+           shadow-clay-inset outline-none border-0 transition-shadow duration-200;
+  }
+
+  .clay-input:focus {
+    box-shadow:
+      inset 8px 8px 12px rgba(163, 177, 198, 0.8),
+      inset -8px -8px 12px rgba(255, 255, 255, 0.9);
+  }
+
+  .clay-icon-box {
+    @apply w-14 h-14 rounded-full bg-clay-bg flex items-center justify-center shadow-clay;
+  }
+
+  .clay-badge {
+    @apply inline-block px-4 py-1 rounded-clay-sm text-xs font-extrabold
+           bg-clay-pink-100 shadow-[3px_3px_6px_rgba(0,0,0,0.1),inset_1px_1px_2px_rgba(255,255,255,0.4)];
+    color: #8a4860;
+  }
+
+  .clay-toggle {
+    @apply relative w-20 h-10 rounded-full bg-clay-bg shadow-clay-inset cursor-pointer;
+  }
+
+  .clay-toggle-handle {
+    @apply absolute top-1 left-1 w-8 h-8 rounded-full bg-clay-purple-100 shadow-clay transition-transform duration-300 ease-clay;
+  }
+
+  .clay-toggle.is-on .clay-toggle-handle {
+    @apply translate-x-10 bg-clay-blue-100;
+  }
+}

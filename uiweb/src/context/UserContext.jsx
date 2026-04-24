@@ -1,0 +1,51 @@
+import { createContext, useCallback, useContext, useEffect, useState } from 'react'
+
+const UserContext = createContext({
+  user: null,
+  setUser: () => {},
+  logout: () => {},
+})
+
+function readUser() {
+  try {
+    const raw = localStorage.getItem('user')
+    return raw ? JSON.parse(raw) : null
+  } catch (_) {
+    return null
+  }
+}
+
+export function UserProvider({ children }) {
+  const [user, setUserState] = useState(readUser)
+
+  const setUser = useCallback((u) => {
+    setUserState(u)
+    try {
+      if (u) localStorage.setItem('user', JSON.stringify(u))
+      else localStorage.removeItem('user')
+    } catch (_) {}
+  }, [])
+
+  const logout = useCallback(() => {
+    setUser(null)
+  }, [setUser])
+
+  // Sync across tabs
+  useEffect(() => {
+    const onStorage = (e) => {
+      if (e.key === 'user') setUserState(readUser())
+    }
+    window.addEventListener('storage', onStorage)
+    return () => window.removeEventListener('storage', onStorage)
+  }, [])
+
+  return (
+    <UserContext.Provider value={{ user, setUser, logout }}>
+      {children}
+    </UserContext.Provider>
+  )
+}
+
+export function useUser() {
+  return useContext(UserContext)
+}

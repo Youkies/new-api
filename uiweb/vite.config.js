@@ -1,15 +1,34 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import path from 'path'
+
+const stubs = (name) => path.resolve(__dirname, `src/stubs/${name}.js`)
 
 // uiweb is served at /u/* by the newapi Go backend via a second //go:embed
 // Keep base in sync with router/uiweb-router.go
 export default defineConfig({
   plugins: [react()],
   base: '/u/',
+  resolve: {
+    alias: {
+      'antd-style': stubs('antd-style'),
+      'antd': stubs('antd'),
+      'react-layout-kit': stubs('react-layout-kit'),
+      '@lobehub/ui': stubs('lobehub-ui'),
+    },
+  },
   build: {
     outDir: 'dist',
     emptyOutDir: true,
     sourcemap: false,
+    chunkSizeWarningLimit: 600,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor-icons': ['@lobehub/icons/es/icons'],
+        },
+      },
+    },
   },
   server: {
     port: 5174,

@@ -1,6 +1,6 @@
 # 当前任务
 
-## 状态：Clay 风格打磨中，等用户验收
+## 状态：头像功能已上线，等待部署验收
 
 ## 已完成
 
@@ -47,14 +47,6 @@ Dashboard / TokenManage / LogList / TopUp / Checkin / PersonalSetting / Chat2Lin
 - 默认无限额度（unlimited_quota: true）
 - 关闭无限额度后输入展示金额（余额）而非内部 token 额度，新增 displayToQuota 转换函数
 
-## 下一步
-
-待用户验收后决定：
-- A：PersonalSetting 精简（去绑定 tab、去 Passkey/2FA）
-- B：Stage 3（Midjourney / Task 页面）
-- C：Stage 4（Playground 15 组件 + Chat）
-- D：跑完整端到端验收
-
 ### Dashboard 用量趋势重构
 - 修复时间范围计算：今日从 0 点开始，不再用 now-24h
 - 今日模式按小时分组（0时~当前小时），7/30天按天分组
@@ -69,8 +61,31 @@ Dashboard / TokenManage / LogList / TopUp / Checkin / PersonalSetting / Chat2Lin
 - 卡片网格布局（3 列）+ 分组筛选 + 供应商下拉 + 搜索
 - 统一 3 行价格槽等高卡片 + Clay 内凹标签 + AiMass 未知图标 fallback
 
+### 品牌化 + 路由重组 + 头像功能
+- uiweb 品牌化："New API" → "Youkies API"，共 12 个文件
+- uiweb 升级为根路由前端（vite base `/` + React Router 去 basename）
+- 经典 web 前端挂载到 `/legacy/*filepath`
+- `/u/*` 301 重定向到根路径
+- Dashboard/Chat2Link 令牌链接修复（`/console/token` → `/tokens`）
+- 用户头像功能（BLOB ≤200KB）：
+  - 后端：model/user.go Avatar 字段 + controller/avatar.go 上传/获取/删除 API
+  - 前端：react-easy-crop 圆形裁剪预览 + canvas 压缩 + 上传
+  - 显示：个人设置页、控制台导航栏、首页导航（移动端仅头像）
+  - 移除头像按钮（恢复默认字母头像）
+  - cache-bust 机制：上传后 `_avatar_t` 时间戳刷新所有头像 URL
+  - 移动端优化：控制台导航只显示头像圆形，首页登录只显示头像
+
+## 下一步
+
+待用户验收后决定：
+- A：PersonalSetting 精简（去绑定 tab、去 Passkey/2FA）
+- B：Stage 3（Midjourney / Task 页面）
+- C：Stage 4（Playground 15 组件 + Chat）
+- D：跑完整端到端验收
+
 ## 风险 / 未做
 
 - PersonalSetting 密码修改、2FA 管理仍桥接经典控制台
 - 未做管理员路由守卫
 - Playground 仍跳经典控制台
+- NODE_TYPE=slave 部署时新增 DB 列需手动 ALTER TABLE

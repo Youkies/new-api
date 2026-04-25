@@ -57,5 +57,8 @@ func SetWebRouter(router *gin.Engine, buildFS embed.FS, indexPage []byte) {
 	}
 
 	gz := gzip.Gzip(gzip.DefaultCompression)
+	router.GET("/legacy", gz, func(c *gin.Context) {
+		c.Redirect(http.StatusMovedPermanently, "/legacy/")
+	})
 	router.GET("/legacy/*filepath", gz, serve)
 }

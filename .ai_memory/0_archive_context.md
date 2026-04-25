@@ -43,3 +43,25 @@
 - 布局从表格改为卡片网格（3 列），统一 3 行价格槽保证等高，Clay 内凹标签（按量/按次）
 - 构建产物增大至 ~4155 modules，vendor-icons chunk ~4.2MB（gzip ~810KB）独立分块
 
+## 2026-04-26 — 品牌化 + 路由重组 + Zeabur Git 部署
+
+- "New API" → "Youkies API" 品牌化（12 个前端文件）
+- uiweb 升级为根路由前端：vite base `/` + React Router 去 basename + uiweb-router.go 重写
+- 经典 web 挂载到 /legacy/*filepath（从全局 middleware 改为显式 GET 路由）
+- /u/* 301 重定向兼容旧链接
+- 从手动 Docker 推送改为 Zeabur Git 部署（GitHub push 自动构建）
+- 关键坑：NODE_TYPE=slave 跳过 AutoMigrate，新增 DB 列需手动 ALTER TABLE
+- 关键坑：Zeabur 自定义域名需正确 CNAME → DNS INVALID_DNS → SSL 不签发 → Chrome 提示不安全
+
+## 2026-04-26 — 用户头像功能（BLOB 存储 + 裁剪预览）
+
+- 设计决策：头像压缩后存 DB BLOB（≤200KB），不用 S3/对象存储，2000 用户量约 80-120MB 完全可接受
+- 后端：User 表新增 avatar LONGBLOB + avatar_type VARCHAR(32)；GetUserById/GetAllUsers/SearchUsers 均 omit avatar 避免性能问题
+- controller/avatar.go：上传校验（200KB + 图片类型）、获取（ETag + 86400s cache）、删除
+- GetSelf/setupLogin 新增 has_avatar 字段
+- 前端：react-easy-crop 圆形裁剪弹窗 + 缩放滑块 + canvas JPEG 压缩 + 确认上传
+- cache-bust 方案：user 对象挂 _avatar_t 时间戳，所有头像 URL 带 ?t= 参数
+- 移动端优化：控制台导航只显示头像圆形（去掉背景框+文字），首页登录只显示头像（隐藏"进入控制台"按钮）
+- 部署坑：NODE_TYPE=slave 不跑迁移，需手动 ALTER TABLE 加列（Zeabur MySQL 面板逐条执行）
+
+

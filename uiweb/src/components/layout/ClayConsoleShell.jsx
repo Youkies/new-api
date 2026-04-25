@@ -31,7 +31,7 @@ const NAV = [
 ]
 
 const LEGACY = [
-  { href: '/console/playground', label: '游乐场', icon: MessageSquare },
+  { href: '/legacy/playground', label: '游乐场', icon: MessageSquare },
 ]
 
 export default function ClayConsoleShell({ title, subtitle, actions, children }) {
@@ -114,7 +114,7 @@ export default function ClayConsoleShell({ title, subtitle, actions, children })
               onClick={() => setUserOpen((v) => !v)}
               className="flex items-center gap-2 sm:pr-4 sm:pl-2 sm:py-1.5 rounded-full sm:rounded-clay-pill sm:bg-clay-bg sm:shadow-clay sm:hover:shadow-clay-hover transition-shadow"
             >
-              <ClayAvatar name={displayName} src={user?.has_avatar ? `/api/user/avatar/${user.id}?t=${user._avatar_t || ''}` : undefined} size={34} />
+              <ClayAvatar name={displayName} src={user?.has_avatar ? `/api/user/avatar/${user.id}?t=${user._avatar_t || ''}` : undefined} size={40} />
               <span className="font-bold text-sm hidden sm:inline">{displayName}</span>
             </button>
 
@@ -143,7 +143,7 @@ export default function ClayConsoleShell({ title, subtitle, actions, children })
                   )
                 })}
                 <a
-                  href="/console"
+                  href="/legacy"
                   className="flex items-center justify-between gap-2 px-4 py-2.5 rounded-clay-sm text-sm font-bold hover:bg-white/40"
                 >
                   <span>访问经典控制台</span>

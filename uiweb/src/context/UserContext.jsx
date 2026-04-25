@@ -19,11 +19,16 @@ export function UserProvider({ children }) {
   const [user, setUserState] = useState(readUser)
 
   const setUser = useCallback((u) => {
-    setUserState(u)
-    try {
-      if (u) localStorage.setItem('user', JSON.stringify(u))
-      else localStorage.removeItem('user')
-    } catch (_) {}
+    setUserState((prev) => {
+      const next = u && prev?._avatar_t && !u._avatar_t
+        ? { ...u, _avatar_t: prev._avatar_t }
+        : u
+      try {
+        if (next) localStorage.setItem('user', JSON.stringify(next))
+        else localStorage.removeItem('user')
+      } catch (_) {}
+      return next
+    })
   }, [])
 
   const logout = useCallback(() => {

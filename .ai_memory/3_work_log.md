@@ -32,3 +32,12 @@
 - [2026-04-25 20:05] TokenManage 弹窗增强：新增分组选择（ClaySelect + getUserGroups API），默认无限额度，余额输入改为展示金额（displayToQuota 反转换）
 - [2026-04-25 21:00] Dashboard 用量趋势重构：修复时间范围（今日从0点开始）、今日按小时分组、预填所有时间槽、柱状图改像素高度修复 flex 百分比 bug、clay 内凹托盘+渐变柱+浮动提示+移动端滚动
 - [2026-04-25 23:30] Pricing 页重做：引入 @lobehub/icons v2 供应商图标（vendorIcon.jsx + 4 stub 模块），修正价格公式和 API 数据解析，从表格改为卡片网格布局，增加分组/供应商/搜索筛选，AiMass 未知图标 fallback
+- [2026-04-26 01:00] 品牌化 "New API" → "Youkies API"（12 文件）；uiweb 升级为根路由前端（vite base / + 去 basename）；经典 web 挂载 /legacy/*；/u/* 301 重定向
+- [2026-04-26 01:30] 从手动 Docker 改为 Zeabur Git 部署（GitHub push 自动构建）
+- [2026-04-26 02:00] 同步上游 QuantumNous/new-api 6 个新 commit（merge 无冲突）
+- [2026-04-26 02:20] Dashboard/Chat2Link 令牌链接修复（/console/token → /tokens）；提交推送
+- [2026-04-26 02:40] 用户头像功能：model/user.go Avatar 字段 + controller/avatar.go + API 路由 + GetSelf/setupLogin has_avatar
+- [2026-04-26 02:50] 头像前端：react-easy-crop 圆形裁剪弹窗 + canvas 压缩 + PersonalSetting 上传/移除 UI + ClayConsoleShell 头像显示
+- [2026-04-26 03:00] 头像 cache-bust：上传后 _avatar_t 时间戳刷新所有头像 URL；首页 ClayNav 登录后显示头像
+- [2026-04-26 03:10] 移动端头像优化：控制台导航只显示头像圆形，首页登录只显示头像（隐藏"进入控制台"按钮）
+- [2026-04-26 03:15] 部署修复：Zeabur NODE_TYPE=slave 需手动 ALTER TABLE 加 avatar/avatar_type 列

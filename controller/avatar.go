@@ -2,6 +2,7 @@ package controller
 
 import (
 	"fmt"
+	"hash/crc32"
 	"io"
 	"net/http"
 	"strconv"
@@ -92,13 +93,13 @@ func GetAvatar(c *gin.Context) {
 		ct = "image/jpeg"
 	}
 
-	etag := fmt.Sprintf(`"%d-%d"`, id, len(data))
+	etag := fmt.Sprintf(`"%d-%08x"`, id, crc32.ChecksumIEEE(data))
 	if match := c.GetHeader("If-None-Match"); match != "" && strings.Contains(match, etag) {
 		c.Status(http.StatusNotModified)
 		return
 	}
 
-	c.Header("Cache-Control", "public, max-age=86400")
+	c.Header("Cache-Control", "no-cache")
 	c.Header("ETag", etag)
 	c.Data(http.StatusOK, ct, data)
 }

@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { ArrowRight, Cloud, Layers, Smile } from 'lucide-react'
+import { ArrowRight, Activity, Cloud, Layers, Smile } from 'lucide-react'
 import ClayCard from '../components/clay/ClayCard.jsx'
 import ClayButton from '../components/clay/ClayButton.jsx'
 import ClayPageShell from '../components/layout/ClayPageShell.jsx'
@@ -39,18 +39,23 @@ export default function Home() {
             <Link to="/pricing">
               <ClayButton variant="ghost">查看价格</ClayButton>
             </Link>
+            <Link to="/status" className="md:hidden">
+              <ClayButton variant="ghost">
+                <Activity className="w-4 h-4" /> 模型状态
+              </ClayButton>
+            </Link>
           </div>
         </div>
 
         {/* Floating blobs */}
         <div className="relative h-[360px] md:h-[400px] flex items-center justify-center">
-          <div className="absolute w-56 h-56 md:w-64 md:h-64 bg-clay-blue-100 shadow-clay animate-float z-20" />
+          <div className="absolute w-56 h-56 md:w-64 md:h-64 rounded-full bg-clay-blue-100 shadow-clay animate-float z-20" />
           <div
-            className="absolute w-40 h-40 md:w-44 md:h-44 bg-clay-pink-100 shadow-clay animate-float z-10"
+            className="absolute w-40 h-40 md:w-44 md:h-44 rounded-full bg-clay-pink-100 shadow-clay animate-float z-10"
             style={{ top: '20px', right: '40px', animationDelay: '1s' }}
           />
           <div
-            className="absolute w-24 h-24 md:w-28 md:h-28 bg-clay-green-100 shadow-clay animate-float z-30"
+            className="absolute w-24 h-24 md:w-28 md:h-28 rounded-full bg-clay-green-100 shadow-clay animate-float z-30"
             style={{ bottom: '30px', left: '40px', animationDelay: '2s' }}
           />
         </div>

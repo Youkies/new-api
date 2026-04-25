@@ -20,7 +20,7 @@ export default function About() {
           <Info className="w-7 h-7" strokeWidth={2.5} />
         </div>
         <h1 className="text-4xl md:text-5xl font-black text-center mb-4 tracking-tight">
-          关于 New API
+          关于 Youkies API
         </h1>
         <p className="text-center text-clay-faint mb-10 text-lg">
           一个温柔的 AI API 网关。把 40+ 上游模型统一到同一个亲切的界面后面。
@@ -35,7 +35,7 @@ export default function About() {
           ) : (
             <div className="space-y-4 text-clay-ink leading-relaxed">
               <p>
-                <strong>New API</strong> 是由 <strong>QuantumNous</strong> 维护的开源 AI API
+                <strong>Youkies API</strong> 是由 <strong>QuantumNous</strong> 维护的开源 AI API
                 聚合网关,支持 OpenAI、Claude、Gemini、Bedrock、Azure 等 40+
                 上游厂商,在统一协议下提供 API Key 分发、分层计费、用量追踪、渠道分流等能力。
               </p>

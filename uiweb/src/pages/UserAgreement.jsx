@@ -27,7 +27,7 @@ export default function UserAgreement() {
             <div className="space-y-4 text-clay-ink leading-relaxed">
               <h2 className="text-xl font-extrabold">1. 服务说明</h2>
               <p>
-                New API 是一个 AI API 聚合服务。使用本服务前,请仔细阅读并同意本协议的全部条款。
+                Youkies API 是一个 AI API 聚合服务。使用本服务前,请仔细阅读并同意本协议的全部条款。
               </p>
               <h2 className="text-xl font-extrabold mt-4">2. 账号与安全</h2>
               <p>

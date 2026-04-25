@@ -11,7 +11,9 @@
 
 - 前端：Vite 5 + React 18 + JSX（不用 TypeScript）
 - 样式：Tailwind CSS 3 + 自研 clay 组件
-- 图标：lucide-react
+- 图标：lucide-react（UI 图标）+ @lobehub/icons v2（供应商/模型图标）
+- 供应商图标：`vendorIcon.jsx` 的 `getLobeHubIcon(iconName, size)` 解析点号字符串（如 `"Claude.Color"`）为 React 组件，fallback 为 AiMass
+- @lobehub/icons stub：4 个 stub 模块（antd/antd-style/react-layout-kit/@lobehub/ui）通过 vite alias 屏蔽 Avatar/Combine 子组件的间接依赖
 - 路由：react-router-dom 6，`basename="/u"`
 - Vite `base: '/u/'`，dev 端口 5174，代理 `/api` `/v1` → localhost:3000
 - 包管理：开发机 npm/npx（bun 未装），Dockerfile 走 oven/bun:1
@@ -63,14 +65,16 @@ api.js / auth.js / tokens.js / logs.js / checkin.js / user.js / dashboard.js / t
 - 余额转换：quotaToDisplay() 读 localStorage 的 quota_per_unit / quota_display_type
 - 余额反转换：displayToQuota() 将展示金额转回内部额度值（令牌创建/编辑用）
 - 签到 API 路径：`/api/user/checkin`（selfRoute 前缀 `/api/user/`）
+- 定价公式：按量 `model_ratio * 2 * groupRatio`（USD/1M tokens），按次 `model_price * groupRatio`（USD/次）
+- 定价 API 响应结构：`res.data` = 模型数组，`res.vendors` / `res.group_ratio` / `res.usable_group` 是 response 同级字段
 - 模型状态 API：`GET /api/model-status?window=1h|6h|12h|24h`（公开，无需认证）
 - 模型状态 SQL：abilities JOIN channels（status=1, enabled=true）获取模型列表，logs 表 FLOOR 分槽聚合
 - LogSqlType 陷阱：LOG_SQL_DSN 为空时 LOG_DB=DB 但 LogSqlType 保持默认 SQLite，需用 `UsingMySQL`/`UsingPostgreSQL` 辅助判断
 
 ## 构建指标
 
-- ~1683 modules，~1.8s build
-- ~331KB JS + ~40KB CSS（gzip ~104KB + ~7KB）
+- ~4155 modules，vendor-icons chunk ~4.2MB（gzip ~810KB）独立分块
+- 主 JS ~344KB + CSS ~43KB + vendor-icons 独立 chunk
 
 ## Go 端接入
 

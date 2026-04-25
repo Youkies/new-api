@@ -21,7 +21,7 @@ export default function ClayAuthShell({ title, subtitle, children, footer }) {
       <div className="relative w-full max-w-md">
         <Link to="/" className="flex items-center justify-center gap-2 mb-6 text-clay-ink">
           <Box className="w-6 h-6" strokeWidth={2.5} />
-          <span className="font-black text-xl">New API · Clay</span>
+          <span className="font-black text-xl">Youkies API · Clay</span>
         </Link>
 
         <ClayCard className="!p-8">

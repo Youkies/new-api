@@ -14,7 +14,7 @@ export default function ClayFooter() {
           关于
         </Link>
       </div>
-      <p>&copy; 2026 New API · Clay Edition</p>
+      <p>&copy; 2026 Youkies API · Clay Edition</p>
     </footer>
   )
 }

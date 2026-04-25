@@ -31,3 +31,4 @@
 - [2026-04-25 19:50] TokenManage 移动端适配：新增 TokenCard 组件（图标+名称+状态/密钥凹槽/额度/分组+时间+操作），useIsMobile hook，双渲染模式
 - [2026-04-25 20:05] TokenManage 弹窗增强：新增分组选择（ClaySelect + getUserGroups API），默认无限额度，余额输入改为展示金额（displayToQuota 反转换）
 - [2026-04-25 21:00] Dashboard 用量趋势重构：修复时间范围（今日从0点开始）、今日按小时分组、预填所有时间槽、柱状图改像素高度修复 flex 百分比 bug、clay 内凹托盘+渐变柱+浮动提示+移动端滚动
+- [2026-04-25 23:30] Pricing 页重做：引入 @lobehub/icons v2 供应商图标（vendorIcon.jsx + 4 stub 模块），修正价格公式和 API 数据解析，从表格改为卡片网格布局，增加分组/供应商/搜索筛选，AiMass 未知图标 fallback

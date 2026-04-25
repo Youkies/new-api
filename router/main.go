@@ -27,7 +27,7 @@ func SetRouter(router *gin.Engine, buildFS embed.FS, indexPage []byte, uiwebFS e
 		common.SysLog("FRONTEND_BASE_URL is ignored on master node")
 	}
 	if frontendBaseUrl == "" {
-		SetWebRouter(router, buildFS, indexPage)
+		SetUIWebRootRouter(router, uiwebFS)
 	} else {
 		frontendBaseUrl = strings.TrimSuffix(frontendBaseUrl, "/")
 		router.NoRoute(func(c *gin.Context) {

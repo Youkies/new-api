@@ -89,7 +89,7 @@ export default function ClayConsoleShell({ title, subtitle, actions, children })
                 className="!p-2 !px-4 !rounded-clay-pill !flex-row !flex gap-2 items-center !border-0"
               >
                 <Box className="w-5 h-5" strokeWidth={2.5} />
-                <span className="font-black">New API</span>
+                <span className="font-black">Youkies API</span>
               </ClayCard>
             </Link>
           </div>

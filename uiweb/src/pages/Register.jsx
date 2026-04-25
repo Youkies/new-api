@@ -111,7 +111,7 @@ export default function Register() {
   return (
     <ClayAuthShell
       title="创建账号"
-      subtitle="欢迎加入 New API"
+      subtitle="欢迎加入 Youkies API"
       footer={
         <>
           已有账号？ <ClayLink to="/login">前往登录</ClayLink>

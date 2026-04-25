@@ -19,7 +19,7 @@ export default function ClayNav() {
           className="!p-2 !px-5 !rounded-clay-pill !flex-row !flex gap-2 items-center !border-0"
         >
           <Box className="w-5 h-5" strokeWidth={2.5} />
-          <span className="font-black text-lg">New API · Clay</span>
+          <span className="font-black text-lg">Youkies API · Clay</span>
         </ClayCard>
       </Link>
 

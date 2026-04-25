@@ -8,7 +8,7 @@ const stubs = (name) => path.resolve(__dirname, `src/stubs/${name}.js`)
 // Keep base in sync with router/uiweb-router.go
 export default defineConfig({
   plugins: [react()],
-  base: '/u/',
+  base: '/',
   resolve: {
     alias: {
       'antd-style': stubs('antd-style'),

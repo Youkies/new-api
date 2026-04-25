@@ -138,11 +138,7 @@ export default function ModelStatus() {
 
   const sorted = useMemo(() => {
     const list = [...models]
-    list.sort(
-      (a, b) =>
-        (STATUS_ORDER[a.status] ?? 3) - (STATUS_ORDER[b.status] ?? 3) ||
-        (b.total_requests ?? 0) - (a.total_requests ?? 0),
-    )
+    list.sort((a, b) => (b.total_requests ?? 0) - (a.total_requests ?? 0))
     return list
   }, [models])
 

@@ -34,3 +34,12 @@
 - 总结部署链教训：uiweb 改动生效必须 vite build → go build → 杀旧进程 → PowerShell 启动；bash 后台进程不可靠（shell 退出即死）；浏览器缓存需 Ctrl+F5
 - 记入 Claude Code memory（feedback_build_deploy.md）避免重复踩坑
 
+## 2026-04-25 — Pricing 页重做：供应商图标 + 价格公式修正 + 卡片布局
+
+- 引入 `@lobehub/icons` v2 供应商图标库，通过 `vendorIcon.jsx` 动态解析字符串（如 `"Claude.Color"`）为 React 组件
+- 关键坑：`@lobehub/icons` 即使只导入 `es/icons` 仍通过 Avatar/Combine 子组件间接依赖 antd/antd-style/@lobehub/ui/react-layout-kit → 创建 4 个 stub 模块 + vite alias 避免拉入巨型依赖
+- 价格公式修正：按量 `model_ratio * 2 * groupRatio`（USD/1M tokens），按次 `model_price * groupRatio`（USD/次）
+- API 响应结构确认：`res.data` 是模型数组，`res.vendors`/`res.group_ratio`/`res.usable_group` 是 response 对象的同级字段（非 `res.data` 下属）
+- 布局从表格改为卡片网格（3 列），统一 3 行价格槽保证等高，Clay 内凹标签（按量/按次）
+- 构建产物增大至 ~4155 modules，vendor-icons chunk ~4.2MB（gzip ~810KB）独立分块
+

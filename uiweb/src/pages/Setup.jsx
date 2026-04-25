@@ -10,7 +10,7 @@ import { useToast } from '../context/ToastContext.jsx'
 import { getSetupState, submitSetup } from '../services/auth.js'
 
 const STEPS = [
-  { id: 'intro', title: '欢迎使用 New API', icon: Sparkles },
+  { id: 'intro', title: '欢迎使用 Youkies API', icon: Sparkles },
   { id: 'admin', title: '创建管理员账号', icon: User },
   { id: 'secret', title: '安全密钥', icon: ShieldCheck },
   { id: 'done', title: '开始使用', icon: Database },
@@ -87,7 +87,7 @@ export default function Setup() {
       }
       const res = await submitSetup(payload)
       if (res?.success) {
-        toast('初始化完成,欢迎来到 New API', 'success')
+        toast('初始化完成,欢迎来到 Youkies API', 'success')
         setTimeout(() => {
           window.location.replace('/login')
         }, 800)

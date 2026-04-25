@@ -62,7 +62,7 @@ export default function Login() {
   return (
     <ClayAuthShell
       title="欢迎回来"
-      subtitle="登录你的 New API 账号"
+      subtitle="登录你的 Youkies API 账号"
       footer={
         <>
           还没有账号？ <ClayLink to="/register">立即注册</ClayLink>

@@ -62,6 +62,13 @@ Dashboard / TokenManage / LogList / TopUp / Checkin / PersonalSetting / Chat2Lin
 - 柱状图从 CSS 百分比高度改为像素高度（BAR_AREA_H=180px），修复 flex 布局下百分比高度不生效的 bug
 - 内凹托盘容器 + 渐变柱状图 + clay 浮动提示 + 移动端 30 天水平滚动
 
+### Pricing 页重做（供应商图标 + 价格修正 + 卡片布局）
+- 引入 @lobehub/icons v2 + vendorIcon.jsx 动态解析 + 4 个 stub 模块
+- 修正价格公式：按量 `model_ratio * 2 * groupRatio`，按次 `model_price * groupRatio`
+- 修正 API 数据解析（vendors/groups 从 res 读取而非 res.data）
+- 卡片网格布局（3 列）+ 分组筛选 + 供应商下拉 + 搜索
+- 统一 3 行价格槽等高卡片 + Clay 内凹标签 + AiMass 未知图标 fallback
+
 ## 风险 / 未做
 
 - PersonalSetting 密码修改、2FA 管理仍桥接经典控制台

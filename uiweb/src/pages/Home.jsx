@@ -17,10 +17,10 @@ export default function Home() {
           <h1 className="text-5xl md:text-6xl font-black leading-tight mb-5 tracking-tight">
             温馨、和谐、
             <br />
-            <span className="text-clay-blue-200">友善。</span>
+            <span className="text-clay-blue-200">友善、灵感。</span>
           </h1>
           <p className="text-clay-faint text-lg leading-relaxed mb-7 max-w-lg">
-            把多家 AI 提供商聚合到同一个体验统一的接入点。Claymorphism 让数字工具也有触感。
+            每一次对话都被温柔以待，每一个想法都值得被认真回应。这里是你与 AI 最舒适的相遇方式。
           </p>
           <div className="flex flex-wrap gap-4 items-center">
             {user ? (
@@ -69,7 +69,7 @@ export default function Home() {
           </div>
           <h3 className="text-2xl font-extrabold mb-3">多厂商聚合</h3>
           <p className="text-clay-faint">
-            OpenAI、Claude、Gemini、GLM 等多家厂商统一 API,按需切换。
+            OpenAI、Claude、Gemini、GLM……你喜欢的模型都在这里，随时切换，不用到处找。
           </p>
         </ClayCard>
 
@@ -79,7 +79,7 @@ export default function Home() {
           </div>
           <h3 className="text-2xl font-extrabold mb-3">按次计费</h3>
           <p className="text-clay-faint">
-            精细到每一次调用的计费、额度,开箱即用。
+            每一笔花费都清清楚楚，用多少算多少，安心创作不操心。
           </p>
         </ClayCard>
 
@@ -89,7 +89,7 @@ export default function Home() {
           </div>
           <h3 className="text-2xl font-extrabold mb-3">亲切体验</h3>
           <p className="text-clay-faint">
-            后台工具也能温柔。用户页面告别冰冷的企业感。
+            圆圆的按钮、柔和的配色，希望你每次打开都觉得温馨。
           </p>
         </ClayCard>
       </section>

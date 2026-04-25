@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Info, Github, Mail, Globe } from 'lucide-react'
+import { Info, BookHeart, Users, MessageCircle } from 'lucide-react'
 import ClayCard from '../components/clay/ClayCard.jsx'
 import ClayPageShell from '../components/layout/ClayPageShell.jsx'
 import { useStatus } from '../context/StatusContext.jsx'
@@ -47,29 +47,31 @@ export default function About() {
 
           <div className="grid md:grid-cols-3 gap-4 mt-10">
             <a
-              href="https://github.com/QuantumNous/new-api"
+              href="https://xhslink.com/m/2PS41Q0qrIw"
               target="_blank"
               rel="noreferrer"
               className="clay-card !p-5 !rounded-clay-lg hover:-translate-y-1 transition-transform flex items-center gap-3"
             >
-              <Github className="w-5 h-5" />
-              <span className="font-extrabold">GitHub</span>
+              <BookHeart className="w-5 h-5" />
+              <span className="font-extrabold">小红书</span>
             </a>
             <a
-              href="https://www.quantumnous.com"
+              href="https://qm.qq.com/q/LZrPnE1uge"
               target="_blank"
               rel="noreferrer"
               className="clay-card !p-5 !rounded-clay-lg hover:-translate-y-1 transition-transform flex items-center gap-3"
             >
-              <Globe className="w-5 h-5" />
-              <span className="font-extrabold">官网</span>
+              <Users className="w-5 h-5" />
+              <span className="font-extrabold">QQ 交流群</span>
             </a>
             <a
-              href="mailto:support@quantumnous.com"
+              href="https://qm.qq.com/q/m5jzN2Ta2m"
+              target="_blank"
+              rel="noreferrer"
               className="clay-card !p-5 !rounded-clay-lg hover:-translate-y-1 transition-transform flex items-center gap-3"
             >
-              <Mail className="w-5 h-5" />
-              <span className="font-extrabold">联系</span>
+              <MessageCircle className="w-5 h-5" />
+              <span className="font-extrabold">站长 QQ</span>
             </a>
           </div>
         </ClayCard>

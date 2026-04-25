@@ -137,9 +137,10 @@ function AccountTab({ user, setUser, toast, logout }) {
       const res = await uploadAvatar(file)
       if (res?.success) {
         toast('头像已更新', 'success')
-        setAvatarKey(Date.now())
+        const t = Date.now()
+        setAvatarKey(t)
         const r = await apiSelf()
-        if (r?.data) setUser(r.data)
+        if (r?.data) setUser({ ...r.data, _avatar_t: t })
       } else {
         toast(res?.message ?? '上传失败', 'error')
       }
@@ -229,7 +230,7 @@ function AccountTab({ user, setUser, toast, logout }) {
                     toast('头像已移除', 'success')
                     setAvatarKey(Date.now())
                     const r = await apiSelf()
-                    if (r?.data) setUser(r.data)
+                    if (r?.data) setUser({ ...r.data, _avatar_t: Date.now() })
                   } else {
                     toast(res?.message ?? '移除失败', 'error')
                   }

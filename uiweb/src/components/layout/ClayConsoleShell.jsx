@@ -112,9 +112,9 @@ export default function ClayConsoleShell({ title, subtitle, actions, children })
             <button
               type="button"
               onClick={() => setUserOpen((v) => !v)}
-              className="flex items-center gap-2 pr-4 pl-2 py-1.5 rounded-clay-pill bg-clay-bg shadow-clay hover:shadow-clay-hover transition-shadow"
+              className="flex items-center gap-2 sm:pr-4 sm:pl-2 sm:py-1.5 rounded-full sm:rounded-clay-pill sm:bg-clay-bg sm:shadow-clay sm:hover:shadow-clay-hover transition-shadow"
             >
-              <ClayAvatar name={displayName} src={user?.has_avatar ? `/api/user/avatar/${user.id}` : undefined} size={34} />
+              <ClayAvatar name={displayName} src={user?.has_avatar ? `/api/user/avatar/${user.id}?t=${user._avatar_t || ''}` : undefined} size={34} />
               <span className="font-bold text-sm hidden sm:inline">{displayName}</span>
             </button>
 

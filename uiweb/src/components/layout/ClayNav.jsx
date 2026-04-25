@@ -2,6 +2,7 @@ import { Link, NavLink } from 'react-router-dom'
 import { Box, LogIn, UserPlus } from 'lucide-react'
 import ClayButton from '../clay/ClayButton.jsx'
 import ClayCard from '../clay/ClayCard.jsx'
+import ClayAvatar from '../clay/ClayAvatar.jsx'
 import { useUser } from '../../context/UserContext.jsx'
 
 const linkBase =
@@ -38,10 +39,15 @@ export default function ClayNav() {
         </NavLink>
       </nav>
 
-      <div className="flex gap-3">
+      <div className="flex gap-3 items-center">
         {user ? (
-          <Link to="/dashboard">
-            <ClayButton variant="primary" className="!px-6 !py-2 !text-sm">
+          <Link to="/dashboard" className="flex items-center gap-2">
+            <ClayAvatar
+              name={user.display_name || user.username || '?'}
+              src={user.has_avatar ? `/api/user/avatar/${user.id}?t=${user._avatar_t || ''}` : undefined}
+              size={34}
+            />
+            <ClayButton variant="primary" className="!px-6 !py-2 !text-sm hidden md:flex">
               进入控制台
             </ClayButton>
           </Link>

@@ -55,6 +55,11 @@ export async function deleteTokenBatch(ids) {
   return res.data
 }
 
+export async function getUserGroups() {
+  const res = await api.get('/api/user/self/groups')
+  return res.data
+}
+
 export async function listEnabledKeys() {
   try {
     const res = await api.get('/api/token/')

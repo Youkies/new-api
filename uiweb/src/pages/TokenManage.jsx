@@ -1,21 +1,30 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useSyncExternalStore } from 'react'
 import {
   KeyRound, Plus, Search, Copy, Trash2, Eye, EyeOff,
   ToggleLeft, ToggleRight, Pencil, ChevronLeft, ChevronRight,
-  Clock, Shield, Layers, Infinity,
+  Clock, Shield, Layers, Infinity, RefreshCw,
 } from 'lucide-react'
 import ClayCard from '../components/clay/ClayCard.jsx'
 import ClayButton from '../components/clay/ClayButton.jsx'
 import ClayField from '../components/clay/ClayField.jsx'
+import ClaySelect from '../components/clay/ClaySelect.jsx'
 import ClayModal from '../components/clay/ClayModal.jsx'
 import ClayAlert from '../components/clay/ClayAlert.jsx'
 import ClayConsoleShell from '../components/layout/ClayConsoleShell.jsx'
 import { useToast } from '../context/ToastContext.jsx'
-import { quotaToDisplay } from '../utils/quota.js'
+import { quotaToDisplay, displayToQuota } from '../utils/quota.js'
 import {
   listTokens, addToken, updateToken, updateTokenStatus,
-  deleteToken, getTokenKey,
+  deleteToken, getTokenKey, getUserGroups,
 } from '../services/tokens.js'
+
+const mobileQuery = typeof window !== 'undefined' ? window.matchMedia('(max-width: 767px)') : null
+function useIsMobile() {
+  return useSyncExternalStore(
+    (cb) => { mobileQuery?.addEventListener('change', cb); return () => mobileQuery?.removeEventListener('change', cb) },
+    () => mobileQuery?.matches ?? false,
+  )
+}
 
 const STATUS_MAP = {
   1: { label: '已启用', cls: 'bg-emerald-100 text-emerald-700' },
@@ -50,8 +59,97 @@ function parseModels(str) {
   }
 }
 
+function TokenCard({ t, revealedKeys, onRevealKey, onCopyKey, onToggleStatus, openEdit, onDelete }) {
+  const st = STATUS_MAP[t.status] ?? STATUS_MAP[2]
+  const revealed = revealedKeys[t.id]
+  const group = t.group || '-'
+  const models = parseModels(t.model_limits)
+
+  return (
+    <div className="clay-card-interactive !p-5 !rounded-clay">
+      {/* Row 1: icon + name + status */}
+      <div className="flex items-center justify-between gap-2 mb-3">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="w-9 h-9 rounded-full shadow-clay bg-clay-blue-100 flex items-center justify-center shrink-0">
+            <KeyRound className="w-4 h-4 text-clay-blue-300" />
+          </div>
+          <div className="min-w-0">
+            <div className="font-bold text-sm truncate max-w-[160px]">{t.name}</div>
+            {t.model_limits_enabled && models.length > 0 && (
+              <div className="text-[11px] text-clay-faint mt-0.5">
+                <Shield className="w-3 h-3 inline mr-0.5 -mt-0.5" />
+                限 {models.length} 个模型
+              </div>
+            )}
+          </div>
+        </div>
+        <span className={`text-[11px] font-extrabold px-2.5 py-0.5 rounded-clay-pill shrink-0 ${st.cls}`}>{st.label}</span>
+      </div>
+
+      {/* Row 2: key */}
+      <div className="bg-clay-bg shadow-clay-inset rounded-clay-sm px-3 py-2.5 mb-3 flex items-center gap-2">
+        <code className="text-xs flex-1 truncate">
+          {revealed || (t.key ? `sk-${t.key}` : '***')}
+        </code>
+        <button onClick={() => onRevealKey(t)} className="p-1 rounded-clay-sm hover:bg-white/40 transition-colors shrink-0" title={revealed ? '隐藏' : '显示'}>
+          {revealed ? <EyeOff className="w-3.5 h-3.5 text-clay-faint" /> : <Eye className="w-3.5 h-3.5 text-clay-faint" />}
+        </button>
+        <button onClick={() => onCopyKey(t)} className="p-1 rounded-clay-sm hover:bg-white/40 transition-colors shrink-0" title="复制">
+          <Copy className="w-3.5 h-3.5 text-clay-faint" />
+        </button>
+      </div>
+
+      {/* Row 3: quota */}
+      <div className="flex items-center justify-between gap-3 mb-3 text-xs">
+        <span className="text-clay-faint font-bold">额度</span>
+        <div className="font-mono">
+          <span className="font-bold">{quotaToDisplay(t.used_quota ?? 0).text}</span>
+          <span className="text-clay-faint mx-1">/</span>
+          {t.unlimited_quota
+            ? <span className="inline-flex items-center gap-0.5 text-emerald-600"><Infinity className="w-3.5 h-3.5" /></span>
+            : <span className="text-clay-faint">{quotaToDisplay(t.remain_quota ?? 0).text}</span>
+          }
+        </div>
+      </div>
+
+      {/* Row 4: group + time + actions */}
+      <div className="flex items-center justify-between gap-3 text-xs">
+        <div className="flex items-center gap-2">
+          {group !== '-' ? (
+            <span className="px-2 py-0.5 rounded-clay-sm text-[11px] font-bold bg-clay-bg shadow-clay-inset text-clay-faint">
+              {group}
+            </span>
+          ) : (
+            <span className="text-clay-faint">默认</span>
+          )}
+          <span className="text-clay-faint flex items-center gap-1">
+            <Clock className="w-3 h-3" />
+            <span className={t.expired_time > 0 && t.expired_time * 1000 < Date.now() ? 'text-red-500' : ''}>
+              {fmtTime(t.expired_time)}
+            </span>
+          </span>
+        </div>
+        <div className="flex items-center gap-1">
+          <button onClick={() => onToggleStatus(t)} className="p-1.5 rounded-clay-sm hover:bg-white/40 transition-colors" title={t.status === 1 ? '禁用' : '启用'}>
+            {t.status === 1
+              ? <ToggleRight className="w-4 h-4 text-emerald-500" />
+              : <ToggleLeft className="w-4 h-4 text-gray-400" />}
+          </button>
+          <button onClick={() => openEdit(t)} className="p-1.5 rounded-clay-sm hover:bg-white/40 transition-colors" title="编辑">
+            <Pencil className="w-4 h-4 text-clay-faint" />
+          </button>
+          <button onClick={() => onDelete(t)} className="p-1.5 rounded-clay-sm hover:bg-clay-pink-100/40 transition-colors" title="删除">
+            <Trash2 className="w-4 h-4 text-clay-pink-400" />
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function TokenManage() {
   const toast = useToast()
+  const isMobile = useIsMobile()
   const [tokens, setTokens] = useState([])
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
@@ -60,8 +158,9 @@ export default function TokenManage() {
 
   const [showModal, setShowModal] = useState(false)
   const [editing, setEditing] = useState(null)
-  const [form, setForm] = useState({ name: '', remain_quota: 0, expired_time: -1, unlimited_quota: false })
+  const [form, setForm] = useState({ name: '', remain_quota: 0, expired_time: -1, unlimited_quota: true, group: '', display_amount: '' })
   const [saving, setSaving] = useState(false)
+  const [groupOptions, setGroupOptions] = useState([])
 
   const [revealedKeys, setRevealedKeys] = useState({})
   const [expandedRow, setExpandedRow] = useState(null)
@@ -84,6 +183,19 @@ export default function TokenManage() {
 
   useEffect(() => { load(page, keyword) }, [page]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  useEffect(() => {
+    getUserGroups().then((res) => {
+      const data = res?.data
+      if (data && typeof data === 'object') {
+        const opts = Object.entries(data).map(([k, v]) => ({
+          value: k,
+          label: v.desc || k,
+        }))
+        setGroupOptions(opts)
+      }
+    }).catch(() => {})
+  }, [])
+
   const onSearch = (e) => {
     e.preventDefault()
     setPage(1)
@@ -94,17 +206,20 @@ export default function TokenManage() {
 
   const openCreate = () => {
     setEditing(null)
-    setForm({ name: '', remain_quota: 500000, expired_time: -1, unlimited_quota: false })
+    setForm({ name: '', remain_quota: 0, expired_time: -1, unlimited_quota: true, group: '', display_amount: '' })
     setShowModal(true)
   }
 
   const openEdit = (t) => {
     setEditing(t)
+    const da = t.unlimited_quota ? '' : quotaToDisplay(t.remain_quota ?? 0).value.toString()
     setForm({
       name: t.name,
       remain_quota: t.remain_quota,
       expired_time: t.expired_time,
       unlimited_quota: t.unlimited_quota,
+      group: t.group || '',
+      display_amount: da,
     })
     setShowModal(true)
   }
@@ -112,13 +227,20 @@ export default function TokenManage() {
   const onSave = async () => {
     if (!form.name.trim()) { toast('请输入令牌名称', 'error'); return }
     setSaving(true)
+    const payload = {
+      name: form.name,
+      expired_time: form.expired_time,
+      unlimited_quota: form.unlimited_quota,
+      remain_quota: form.unlimited_quota ? 0 : displayToQuota(parseFloat(form.display_amount) || 0),
+      group: form.group,
+    }
     try {
       if (editing) {
-        const res = await updateToken({ id: editing.id, ...form })
+        const res = await updateToken({ id: editing.id, ...payload })
         if (!res?.success) throw new Error(res?.message ?? '更新失败')
         toast('令牌已更新')
       } else {
-        const res = await addToken(form)
+        const res = await addToken(payload)
         if (!res?.success) throw new Error(res?.message ?? '创建失败')
         toast('令牌已创建')
       }
@@ -209,7 +331,39 @@ export default function TokenManage() {
         </ClayButton>
       </form>
 
-      {/* Table */}
+      {/* Table (desktop) / Cards (mobile) */}
+      {isMobile ? (
+        <div className="space-y-3">
+          {loading && (
+            <ClayCard className="!py-12 text-center">
+              <div className="flex flex-col items-center gap-3">
+                <RefreshCw className="w-8 h-8 text-clay-faint animate-spin" />
+                <span className="text-clay-faint font-bold">加载中…</span>
+              </div>
+            </ClayCard>
+          )}
+          {!loading && tokens.length === 0 && (
+            <ClayCard className="!py-12 text-center">
+              <div className="flex flex-col items-center gap-3">
+                <KeyRound className="w-10 h-10 text-clay-faint/50" />
+                <span className="text-clay-faint font-bold">暂无令牌</span>
+              </div>
+            </ClayCard>
+          )}
+          {!loading && tokens.map((t) => (
+            <TokenCard
+              key={t.id}
+              t={t}
+              revealedKeys={revealedKeys}
+              onRevealKey={onRevealKey}
+              onCopyKey={onCopyKey}
+              onToggleStatus={onToggleStatus}
+              openEdit={openEdit}
+              onDelete={onDelete}
+            />
+          ))}
+        </div>
+      ) : (
       <ClayCard className="!p-0 overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
@@ -326,16 +480,17 @@ export default function TokenManage() {
           </tbody>
         </table>
       </ClayCard>
+      )}
 
       {/* Summary + Pagination */}
       <div className="flex items-center justify-between mt-6">
-        <span className="text-sm text-clay-faint">共 {total} 个令牌</span>
+        <span className="text-sm text-clay-faint font-bold">共 {total} 个令牌</span>
         {totalPages > 1 && (
           <div className="flex items-center gap-3">
             <ClayButton variant="ghost" disabled={page <= 1} onClick={() => setPage(page - 1)}>
               <ChevronLeft className="w-4 h-4" />
             </ClayButton>
-            <span className="text-sm font-bold">{page} / {totalPages}</span>
+            <span className="text-sm font-extrabold bg-clay-bg shadow-clay-inset px-4 py-1.5 rounded-clay-pill">{page} / {totalPages}</span>
             <ClayButton variant="ghost" disabled={page >= totalPages} onClick={() => setPage(page + 1)}>
               <ChevronRight className="w-4 h-4" />
             </ClayButton>
@@ -347,6 +502,17 @@ export default function TokenManage() {
       <ClayModal open={showModal} onClose={() => setShowModal(false)} title={editing ? '编辑令牌' : '新建令牌'} size="md">
         <div className="space-y-4">
           <ClayField label="名称" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="我的令牌" maxLength={50} />
+          {groupOptions.length > 0 && (
+            <div>
+              <label className="block ml-4 mb-2 font-bold text-sm text-clay-ink">分组</label>
+              <ClaySelect
+                value={form.group}
+                onChange={(v) => setForm({ ...form, group: v })}
+                options={groupOptions}
+                placeholder="选择分组"
+              />
+            </div>
+          )}
           <div className="flex items-center gap-3">
             <label className="text-sm font-bold">无限额度</label>
             <button type="button" onClick={() => setForm({ ...form, unlimited_quota: !form.unlimited_quota })} className="p-0.5">
@@ -357,11 +523,13 @@ export default function TokenManage() {
           </div>
           {!form.unlimited_quota && (
             <ClayField
-              label="额度"
+              label="余额"
               type="number"
-              value={form.remain_quota}
-              onChange={(e) => setForm({ ...form, remain_quota: Number(e.target.value) })}
-              hint={`约 ${quotaToDisplay(form.remain_quota || 0).text}`}
+              step="0.01"
+              value={form.display_amount}
+              onChange={(e) => setForm({ ...form, display_amount: e.target.value })}
+              hint={`内部额度: ${displayToQuota(parseFloat(form.display_amount) || 0).toLocaleString()}`}
+              placeholder="0.00"
             />
           )}
           <ClayField

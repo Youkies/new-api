@@ -41,6 +41,12 @@ Dashboard / TokenManage / LogList / TopUp / Checkin / PersonalSetting / Chat2Lin
 - 移动端适配：新增 useIsMobile hook + LogCard 组件，<767px 自动切换为卡片列表
 - Token 用量图标全部改为文字标签（入/出/缓读/缓写），桌面+移动+详情弹窗三处同步
 
+### Stage 3++（令牌管理增强 + 移动端适配）
+- TokenManage 移动端适配：新增 TokenCard 组件，<767px 自动切换卡片列表（与 LogList 同模式）
+- 新建/编辑弹窗增加分组选择（ClaySelect，数据来自 /api/user/self/groups）
+- 默认无限额度（unlimited_quota: true）
+- 关闭无限额度后输入展示金额（余额）而非内部 token 额度，新增 displayToQuota 转换函数
+
 ## 下一步
 
 待用户验收后决定：

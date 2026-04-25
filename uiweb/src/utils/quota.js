@@ -50,6 +50,17 @@ export function quotaToDisplay(quota, digits = 2) {
   return { value, text }
 }
 
+export function displayToQuota(amount) {
+  const val = Number(amount || 0)
+  if (!Number.isFinite(val) || val === 0) return 0
+  const sign = Math.sign(val)
+  const abs = Math.abs(val)
+  const { type, rate } = getCurrencyConfig()
+  if (type === 'TOKENS') return Math.round(val)
+  const usd = type === 'USD' ? abs : abs / (rate || 1)
+  return sign * Math.round(usd * getQuotaPerUnit())
+}
+
 export function formatCount(n) {
   const x = Number(n || 0)
   if (!Number.isFinite(x)) return '0'

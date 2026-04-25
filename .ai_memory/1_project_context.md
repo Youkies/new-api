@@ -61,6 +61,7 @@ api.js / auth.js / tokens.js / logs.js / checkin.js / user.js / dashboard.js / t
 ## 关键实现细节
 
 - 余额转换：quotaToDisplay() 读 localStorage 的 quota_per_unit / quota_display_type
+- 余额反转换：displayToQuota() 将展示金额转回内部额度值（令牌创建/编辑用）
 - 签到 API 路径：`/api/user/checkin`（selfRoute 前缀 `/api/user/`）
 - 模型状态 API：`GET /api/model-status?window=1h|6h|12h|24h`（公开，无需认证）
 - 模型状态 SQL：abilities JOIN channels（status=1, enabled=true）获取模型列表，logs 表 FLOOR 分槽聚合

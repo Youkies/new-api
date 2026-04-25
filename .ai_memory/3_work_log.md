@@ -28,3 +28,5 @@
 - [2026-04-25 19:00] LogList 视觉重构：从独立 grid 卡片改为 table 布局（与令牌管理页一致），ClayCard 容器包裹，行高增加 py-5，列自然对齐
 - [2026-04-25 19:10] LogList 移动端适配：新增 useIsMobile hook（matchMedia 767px），LogCard 卡片组件（类型+模型+时间/Token用量面板/额度+用时），<767px 自动切换
 - [2026-04-25 19:20] Token 用量图标改为文字标签：入/出/缓读/缓写，移除 MessageSquare/ArrowDownUp/Database/PenLine 图标依赖
+- [2026-04-25 19:50] TokenManage 移动端适配：新增 TokenCard 组件（图标+名称+状态/密钥凹槽/额度/分组+时间+操作），useIsMobile hook，双渲染模式
+- [2026-04-25 20:05] TokenManage 弹窗增强：新增分组选择（ClaySelect + getUserGroups API），默认无限额度，余额输入改为展示金额（displayToQuota 反转换）

@@ -30,3 +30,4 @@
 - [2026-04-25 19:20] Token 用量图标改为文字标签：入/出/缓读/缓写，移除 MessageSquare/ArrowDownUp/Database/PenLine 图标依赖
 - [2026-04-25 19:50] TokenManage 移动端适配：新增 TokenCard 组件（图标+名称+状态/密钥凹槽/额度/分组+时间+操作），useIsMobile hook，双渲染模式
 - [2026-04-25 20:05] TokenManage 弹窗增强：新增分组选择（ClaySelect + getUserGroups API），默认无限额度，余额输入改为展示金额（displayToQuota 反转换）
+- [2026-04-25 21:00] Dashboard 用量趋势重构：修复时间范围（今日从0点开始）、今日按小时分组、预填所有时间槽、柱状图改像素高度修复 flex 百分比 bug、clay 内凹托盘+渐变柱+浮动提示+移动端滚动

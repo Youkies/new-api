@@ -55,9 +55,15 @@ Dashboard / TokenManage / LogList / TopUp / Checkin / PersonalSetting / Chat2Lin
 - C：Stage 4（Playground 15 组件 + Chat）
 - D：跑完整端到端验收
 
+### Dashboard 用量趋势重构
+- 修复时间范围计算：今日从 0 点开始，不再用 now-24h
+- 今日模式按小时分组（0时~当前小时），7/30天按天分组
+- 预填所有时间槽（无数据日/时也显示最小柱子）
+- 柱状图从 CSS 百分比高度改为像素高度（BAR_AREA_H=180px），修复 flex 布局下百分比高度不生效的 bug
+- 内凹托盘容器 + 渐变柱状图 + clay 浮动提示 + 移动端 30 天水平滚动
+
 ## 风险 / 未做
 
 - PersonalSetting 密码修改、2FA 管理仍桥接经典控制台
-- Dashboard 用量图是自制柱状条
 - 未做管理员路由守卫
 - Playground 仍跳经典控制台

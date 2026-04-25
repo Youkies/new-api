@@ -26,6 +26,93 @@ const RANGES = [
   { value: 30, label: '近 30 天' },
 ]
 
+function fmtDate(d) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+const BAR_AREA_H = 180
+
+function UsageChart({ data, range }) {
+  const [activeIdx, setActiveIdx] = useState(null)
+  const maxVal = useMemo(() => Math.max(...data.map((d) => d.value), 1), [data])
+  const needScroll = range === 30
+
+  const shouldShowLabel = (i) => {
+    if (range === 1) return i % 3 === 0 || i === data.length - 1
+    if (range === 30) return i % 5 === 0 || i === data.length - 1
+    return true
+  }
+
+  return (
+    <div>
+      <div
+        className={`rounded-[28px] bg-clay-bg shadow-clay-inset p-4 sm:p-6 ${needScroll ? 'overflow-x-auto' : ''}`}
+      >
+        <div style={needScroll ? { minWidth: data.length * 28 + 24 } : {}}>
+          <div
+            className="flex items-end gap-1 sm:gap-1.5"
+            style={{ height: BAR_AREA_H + 24 }}
+          >
+            {data.map((item, i) => {
+              const barH = maxVal > 0 ? (item.value / maxVal) * BAR_AREA_H : 0
+              const isActive = activeIdx === i
+              return (
+                <div
+                  key={item.key}
+                  className="flex-1 flex flex-col items-center justify-end relative"
+                  style={needScroll ? { minWidth: 20 } : {}}
+                  onMouseEnter={() => setActiveIdx(i)}
+                  onMouseLeave={() => setActiveIdx(null)}
+                  onTouchStart={() => setActiveIdx((prev) => (prev === i ? null : i))}
+                >
+                  {/* tooltip */}
+                  {isActive && item.value > 0 && (
+                    <div className="absolute -top-9 left-1/2 -translate-x-1/2 z-10 whitespace-nowrap">
+                      <div className="bg-clay-pink-100 text-[#8a4860] text-[11px] font-extrabold px-3 py-1.5 rounded-clay-sm shadow-clay">
+                        {item.fullLabel} · {item.value} 次
+                      </div>
+                      <div className="w-2 h-2 bg-clay-pink-100 rotate-45 mx-auto -mt-1" />
+                    </div>
+                  )}
+
+                  {/* bar */}
+                  <div
+                    className={`w-full rounded-t-[10px] rounded-b-[4px] transition-all duration-300 ${
+                      isActive
+                        ? 'bg-gradient-to-t from-clay-pink-300 to-clay-pink-100'
+                        : item.value > 0
+                          ? 'bg-gradient-to-t from-clay-blue-200 to-clay-blue-50'
+                          : 'bg-clay-faint/10'
+                    }`}
+                    style={{
+                      height: Math.max(barH, item.value > 0 ? 6 : 3),
+                    }}
+                  />
+
+                  {/* label */}
+                  <span
+                    className={`text-[9px] sm:text-[10px] font-bold text-clay-faint mt-1.5 text-center leading-none ${
+                      shouldShowLabel(i) ? '' : 'invisible'
+                    }`}
+                  >
+                    {item.shortLabel}
+                  </span>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      </div>
+
+      {needScroll && (
+        <div className="sm:hidden flex justify-center mt-2">
+          <span className="text-[10px] text-clay-faint/60 font-bold">← 左右滑动查看 →</span>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function Dashboard() {
   const { user, setUser } = useUser()
   const [range, setRange] = useState(7)
@@ -37,15 +124,24 @@ export default function Dashboard() {
     setError('')
     setLoading(true)
     try {
-      // Refresh user quota
       try {
         const r = await self()
         if (r?.data) setUser(r.data)
       } catch (_) {}
 
       const now = Math.floor(Date.now() / 1000)
-      const start = now - range * 86400
-      const res = await selfUsage(start, now, 'day')
+      let start
+      if (range === 1) {
+        const today = new Date()
+        today.setHours(0, 0, 0, 0)
+        start = Math.floor(today.getTime() / 1000)
+      } else {
+        const d = new Date()
+        d.setHours(0, 0, 0, 0)
+        d.setDate(d.getDate() - (range - 1))
+        start = Math.floor(d.getTime() / 1000)
+      }
+      const res = await selfUsage(start, now, 'hour')
       const data = Array.isArray(res?.data) ? res.data : []
       setSeries(data)
     } catch (err) {
@@ -78,18 +174,51 @@ export default function Dashboard() {
     return { calls, tokens, quota, topModels }
   }, [series])
 
-  const byDay = useMemo(() => {
-    const m = new Map()
+  const chartData = useMemo(() => {
+    if (range === 1) {
+      const now = new Date()
+      const currentHour = now.getHours()
+      const todayStr = fmtDate(now)
+      const hourMap = new Map()
+      for (let h = 0; h <= currentHour; h++) hourMap.set(h, 0)
+      for (const it of series) {
+        const d = new Date((it.created_at || 0) * 1000)
+        if (fmtDate(d) === todayStr) {
+          const h = d.getHours()
+          if (hourMap.has(h)) hourMap.set(h, hourMap.get(h) + (it.count || 0))
+        }
+      }
+      return [...hourMap.entries()]
+        .sort(([a], [b]) => a - b)
+        .map(([hour, count]) => ({
+          key: `h-${hour}`,
+          shortLabel: `${hour}时`,
+          fullLabel: `${hour}:00`,
+          value: count,
+        }))
+    }
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const dayMap = new Map()
+    for (let i = range - 1; i >= 0; i--) {
+      const d = new Date(today)
+      d.setDate(d.getDate() - i)
+      dayMap.set(fmtDate(d), 0)
+    }
     for (const it of series) {
       const d = new Date((it.created_at || 0) * 1000)
-      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-      m.set(key, (m.get(key) || 0) + (it.count || 0))
+      const key = fmtDate(d)
+      if (dayMap.has(key)) dayMap.set(key, dayMap.get(key) + (it.count || 0))
     }
-    const entries = [...m.entries()].sort(([a], [b]) => (a < b ? -1 : 1))
-    return entries
-  }, [series])
-
-  const maxDay = useMemo(() => byDay.reduce((m, [, v]) => Math.max(m, v), 0), [byDay])
+    return [...dayMap.entries()]
+      .sort(([a], [b]) => (a < b ? -1 : 1))
+      .map(([date, count]) => ({
+        key: date,
+        shortLabel: date.slice(5),
+        fullLabel: date,
+        value: count,
+      }))
+  }, [series, range])
 
   const balance = quotaToDisplay(user?.quota ?? 0)
   const used = quotaToDisplay(user?.used_quota ?? 0)
@@ -143,7 +272,7 @@ export default function Dashboard() {
         />
       </div>
 
-      {/* Usage chart (simple bar strip) */}
+      {/* Usage chart */}
       <div className="flex items-center justify-between mb-4 gap-4 flex-wrap">
         <div className="flex items-center gap-2">
           <Sparkles className="w-5 h-5 text-clay-pink-300" />
@@ -156,35 +285,18 @@ export default function Dashboard() {
         />
       </div>
 
-      <ClayCard className="mb-8">
-        {byDay.length === 0 ? (
-          <div className="flex flex-col items-center gap-2 py-10 text-clay-faint">
-            <Clock className="w-8 h-8" />
-            <p>这段时间还没有调用记录</p>
-          </div>
+      <div className="mb-8">
+        {chartData.length === 0 ? (
+          <ClayCard>
+            <div className="flex flex-col items-center gap-2 py-10 text-clay-faint">
+              <Clock className="w-8 h-8" />
+              <p>这段时间还没有调用记录</p>
+            </div>
+          </ClayCard>
         ) : (
-          <div className="flex items-end gap-2 h-48">
-            {byDay.map(([date, count]) => {
-              const h = maxDay > 0 ? (count / maxDay) * 100 : 0
-              return (
-                <div
-                  key={date}
-                  className="flex-1 flex flex-col items-center justify-end gap-2 group"
-                  title={`${date} · ${count} 次`}
-                >
-                  <div
-                    className="w-full rounded-clay-sm bg-clay-blue-100 shadow-clay transition-all duration-300 group-hover:bg-clay-pink-100"
-                    style={{ height: `${Math.max(h, 4)}%`, minHeight: 6 }}
-                  />
-                  <span className="text-[10px] font-bold text-clay-faint truncate w-full text-center">
-                    {date.slice(5)}
-                  </span>
-                </div>
-              )
-            })}
-          </div>
+          <UsageChart data={chartData} range={range} />
         )}
-      </ClayCard>
+      </div>
 
       {/* Top models */}
       <div className="grid lg:grid-cols-3 gap-6">

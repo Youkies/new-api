@@ -41,3 +41,8 @@
 - [2026-04-26 03:00] 头像 cache-bust：上传后 _avatar_t 时间戳刷新所有头像 URL；首页 ClayNav 登录后显示头像
 - [2026-04-26 03:10] 移动端头像优化：控制台导航只显示头像圆形，首页登录只显示头像（隐藏"进入控制台"按钮）
 - [2026-04-26 03:15] 部署修复：Zeabur NODE_TYPE=slave 需手动 ALTER TABLE 加 avatar/avatar_type 列
+- [2026-04-26 03:30] 移动端头像放大：ClayConsoleShell 头像 34px → 40px
+- [2026-04-26 03:30] 修复头像 cache-bust 跨页丢失：UserContext setUser 自动保留旧 _avatar_t（Dashboard/TopUp 等重新拉取用户数据不再丢失时间戳）
+- [2026-04-26 03:30] 修复 /legacy 404：新增显式 GET /legacy → 301 /legacy/（Gin wildcard 不匹配无斜杠路径）
+- [2026-04-26 03:30] 修复经典控制台链接：/console → /legacy、/console/playground → /legacy/playground
+- [2026-04-26 03:30] 提交推送 268bc41a

@@ -1,5 +1,5 @@
 import { Link, NavLink } from 'react-router-dom'
-import { Box, LogIn, UserPlus } from 'lucide-react'
+import { LogIn, UserPlus } from 'lucide-react'
 import ClayButton from '../clay/ClayButton.jsx'
 import ClayCard from '../clay/ClayCard.jsx'
 import ClayAvatar from '../clay/ClayAvatar.jsx'
@@ -19,7 +19,7 @@ export default function ClayNav() {
           interactive
           className="!p-2 !px-5 !rounded-clay-pill !flex-row !flex gap-2 items-center !border-0"
         >
-          <Box className="w-5 h-5" strokeWidth={2.5} />
+          <img src="/favicon.png" alt="logo" className="w-6 h-6" />
           <span className="font-black text-lg">Youkies API · Clay</span>
         </ClayCard>
       </Link>

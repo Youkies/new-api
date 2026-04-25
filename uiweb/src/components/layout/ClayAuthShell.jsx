@@ -1,5 +1,4 @@
 import { Link } from 'react-router-dom'
-import { Box } from 'lucide-react'
 import ClayCard from '../clay/ClayCard.jsx'
 
 export default function ClayAuthShell({ title, subtitle, children, footer }) {
@@ -20,7 +19,7 @@ export default function ClayAuthShell({ title, subtitle, children, footer }) {
 
       <div className="relative w-full max-w-md">
         <Link to="/" className="flex items-center justify-center gap-2 mb-6 text-clay-ink">
-          <Box className="w-6 h-6" strokeWidth={2.5} />
+          <img src="/favicon.png" alt="logo" className="w-6 h-6" />
           <span className="font-black text-xl">Youkies API · Clay</span>
         </Link>
 

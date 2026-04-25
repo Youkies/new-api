@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { Link, NavLink, useNavigate } from 'react-router-dom'
 import {
-  Box,
   LayoutDashboard,
   Wallet,
   MessageSquare,
@@ -88,7 +87,7 @@ export default function ClayConsoleShell({ title, subtitle, actions, children })
                 interactive
                 className="!p-2 !px-4 !rounded-clay-pill !flex-row !flex gap-2 items-center !border-0"
               >
-                <Box className="w-5 h-5" strokeWidth={2.5} />
+                <img src="/favicon.png" alt="logo" className="w-5 h-5" />
                 <span className="font-black">Youkies API</span>
               </ClayCard>
             </Link>

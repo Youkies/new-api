@@ -31,6 +31,7 @@
 ## 路由策略
 
 - `/*` → uiweb（黏土风，根路由前端）
+- `/legacy` → 301 重定向到 `/legacy/`（Gin wildcard 不匹配无斜杠）
 - `/legacy/*` → 原 web 经典界面
 - `/u/*` → 301 重定向到根路径（兼容旧链接）
 - `/v1/*`, `/api/*` → API 路由不受影响
@@ -42,9 +43,9 @@
 - 上限：200KB，前端 canvas 压缩为 JPEG
 - API：`POST/DELETE /api/user/avatar`（需登录）、`GET /api/user/avatar/:id`（公开，带 ETag 缓存）
 - 前端裁剪：react-easy-crop 圆形裁剪 + 缩放滑块 + 确认弹窗
-- cache-bust：上传后 user 对象挂 `_avatar_t` 时间戳，所有头像 URL 带 `?t=`
+- cache-bust：上传后 user 对象挂 `_avatar_t` 时间戳，所有头像 URL 带 `?t=`；UserContext setUser 自动保留旧 `_avatar_t` 防止页面导航时丢失
 - 批量查询（GetAllUsers/SearchUsers）omit avatar 字段避免性能问题
-- 移动端：控制台导航只显示头像圆形（无背景框无文字），首页登录只显示头像
+- 移动端：控制台导航只显示头像圆形（40px，无背景框无文字），首页登录只显示头像
 
 ## 组件体系
 

@@ -73,7 +73,13 @@ Dashboard / TokenManage / LogList / TopUp / Checkin / PersonalSetting / Chat2Lin
   - 显示：个人设置页、控制台导航栏、首页导航（移动端仅头像）
   - 移除头像按钮（恢复默认字母头像）
   - cache-bust 机制：上传后 `_avatar_t` 时间戳刷新所有头像 URL
-  - 移动端优化：控制台导航只显示头像圆形，首页登录只显示头像
+  - cache-bust 跨页保持：UserContext setUser 自动保留旧 `_avatar_t`，页面导航不丢失
+  - 移动端优化：控制台导航只显示头像圆形（40px），首页登录只显示头像
+
+### Bug 修复（路由 + 缓存）
+- `/legacy` 不带斜杠 404：新增显式 GET /legacy → 301 /legacy/
+- 经典控制台链接错误：/console → /legacy、/console/playground → /legacy/playground
+- 头像 cache-bust 跨页丢失：setUser 从 API 刷新用户数据时自动保留旧 `_avatar_t`
 
 ## 下一步
 

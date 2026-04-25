@@ -15,12 +15,12 @@ export default function Home() {
         <div>
           <span className="clay-badge mb-6">AI Gateway · Clay Edition</span>
           <h1 className="text-5xl md:text-6xl font-black leading-tight mb-5 tracking-tight">
-            柔软、圆润、
+            温馨、和谐、
             <br />
-            <span className="text-clay-blue-200">可触摸。</span>
+            <span className="text-clay-blue-200">友善。</span>
           </h1>
           <p className="text-clay-faint text-lg leading-relaxed mb-7 max-w-lg">
-            把 40+ AI 提供商聚合到同一个体验统一的接入点。Claymorphism 让数字工具也有触感。
+            把多家 AI 提供商聚合到同一个体验统一的接入点。Claymorphism 让数字工具也有触感。
           </p>
           <div className="flex flex-wrap gap-4 items-center">
             {user ? (
@@ -69,7 +69,7 @@ export default function Home() {
           </div>
           <h3 className="text-2xl font-extrabold mb-3">多厂商聚合</h3>
           <p className="text-clay-faint">
-            OpenAI、Claude、Gemini、Bedrock 等 40+ 厂商统一 API,按需切换。
+            OpenAI、Claude、Gemini、GLM 等多家厂商统一 API,按需切换。
           </p>
         </ClayCard>
 
@@ -77,9 +77,9 @@ export default function Home() {
           <div className="clay-icon-box mb-5 text-clay-pink-200">
             <Layers className="w-6 h-6" strokeWidth={2.5} />
           </div>
-          <h3 className="text-2xl font-extrabold mb-3">分层计费</h3>
+          <h3 className="text-2xl font-extrabold mb-3">按次计费</h3>
           <p className="text-clay-faint">
-            精细到每一次调用的计费、额度、分层规则,开箱即用。
+            精细到每一次调用的计费、额度,开箱即用。
           </p>
         </ClayCard>
 

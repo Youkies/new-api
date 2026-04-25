@@ -21,6 +21,7 @@ func SetRouter(router *gin.Engine, buildFS embed.FS, indexPage []byte, uiwebFS e
 	// uiweb (/u/*) must register before SetWebRouter so its concrete route
 	// wins over the engine-wide static middleware attached there.
 	SetUIWebRouter(router, uiwebFS)
+	SetWebRouter(router, buildFS, indexPage)
 	frontendBaseUrl := os.Getenv("FRONTEND_BASE_URL")
 	if common.IsMasterNode && frontendBaseUrl != "" {
 		frontendBaseUrl = ""

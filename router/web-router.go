@@ -2,29 +2,60 @@ package router
 
 import (
 	"embed"
+	"io"
+	"io/fs"
 	"net/http"
 	"strings"
 
-	"github.com/QuantumNous/new-api/common"
-	"github.com/QuantumNous/new-api/controller"
 	"github.com/QuantumNous/new-api/middleware"
 	"github.com/gin-contrib/gzip"
-	"github.com/gin-contrib/static"
 	"github.com/gin-gonic/gin"
 )
 
 func SetWebRouter(router *gin.Engine, buildFS embed.FS, indexPage []byte) {
-	router.Use(gzip.Gzip(gzip.DefaultCompression))
-	router.Use(middleware.GlobalWebRateLimit())
-	router.Use(middleware.Cache())
-	router.Use(static.Serve("/", common.EmbedFolder(buildFS, "web/dist")))
-	router.NoRoute(func(c *gin.Context) {
+	distFS, err := fs.Sub(buildFS, "web/dist")
+	if err != nil {
+		return
+	}
+
+	serve := func(c *gin.Context) {
 		c.Set(middleware.RouteTagKey, "web")
-		if strings.HasPrefix(c.Request.RequestURI, "/v1") || strings.HasPrefix(c.Request.RequestURI, "/api") || strings.HasPrefix(c.Request.RequestURI, "/assets") {
-			controller.RelayNotFound(c)
+		rel := strings.TrimPrefix(c.Param("filepath"), "/")
+
+		if rel == "" {
+			c.Header("Cache-Control", "no-cache")
+			c.Data(http.StatusOK, "text/html; charset=utf-8", indexPage)
 			return
 		}
+
+		f, err := distFS.Open(rel)
+		if err == nil {
+			defer f.Close()
+			if stat, serr := f.Stat(); serr == nil && !stat.IsDir() {
+				if rs, ok := f.(io.ReadSeeker); ok {
+					http.ServeContent(c.Writer, c.Request, rel, stat.ModTime(), rs)
+					return
+				}
+			}
+		}
+
+		if strings.HasPrefix(rel, "assets/") ||
+			strings.HasSuffix(rel, ".js") ||
+			strings.HasSuffix(rel, ".css") ||
+			strings.HasSuffix(rel, ".map") ||
+			strings.HasSuffix(rel, ".png") ||
+			strings.HasSuffix(rel, ".svg") ||
+			strings.HasSuffix(rel, ".ico") ||
+			strings.HasSuffix(rel, ".woff") ||
+			strings.HasSuffix(rel, ".woff2") {
+			c.Status(http.StatusNotFound)
+			return
+		}
+
 		c.Header("Cache-Control", "no-cache")
 		c.Data(http.StatusOK, "text/html; charset=utf-8", indexPage)
-	})
+	}
+
+	gz := gzip.Gzip(gzip.DefaultCompression)
+	router.GET("/legacy/*filepath", gz, serve)
 }

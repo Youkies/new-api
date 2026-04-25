@@ -71,7 +71,7 @@ export default function Chat2Link() {
             <p className="text-clay-faint mb-5">
               你需要先启用一个 API Token,才能使用聊天跳转功能。
             </p>
-            <a href="/console/token">
+            <a href="/tokens">
               <ClayButton variant="primary">去管理 Token</ClayButton>
             </a>
           </>

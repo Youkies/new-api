@@ -23,7 +23,7 @@ export default function About() {
           关于 Youkies API
         </h1>
         <p className="text-center text-clay-faint mb-10 text-lg">
-          一个温柔的 AI API 网关。把 40+ 上游模型统一到同一个亲切的界面后面。
+          一个温柔的 AI API 网关。把多个上游模型统一到同一个亲切的界面。
         </p>
 
         <ClayCard>
@@ -40,7 +40,7 @@ export default function About() {
                 上游厂商,在统一协议下提供 API Key 分发、分层计费、用量追踪、渠道分流等能力。
               </p>
               <p>
-                这里是 <strong>Clay Edition</strong> —— 黏土风格的用户端,让每次登录都能感受到柔软。
+                这里是 <strong>Clay Edition</strong> —— 由 <strong>Youkies</strong> 适配，黏土风格的用户端,让每次登录都能感受到柔软。
               </p>
             </div>
           )}

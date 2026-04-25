@@ -347,7 +347,7 @@ export default function Dashboard() {
           <p className="text-sm opacity-80 mb-5">
             创建、启用或吊销 Token,是控制用量的第一步。
           </p>
-          <a href="/console/token">
+          <a href="/tokens">
             <ClayButton variant="ghost" className="!bg-white/50 !text-[#8a4860]">
               去管理
             </ClayButton>

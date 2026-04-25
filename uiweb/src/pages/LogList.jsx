@@ -1,16 +1,27 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useSyncExternalStore } from 'react'
 import {
-  FileText, Search, ChevronLeft, ChevronRight, Filter,
-  Clock, Zap, MessageSquare, ArrowDownUp,
+  Search, ChevronLeft, ChevronRight, Filter,
+  Clock, Zap,
+  Activity, AlertCircle, RefreshCw, CreditCard, Settings, Terminal,
+  RotateCcw, FileText,
 } from 'lucide-react'
 import ClayCard from '../components/clay/ClayCard.jsx'
 import ClayButton from '../components/clay/ClayButton.jsx'
 import ClayField from '../components/clay/ClayField.jsx'
 import ClaySelect from '../components/clay/ClaySelect.jsx'
+import ClayModal from '../components/clay/ClayModal.jsx'
 import ClayConsoleShell from '../components/layout/ClayConsoleShell.jsx'
 import { useToast } from '../context/ToastContext.jsx'
 import { quotaToDisplay } from '../utils/quota.js'
 import { getUserLogs } from '../services/logs.js'
+
+const mobileQuery = typeof window !== 'undefined' ? window.matchMedia('(max-width: 767px)') : null
+function useIsMobile() {
+  return useSyncExternalStore(
+    (cb) => { mobileQuery?.addEventListener('change', cb); return () => mobileQuery?.removeEventListener('change', cb) },
+    () => mobileQuery?.matches ?? false,
+  )
+}
 
 const TYPE_OPTIONS = [
   { value: '', label: '全部类型' },
@@ -22,15 +33,14 @@ const TYPE_OPTIONS = [
   { value: '6', label: '退款' },
 ]
 
-const TYPE_CLS = {
-  1: 'bg-emerald-100 text-emerald-700',
-  2: 'bg-blue-100 text-blue-700',
-  3: 'bg-purple-100 text-purple-700',
-  4: 'bg-gray-200 text-gray-600',
-  5: 'bg-red-100 text-red-600',
-  6: 'bg-amber-100 text-amber-700',
+const TYPE_META = {
+  1: { label: '充值', icon: CreditCard, bg: 'bg-emerald-100', text: 'text-emerald-700', ring: 'ring-emerald-200' },
+  2: { label: '消费', icon: Activity, bg: 'bg-clay-blue-100', text: 'text-[#43658b]', ring: 'ring-blue-200' },
+  3: { label: '管理', icon: Settings, bg: 'bg-clay-purple-100', text: 'text-[#6b4d83]', ring: 'ring-purple-200' },
+  4: { label: '系统', icon: Terminal, bg: 'bg-gray-200', text: 'text-gray-600', ring: 'ring-gray-300' },
+  5: { label: '错误', icon: AlertCircle, bg: 'bg-red-100', text: 'text-red-600', ring: 'ring-red-200' },
+  6: { label: '退款', icon: RotateCcw, bg: 'bg-clay-yellow-100', text: 'text-[#8a6a32]', ring: 'ring-amber-200' },
 }
-const TYPE_LABEL = { 1: '充值', 2: '消费', 3: '管理', 4: '系统', 5: '错误', 6: '退款' }
 
 function fmtTs(ts) {
   if (!ts) return '-'
@@ -46,26 +56,398 @@ function fmtTokens(n) {
   return String(n)
 }
 
-function fmtUseTime(ms) {
-  if (!ms) return '-'
+function fmtUseTime(sec) {
+  if (!sec && sec !== 0) return '-'
+  return `${sec}s`
+}
+
+function fmtFrt(ms) {
+  if (!ms || ms <= 0) return null
   if (ms >= 1000) return `${(ms / 1000).toFixed(1)}s`
-  return `${ms}ms`
+  return `${Math.round(ms)}ms`
+}
+
+function parseOther(raw) {
+  if (!raw) return {}
+  if (typeof raw === 'object') return raw || {}
+  try { return JSON.parse(raw) || {} } catch { return {} }
+}
+
+function getCacheTokens(other) {
+  if (!other) return { read: 0, write: 0 }
+  const read = other.cache_tokens || 0
+  let write = 0
+  if (other.cache_creation_tokens_5m || other.cache_creation_tokens_1h) {
+    write = (other.cache_creation_tokens_5m || 0) + (other.cache_creation_tokens_1h || 0)
+  } else {
+    write = other.cache_creation_tokens || 0
+  }
+  return { read, write }
+}
+
+function DetailRow({ label, value, mono }) {
+  if (value === null || value === undefined || value === '') return null
+  return (
+    <div className="flex items-start py-2 border-b border-black/5 last:border-0">
+      <span className="text-xs text-clay-faint w-28 shrink-0 pt-0.5">{label}</span>
+      <span className={`text-sm flex-1 break-all ${mono ? 'font-mono text-xs' : ''}`}>{value}</span>
+    </div>
+  )
+}
+
+function LogDetailContent({ log }) {
+  const other = parseOther(log.other)
+  const cache = getCacheTokens(other)
+  const frt = other.frt > 0 ? other.frt : null
+  const meta = TYPE_META[log.type] ?? TYPE_META[4]
+
+  return (
+    <div className="space-y-5">
+      <div>
+        <DetailRow label="时间" value={log.created_at ? new Date(log.created_at * 1000).toLocaleString('zh-CN') : '-'} />
+        <DetailRow label="类型" value={
+          <span className={`text-[11px] font-extrabold px-3 py-1 rounded-clay-pill ${meta.bg} ${meta.text}`}>
+            {meta.label}
+          </span>
+        } />
+        <DetailRow label="模型" value={log.model_name} mono />
+        <DetailRow label="令牌" value={log.token_name} />
+        <DetailRow label="分组" value={log.group} />
+        <DetailRow label="Request ID" value={log.request_id} mono />
+      </div>
+
+      {(log.prompt_tokens > 0 || log.completion_tokens > 0) && (
+        <div className="bg-clay-bg rounded-clay p-5 shadow-clay-inset">
+          <h4 className="text-xs font-extrabold text-clay-faint mb-4">Token 用量</h4>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <span className="text-[11px] text-clay-faint">输入</span>
+              <p className="text-xl font-black font-mono">{(log.prompt_tokens ?? 0).toLocaleString()}</p>
+            </div>
+            <div>
+              <span className="text-[11px] text-clay-faint">输出</span>
+              <p className="text-xl font-black font-mono">{(log.completion_tokens ?? 0).toLocaleString()}</p>
+            </div>
+            {cache.read > 0 && (
+              <div>
+                <span className="text-[11px] text-clay-faint">缓存读取</span>
+                <p className="text-xl font-black font-mono text-emerald-600">{cache.read.toLocaleString()}</p>
+              </div>
+            )}
+            {cache.write > 0 && (
+              <div>
+                <span className="text-[11px] text-clay-faint">缓存写入</span>
+                <p className="text-xl font-black font-mono text-amber-600">{cache.write.toLocaleString()}</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {(log.use_time || frt) ? (
+        <div className="bg-clay-bg rounded-clay p-5 shadow-clay-inset">
+          <h4 className="text-xs font-extrabold text-clay-faint mb-4">耗时信息</h4>
+          <div className="grid grid-cols-3 gap-4">
+            {log.use_time ? (
+              <div>
+                <span className="text-[11px] text-clay-faint">总用时</span>
+                <p className="text-xl font-black font-mono">{fmtUseTime(log.use_time)}</p>
+              </div>
+            ) : null}
+            {frt ? (
+              <div>
+                <span className="text-[11px] text-clay-faint">首字延迟</span>
+                <p className="text-xl font-black font-mono text-emerald-600">{fmtFrt(frt)}</p>
+              </div>
+            ) : null}
+            <div>
+              <span className="text-[11px] text-clay-faint">模式</span>
+              <p className="text-sm font-extrabold mt-1">{log.is_stream ? '流式' : '非流式'}</p>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {log.quota ? (
+        <DetailRow
+          label="额度消耗"
+          value={
+            <span className={`font-extrabold ${log.quota > 0 ? 'text-blue-600' : 'text-emerald-600'}`}>
+              {log.quota < 0 ? '+' : '-'}{quotaToDisplay(Math.abs(log.quota)).text}
+            </span>
+          }
+        />
+      ) : null}
+
+      {log.content && (
+        <div>
+          <h4 className="text-xs font-extrabold text-clay-faint mb-2">详情</h4>
+          <div className="bg-clay-bg rounded-clay p-4 shadow-clay-inset text-xs text-clay-faint whitespace-pre-wrap break-all">
+            {log.content}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function todayStart() {
+  const d = new Date()
+  d.setHours(0, 0, 0, 0)
+  const pad = (n) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T00:00`
+}
+
+function nowLocal() {
+  const d = new Date()
+  const pad = (n) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
+function LogCard({ log, onClick }) {
+  const meta = TYPE_META[log.type] ?? TYPE_META[4]
+  const TypeIcon = meta.icon
+  const isError = log.type === 5
+  const other = parseOther(log.other)
+  const cache = getCacheTokens(other)
+  const frt = other.frt
+  const hasTokens = log.prompt_tokens || log.completion_tokens
+  const hasCache = cache.read > 0 || cache.write > 0
+
+  return (
+    <div
+      className={`clay-card-interactive !p-5 !rounded-clay cursor-pointer ${isError ? '!bg-red-50/40' : ''}`}
+      onClick={onClick}
+    >
+      {/* Row 1: type badge + model + time */}
+      <div className="flex items-center justify-between gap-2 mb-3">
+        <div className="flex items-center gap-2 min-w-0">
+          <div className={`w-8 h-8 rounded-full ${meta.bg} flex items-center justify-center shrink-0
+            shadow-[3px_3px_6px_rgba(0,0,0,0.08),-2px_-2px_4px_rgba(255,255,255,0.6),inset_1px_1px_2px_rgba(255,255,255,0.4)]`}>
+            <TypeIcon className={`w-3.5 h-3.5 ${meta.text}`} strokeWidth={2.5} />
+          </div>
+          <span className={`text-[11px] font-extrabold px-2.5 py-0.5 rounded-clay-pill shrink-0 ${meta.bg} ${meta.text}`}>
+            {meta.label}
+          </span>
+          {log.model_name && (
+            <span className="font-mono text-[11px] font-bold bg-clay-bg shadow-clay-inset px-2.5 py-1 rounded-clay-pill truncate">
+              {log.model_name}
+            </span>
+          )}
+        </div>
+        <span className="text-[10px] text-clay-faint shrink-0 flex items-center gap-1">
+          <Clock className="w-3 h-3" />
+          {fmtTs(log.created_at)}
+        </span>
+      </div>
+
+      {/* Row 2: token usage + cache */}
+      {hasTokens && (
+        <div className="bg-clay-bg shadow-clay-inset rounded-clay-sm px-3 py-2.5 mb-3">
+          <div className="flex items-center gap-2 font-mono text-xs flex-wrap">
+            <span className="text-clay-faint">
+              <span className="not-italic text-[10px] font-bold mr-0.5">入</span>
+              {fmtTokens(log.prompt_tokens)}
+            </span>
+            <span className="text-clay-faint/50">/</span>
+            <span className="font-extrabold">
+              <span className="not-italic text-[10px] font-bold text-clay-faint mr-0.5">出</span>
+              {fmtTokens(log.completion_tokens)}
+            </span>
+            {hasCache && (
+              <>
+                <span className="w-px h-3 bg-black/10" />
+                {cache.read > 0 && (
+                  <span className="text-emerald-600">
+                    <span className="not-italic text-[10px] font-bold mr-0.5">缓读</span>
+                    {fmtTokens(cache.read)}
+                  </span>
+                )}
+                {cache.write > 0 && (
+                  <span className="text-amber-600">
+                    <span className="not-italic text-[10px] font-bold mr-0.5">缓写</span>
+                    {fmtTokens(cache.write)}
+                  </span>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Row 3: quota + timing + token name */}
+      <div className="flex items-center justify-between gap-3 text-xs">
+        <div className="flex items-center gap-3">
+          {log.quota ? (
+            <span className={`font-extrabold ${log.quota > 0 ? 'text-blue-600' : 'text-emerald-600'}`}>
+              {log.quota < 0 ? '+' : '-'}{quotaToDisplay(Math.abs(log.quota)).text}
+            </span>
+          ) : null}
+          {log.use_time ? (
+            <span className="text-clay-faint font-mono">
+              {fmtUseTime(log.use_time)}
+              {fmtFrt(frt) && <span className="text-emerald-600 ml-1">/{fmtFrt(frt)}</span>}
+            </span>
+          ) : null}
+          <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-clay-pill
+            ${log.is_stream ? 'bg-clay-blue-100 text-[#43658b]' : 'bg-gray-200/60 text-gray-500'}`}>
+            {log.is_stream ? '流' : '非流'}
+          </span>
+        </div>
+        {log.token_name && (
+          <span className="text-clay-faint truncate max-w-[80px]">{log.token_name}</span>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function LogRow({ log, onClick }) {
+  const meta = TYPE_META[log.type] ?? TYPE_META[4]
+  const TypeIcon = meta.icon
+  const isError = log.type === 5
+  const other = parseOther(log.other)
+  const cache = getCacheTokens(other)
+  const frt = other.frt
+  const hasTokens = log.prompt_tokens || log.completion_tokens
+  const hasCache = cache.read > 0 || cache.write > 0
+
+  return (
+    <tr
+      className={`border-b border-black/5 last:border-0 hover:bg-white/30 transition-colors cursor-pointer ${isError ? 'bg-red-50/30' : ''}`}
+      onClick={onClick}
+    >
+      {/* Type */}
+      <td className="px-5 py-5">
+        <div className="flex items-center gap-2.5">
+          <div className={`w-9 h-9 rounded-full ${meta.bg} flex items-center justify-center shrink-0
+            shadow-[3px_3px_6px_rgba(0,0,0,0.08),-2px_-2px_4px_rgba(255,255,255,0.6),inset_1px_1px_2px_rgba(255,255,255,0.4)]`}>
+            <TypeIcon className={`w-4 h-4 ${meta.text}`} strokeWidth={2.5} />
+          </div>
+          <span className={`text-[11px] font-extrabold px-3 py-1 rounded-clay-pill ${meta.bg} ${meta.text}
+            shadow-[2px_2px_4px_rgba(0,0,0,0.06),inset_1px_1px_2px_rgba(255,255,255,0.4)]`}>
+            {meta.label}
+          </span>
+        </div>
+      </td>
+
+      {/* Model */}
+      <td className="px-5 py-5">
+        {log.model_name ? (
+          <span className="font-mono text-xs font-extrabold bg-clay-bg shadow-clay-inset px-3 py-1.5 rounded-clay-pill inline-block max-w-[200px] truncate">
+            {log.model_name}
+          </span>
+        ) : (
+          <span className="text-xs text-clay-faint">-</span>
+        )}
+      </td>
+
+      {/* Token name */}
+      <td className="px-5 py-5">
+        <span className="text-xs text-clay-faint truncate block max-w-[100px]" title={log.token_name}>
+          {log.token_name || '-'}
+        </span>
+      </td>
+
+      {/* Token usage */}
+      <td className="px-5 py-5 text-right">
+        {hasTokens ? (
+          <div className="bg-clay-bg shadow-clay-inset rounded-clay-sm px-3 py-2 font-mono text-xs
+                          inline-flex items-center gap-1.5">
+            <span className="text-clay-faint" title="输入">
+              <span className="not-italic text-[10px] font-bold mr-0.5">入</span>
+              {fmtTokens(log.prompt_tokens)}
+            </span>
+            <span className="text-clay-faint/50">/</span>
+            <span className="font-extrabold" title="输出">
+              <span className="not-italic text-[10px] font-bold text-clay-faint mr-0.5">出</span>
+              {fmtTokens(log.completion_tokens)}
+            </span>
+            {hasCache && (
+              <>
+                <span className="w-px h-3 bg-black/10" />
+                {cache.read > 0 && (
+                  <span title="缓存读取" className="text-emerald-600">
+                    <span className="not-italic text-[10px] font-bold mr-0.5">缓读</span>
+                    {fmtTokens(cache.read)}
+                  </span>
+                )}
+                {cache.write > 0 && (
+                  <span title="缓存写入" className="text-amber-600">
+                    <span className="not-italic text-[10px] font-bold mr-0.5">缓写</span>
+                    {fmtTokens(cache.write)}
+                  </span>
+                )}
+              </>
+            )}
+          </div>
+        ) : (
+          <span className="text-xs text-clay-faint">-</span>
+        )}
+      </td>
+
+      {/* Quota */}
+      <td className="px-5 py-5 text-right">
+        {log.quota ? (
+          <span className={`text-sm font-extrabold ${log.quota > 0 ? 'text-blue-600' : 'text-emerald-600'}`}>
+            {log.quota < 0 ? '+' : '-'}{quotaToDisplay(Math.abs(log.quota)).text}
+          </span>
+        ) : (
+          <span className="text-xs text-clay-faint">-</span>
+        )}
+      </td>
+
+      {/* Timing */}
+      <td className="px-5 py-5 text-right">
+        {log.use_time ? (
+          <div className="flex items-center justify-end gap-2">
+            <span className="font-mono text-xs text-clay-faint font-bold">{fmtUseTime(log.use_time)}</span>
+            {fmtFrt(frt) && (
+              <>
+                <span className="text-clay-faint/50 text-xs">/</span>
+                <span className="font-mono text-xs text-emerald-600 font-extrabold">{fmtFrt(frt)}</span>
+              </>
+            )}
+            <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-clay-pill
+              ${log.is_stream
+                ? 'bg-clay-blue-100 text-[#43658b]'
+                : 'bg-gray-200/60 text-gray-500'
+              }`}>
+              {log.is_stream ? '流' : '非流'}
+            </span>
+          </div>
+        ) : (
+          <span className="text-xs text-clay-faint">-</span>
+        )}
+      </td>
+
+      {/* Time */}
+      <td className="px-5 py-5 text-right">
+        <span className="text-[11px] text-clay-faint inline-flex items-center gap-1">
+          <Clock className="w-3 h-3 shrink-0" />
+          {fmtTs(log.created_at)}
+        </span>
+      </td>
+    </tr>
+  )
 }
 
 export default function LogList() {
   const toast = useToast()
+  const isMobile = useIsMobile()
   const [logs, setLogs] = useState([])
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
   const [loading, setLoading] = useState(false)
   const [showFilter, setShowFilter] = useState(false)
+  const [detailLog, setDetailLog] = useState(null)
 
   const [filter, setFilter] = useState({
     type: '',
     model_name: '',
     token_name: '',
-    start_timestamp: '',
-    end_timestamp: '',
+    start_timestamp: todayStart(),
+    end_timestamp: nowLocal(),
   })
 
   const pageSize = 20
@@ -99,7 +481,7 @@ export default function LogList() {
   }
 
   const onReset = () => {
-    setFilter({ type: '', model_name: '', token_name: '', start_timestamp: '', end_timestamp: '' })
+    setFilter({ type: '', model_name: '', token_name: '', start_timestamp: todayStart(), end_timestamp: nowLocal() })
     setPage(1)
   }
 
@@ -117,16 +499,18 @@ export default function LogList() {
         </ClayButton>
       }
     >
-      {/* Filter bar */}
+      {/* Filter Panel */}
       {showFilter && (
-        <ClayCard className="mb-6">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            <ClaySelect
-              label="类型"
-              value={filter.type}
-              onChange={(v) => setFilter({ ...filter, type: v })}
-              options={TYPE_OPTIONS}
-            />
+        <ClayCard className="mb-6 !p-6">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="mb-5">
+              <label className="block ml-4 mb-2 font-bold text-sm text-clay-ink">类型</label>
+              <ClaySelect
+                value={filter.type}
+                onChange={(v) => setFilter({ ...filter, type: v })}
+                options={TYPE_OPTIONS}
+              />
+            </div>
             <ClayField
               label="模型"
               value={filter.model_name}
@@ -139,6 +523,8 @@ export default function LogList() {
               onChange={(e) => setFilter({ ...filter, token_name: e.target.value })}
               placeholder="令牌名称"
             />
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
             <ClayField
               label="开始时间"
               type="datetime-local"
@@ -152,7 +538,7 @@ export default function LogList() {
               onChange={(e) => setFilter({ ...filter, end_timestamp: e.target.value })}
             />
           </div>
-          <div className="flex gap-3 mt-4">
+          <div className="flex gap-3 mt-5">
             <ClayButton variant="primary" onClick={onApply}>
               <Search className="w-4 h-4" /> 应用筛选
             </ClayButton>
@@ -161,121 +547,90 @@ export default function LogList() {
         </ClayCard>
       )}
 
-      {/* Table */}
-      <ClayCard className="!p-0 overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-black/5 text-left text-clay-faint">
-              <th className="px-5 py-3 font-bold">时间</th>
-              <th className="px-5 py-3 font-bold">类型</th>
-              <th className="px-5 py-3 font-bold">模型</th>
-              <th className="px-5 py-3 font-bold">令牌</th>
-              <th className="px-5 py-3 font-bold text-right">Token 用量</th>
-              <th className="px-5 py-3 font-bold text-right">额度</th>
-              <th className="px-5 py-3 font-bold text-right">耗时</th>
-              <th className="px-5 py-3 font-bold">详情</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading && (
-              <tr><td colSpan={8} className="px-5 py-12 text-center text-clay-faint">加载中…</td></tr>
-            )}
-            {!loading && logs.length === 0 && (
-              <tr><td colSpan={8} className="px-5 py-12 text-center text-clay-faint">暂无日志</td></tr>
-            )}
-            {!loading && logs.map((l) => {
-              const tc = TYPE_CLS[l.type] ?? 'bg-gray-200 text-gray-600'
-              const tl = TYPE_LABEL[l.type] ?? '未知'
-              const isError = l.type === 5
-              return (
-                <tr key={l.id} className={`border-b border-black/5 last:border-0 hover:bg-white/30 transition-colors ${isError ? 'bg-red-50/30' : ''}`}>
-                  <td className="px-5 py-3 whitespace-nowrap">
-                    <div className="flex items-center gap-1.5">
-                      <Clock className="w-3.5 h-3.5 text-clay-faint shrink-0" />
-                      <span className="text-xs text-clay-faint">{fmtTs(l.created_at)}</span>
-                    </div>
-                  </td>
-                  <td className="px-5 py-3">
-                    <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${tc}`}>{tl}</span>
-                  </td>
-                  <td className="px-5 py-3">
-                    {l.model_name ? (
-                      <span className="font-mono text-xs font-bold bg-clay-bg shadow-clay-inset px-2 py-0.5 rounded-clay-sm">
-                        {l.model_name}
-                      </span>
-                    ) : (
-                      <span className="text-clay-faint text-xs">-</span>
-                    )}
-                  </td>
-                  <td className="px-5 py-3 text-xs text-clay-faint truncate max-w-[120px]">
-                    {l.token_name || '-'}
-                  </td>
-                  <td className="px-5 py-3 text-right">
-                    {(l.prompt_tokens || l.completion_tokens) ? (
-                      <div className="flex items-center justify-end gap-2 text-xs font-mono">
-                        <span className="text-clay-faint" title="输入">
-                          <MessageSquare className="w-3 h-3 inline mr-0.5 -mt-0.5" />
-                          {fmtTokens(l.prompt_tokens)}
-                        </span>
-                        <ArrowDownUp className="w-3 h-3 text-clay-faint" />
-                        <span className="font-bold" title="输出">
-                          {fmtTokens(l.completion_tokens)}
-                        </span>
-                      </div>
-                    ) : (
-                      <span className="text-clay-faint text-xs">-</span>
-                    )}
-                  </td>
-                  <td className="px-5 py-3 text-right">
-                    {l.quota ? (
-                      <span className={`text-xs font-bold ${l.quota > 0 ? 'text-blue-600' : l.quota < 0 ? 'text-emerald-600' : ''}`}>
-                        {l.quota < 0 ? '+' : '-'}{quotaToDisplay(Math.abs(l.quota)).text}
-                      </span>
-                    ) : (
-                      <span className="text-clay-faint text-xs">-</span>
-                    )}
-                  </td>
-                  <td className="px-5 py-3 text-right">
-                    {l.use_time ? (
-                      <div className="flex items-center justify-end gap-1">
-                        <Zap className="w-3 h-3 text-clay-faint" />
-                        <span className="text-xs text-clay-faint">{fmtUseTime(l.use_time)}</span>
-                      </div>
-                    ) : (
-                      <span className="text-clay-faint text-xs">-</span>
-                    )}
-                  </td>
-                  <td className="px-5 py-3">
-                    {l.content ? (
-                      <span className="text-xs text-clay-faint truncate max-w-[200px] block" title={l.content}>
-                        {l.content}
-                      </span>
-                    ) : (
-                      <span className="text-clay-faint text-xs">-</span>
-                    )}
-                  </td>
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
-      </ClayCard>
+      {/* Table (desktop) / Cards (mobile) */}
+      {isMobile ? (
+        <div className="space-y-3">
+          {loading && (
+            <ClayCard className="!py-12 text-center">
+              <div className="flex flex-col items-center gap-3">
+                <RefreshCw className="w-8 h-8 text-clay-faint animate-spin" />
+                <span className="text-clay-faint font-bold">加载中…</span>
+              </div>
+            </ClayCard>
+          )}
+          {!loading && logs.length === 0 && (
+            <ClayCard className="!py-12 text-center">
+              <div className="flex flex-col items-center gap-3">
+                <FileText className="w-10 h-10 text-clay-faint/50" />
+                <span className="text-clay-faint font-bold">暂无日志</span>
+              </div>
+            </ClayCard>
+          )}
+          {!loading && logs.map((l) => (
+            <LogCard key={l.id} log={l} onClick={() => setDetailLog(l)} />
+          ))}
+        </div>
+      ) : (
+        <ClayCard className="!p-0 overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-black/5 text-left text-clay-faint">
+                <th className="px-5 py-4 font-bold">类型</th>
+                <th className="px-5 py-4 font-bold">模型</th>
+                <th className="px-5 py-4 font-bold">令牌</th>
+                <th className="px-5 py-4 font-bold text-right">Token 用量</th>
+                <th className="px-5 py-4 font-bold text-right">额度</th>
+                <th className="px-5 py-4 font-bold text-right">用时/首字</th>
+                <th className="px-5 py-4 font-bold text-right">时间</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading && (
+                <tr><td colSpan={7} className="px-5 py-16 text-center">
+                  <div className="flex flex-col items-center gap-3">
+                    <RefreshCw className="w-8 h-8 text-clay-faint animate-spin" />
+                    <span className="text-clay-faint font-bold">加载中…</span>
+                  </div>
+                </td></tr>
+              )}
+              {!loading && logs.length === 0 && (
+                <tr><td colSpan={7} className="px-5 py-16 text-center">
+                  <div className="flex flex-col items-center gap-3">
+                    <FileText className="w-10 h-10 text-clay-faint/50" />
+                    <span className="text-clay-faint font-bold">暂无日志</span>
+                  </div>
+                </td></tr>
+              )}
+              {!loading && logs.map((l) => (
+                <LogRow key={l.id} log={l} onClick={() => setDetailLog(l)} />
+              ))}
+            </tbody>
+          </table>
+        </ClayCard>
+      )}
 
-      {/* Summary + Pagination */}
+      {/* Pagination */}
       <div className="flex items-center justify-between mt-6">
-        <span className="text-sm text-clay-faint">共 {total} 条记录</span>
+        <span className="text-sm text-clay-faint font-bold">共 {total} 条记录</span>
         {totalPages > 1 && (
           <div className="flex items-center gap-3">
             <ClayButton variant="ghost" disabled={page <= 1} onClick={() => setPage(page - 1)}>
               <ChevronLeft className="w-4 h-4" />
             </ClayButton>
-            <span className="text-sm font-bold">{page} / {totalPages}</span>
+            <span className="text-sm font-extrabold bg-clay-bg shadow-clay-inset px-4 py-1.5 rounded-clay-pill">
+              {page} / {totalPages}
+            </span>
             <ClayButton variant="ghost" disabled={page >= totalPages} onClick={() => setPage(page + 1)}>
               <ChevronRight className="w-4 h-4" />
             </ClayButton>
           </div>
         )}
       </div>
+
+      {/* Detail Modal */}
+      <ClayModal open={!!detailLog} onClose={() => setDetailLog(null)} title="请求详情" size="lg">
+        {detailLog && <LogDetailContent log={detailLog} />}
+      </ClayModal>
     </ClayConsoleShell>
   )
 }

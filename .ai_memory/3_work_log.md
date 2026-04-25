@@ -20,3 +20,11 @@
 - [2026-04-24 14:10] ModelStatus 页从 3 列改为 2 列网格（用户反馈密度太高）
 - [2026-04-24 14:20] TopUp 页兑换码+购买卡片改为并排等高布局，与上方统计卡片宽度对齐
 - [2026-04-24 14:25] 总结并归档部署链教训（vite build → go build → 杀进程 → PowerShell 启动），写入 feedback_build_deploy.md
+- [2026-04-24 14:40] 同步上游 QuantumNous/new-api 3 个 PR（image N 计费 / gpt-5.5 ratio / 定价显示修正），fast-forward 无冲突
+- [2026-04-24 14:42] 提交并推送至 Youkies/new-api：uiweb 全部代码 + model_status + .ai_memory + 参考html（80 files, +10235 lines, b5145226）
+- [2026-04-24 17:00] LogList 增强：Token 用量列增加缓存读写 token 显示（绿色 Database 图标读 / 琥珀 PenLine 图标写）；耗时列改为"用时/首字"含流/非流标签；详情列移除改为行点击弹出 ClayModal 弹窗
+- [2026-04-24 17:10] 修复 use_time 单位（秒非毫秒）、frt 负值过滤、parseOther 空值保护
+- [2026-04-24 17:20] 筛选面板对齐（ClaySelect 加 label 包裹）、时间范围默认今天 00:00 到当前
+- [2026-04-25 19:00] LogList 视觉重构：从独立 grid 卡片改为 table 布局（与令牌管理页一致），ClayCard 容器包裹，行高增加 py-5，列自然对齐
+- [2026-04-25 19:10] LogList 移动端适配：新增 useIsMobile hook（matchMedia 767px），LogCard 卡片组件（类型+模型+时间/Token用量面板/额度+用时），<767px 自动切换
+- [2026-04-25 19:20] Token 用量图标改为文字标签：入/出/缓读/缓写，移除 MessageSquare/ArrowDownUp/Database/PenLine 图标依赖

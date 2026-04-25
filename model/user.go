@@ -50,6 +50,8 @@ type User struct {
 	Setting          string         `json:"setting" gorm:"type:text;column:setting"`
 	Remark           string         `json:"remark,omitempty" gorm:"type:varchar(255)" validate:"max=255"`
 	StripeCustomer   string         `json:"stripe_customer" gorm:"type:varchar(64);column:stripe_customer;index"`
+	Avatar           []byte         `json:"-" gorm:"column:avatar"`
+	AvatarType       string         `json:"-" gorm:"column:avatar_type;type:varchar(32)"`
 }
 
 func (user *User) ToBaseUser() *UserBase {
@@ -208,7 +210,7 @@ func GetAllUsers(pageInfo *common.PageInfo) (users []*User, total int64, err err
 	}
 
 	// Get paginated users within same transaction
-	err = tx.Unscoped().Order("id desc").Limit(pageInfo.GetPageSize()).Offset(pageInfo.GetStartIdx()).Omit("password").Find(&users).Error
+	err = tx.Unscoped().Order("id desc").Limit(pageInfo.GetPageSize()).Offset(pageInfo.GetStartIdx()).Omit("password", "avatar").Find(&users).Error
 	if err != nil {
 		tx.Rollback()
 		return nil, 0, err
@@ -275,7 +277,7 @@ func SearchUsers(keyword string, group string, startIdx int, num int) ([]*User, 
 	}
 
 	// 获取分页数据
-	err = query.Omit("password").Order("id desc").Limit(num).Offset(startIdx).Find(&users).Error
+	err = query.Omit("password", "avatar").Order("id desc").Limit(num).Offset(startIdx).Find(&users).Error
 	if err != nil {
 		tx.Rollback()
 		return nil, 0, err
@@ -296,11 +298,34 @@ func GetUserById(id int, selectAll bool) (*User, error) {
 	user := User{Id: id}
 	var err error = nil
 	if selectAll {
-		err = DB.First(&user, "id = ?", id).Error
+		err = DB.Omit("avatar").First(&user, "id = ?", id).Error
 	} else {
-		err = DB.Omit("password").First(&user, "id = ?", id).Error
+		err = DB.Omit("password", "avatar").First(&user, "id = ?", id).Error
 	}
 	return &user, err
+}
+
+func GetUserAvatar(id int) ([]byte, string, error) {
+	var user User
+	err := DB.Select("avatar", "avatar_type").First(&user, "id = ?", id).Error
+	if err != nil {
+		return nil, "", err
+	}
+	return user.Avatar, user.AvatarType, nil
+}
+
+func UpdateUserAvatar(id int, avatar []byte, contentType string) error {
+	return DB.Model(&User{}).Where("id = ?", id).Updates(map[string]interface{}{
+		"avatar":      avatar,
+		"avatar_type": contentType,
+	}).Error
+}
+
+func DeleteUserAvatar(id int) error {
+	return DB.Model(&User{}).Where("id = ?", id).Updates(map[string]interface{}{
+		"avatar":      nil,
+		"avatar_type": "",
+	}).Error
 }
 
 func GetUserIdByAffCode(affCode string) (int, error) {

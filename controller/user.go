@@ -112,6 +112,7 @@ func setupLogin(user *model.User, c *gin.Context) {
 			"role":         user.Role,
 			"status":       user.Status,
 			"group":        user.Group,
+			"has_avatar":   user.AvatarType != "",
 		},
 	})
 }
@@ -414,6 +415,7 @@ func GetSelf(c *gin.Context) {
 		"stripe_customer":   user.StripeCustomer,
 		"sidebar_modules":   userSetting.SidebarModules, // 正确提取sidebar_modules字段
 		"permissions":       permissions,                // 新增权限字段
+		"has_avatar":        user.AvatarType != "",
 	}
 
 	c.JSON(http.StatusOK, gin.H{

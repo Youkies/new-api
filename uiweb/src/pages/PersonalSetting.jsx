@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef, useCallback } from 'react'
 import {
   User,
   ShieldCheck,
@@ -8,6 +8,9 @@ import {
   LogOut,
   Trash2,
   KeyRound,
+  Camera,
+  ZoomIn,
+  ZoomOut,
 } from 'lucide-react'
 import ClayCard from '../components/clay/ClayCard.jsx'
 import ClayField from '../components/clay/ClayField.jsx'
@@ -17,6 +20,7 @@ import ClayAlert from '../components/clay/ClayAlert.jsx'
 import ClayToggle from '../components/clay/ClayToggle.jsx'
 import ClayModal from '../components/clay/ClayModal.jsx'
 import ClayAvatar from '../components/clay/ClayAvatar.jsx'
+import Cropper from 'react-easy-crop'
 import ClaySelect from '../components/clay/ClaySelect.jsx'
 import ClayConsoleShell from '../components/layout/ClayConsoleShell.jsx'
 import { useUser } from '../context/UserContext.jsx'
@@ -26,6 +30,8 @@ import {
   updateSelf,
   updateSetting,
   deleteSelf,
+  uploadAvatar,
+  deleteAvatar,
 } from '../services/user.js'
 import { logout as apiLogout } from '../services/auth.js'
 
@@ -61,6 +67,95 @@ function AccountTab({ user, setUser, toast, logout }) {
   })
   const [saving, setSaving] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [avatarKey, setAvatarKey] = useState(Date.now())
+  const fileRef = useRef(null)
+
+  // Crop state
+  const [cropSrc, setCropSrc] = useState(null)
+  const [crop, setCrop] = useState({ x: 0, y: 0 })
+  const [zoom, setZoom] = useState(1)
+  const [croppedArea, setCroppedArea] = useState(null)
+  const [uploading, setUploading] = useState(false)
+
+  const avatarSrc = user?.has_avatar
+    ? `/api/user/avatar/${user.id}?t=${avatarKey}`
+    : undefined
+
+  const onCropComplete = useCallback((_area, areaPixels) => {
+    setCroppedArea(areaPixels)
+  }, [])
+
+  const onFilePick = (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    e.target.value = ''
+    const url = URL.createObjectURL(file)
+    setCropSrc(url)
+    setCrop({ x: 0, y: 0 })
+    setZoom(1)
+  }
+
+  const getCroppedBlob = (imageSrc, pixelCrop, maxBytes) =>
+    new Promise((resolve) => {
+      const img = new Image()
+      img.onload = () => {
+        const canvas = document.createElement('canvas')
+        const size = Math.min(pixelCrop.width, pixelCrop.height, 512)
+        canvas.width = size
+        canvas.height = size
+        canvas.getContext('2d').drawImage(
+          img,
+          pixelCrop.x, pixelCrop.y, pixelCrop.width, pixelCrop.height,
+          0, 0, size, size,
+        )
+        let quality = 0.92
+        const tryCompress = () => {
+          canvas.toBlob(
+            (blob) => {
+              if (blob.size > maxBytes && quality > 0.1) {
+                quality -= 0.1
+                tryCompress()
+              } else {
+                resolve(blob)
+              }
+            },
+            'image/jpeg',
+            quality,
+          )
+        }
+        tryCompress()
+      }
+      img.src = imageSrc
+    })
+
+  const onCropConfirm = async () => {
+    if (!croppedArea || !cropSrc) return
+    setUploading(true)
+    try {
+      const blob = await getCroppedBlob(cropSrc, croppedArea, 200 * 1024)
+      const file = new File([blob], 'avatar.jpg', { type: 'image/jpeg' })
+      const res = await uploadAvatar(file)
+      if (res?.success) {
+        toast('头像已更新', 'success')
+        setAvatarKey(Date.now())
+        const r = await apiSelf()
+        if (r?.data) setUser(r.data)
+      } else {
+        toast(res?.message ?? '上传失败', 'error')
+      }
+    } catch (err) {
+      toast(err?.response?.data?.message ?? err.message ?? '上传失败', 'error')
+    } finally {
+      setUploading(false)
+      URL.revokeObjectURL(cropSrc)
+      setCropSrc(null)
+    }
+  }
+
+  const onCropCancel = () => {
+    URL.revokeObjectURL(cropSrc)
+    setCropSrc(null)
+  }
 
   const onSave = async (e) => {
     e.preventDefault()
@@ -105,7 +200,47 @@ function AccountTab({ user, setUser, toast, logout }) {
     <>
       <div className="grid lg:grid-cols-[1fr_2fr] gap-6">
         <ClayCard className="text-center">
-          <ClayAvatar name={form.display_name || form.username} size={96} className="mx-auto mb-4" />
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp,image/gif"
+            className="hidden"
+            onChange={onFilePick}
+          />
+          <button
+            type="button"
+            onClick={() => fileRef.current?.click()}
+            className="relative mx-auto mb-4 group cursor-pointer block"
+            style={{ width: 96, height: 96 }}
+          >
+            <ClayAvatar name={form.display_name || form.username} src={avatarSrc} size={96} />
+            <div className="absolute inset-0 rounded-full bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+              <Camera className="w-6 h-6 text-white" />
+            </div>
+          </button>
+          {user?.has_avatar && (
+            <button
+              type="button"
+              className="text-xs text-clay-faint hover:text-clay-pink-200 transition-colors mb-3"
+              onClick={async () => {
+                try {
+                  const res = await deleteAvatar()
+                  if (res?.success) {
+                    toast('头像已移除', 'success')
+                    setAvatarKey(Date.now())
+                    const r = await apiSelf()
+                    if (r?.data) setUser(r.data)
+                  } else {
+                    toast(res?.message ?? '移除失败', 'error')
+                  }
+                } catch (err) {
+                  toast(err?.response?.data?.message ?? err.message ?? '移除失败', 'error')
+                }
+              }}
+            >
+              移除头像
+            </button>
+          )}
           <div className="font-black text-xl">{form.display_name || form.username}</div>
           <div className="text-sm text-clay-faint">ID {user?.id ?? '-'}</div>
           <div className="text-sm text-clay-faint mt-1">{form.email || '未绑定邮箱'}</div>
@@ -185,6 +320,56 @@ function AccountTab({ user, setUser, toast, logout }) {
           注销后账号数据将被清理,此操作不可恢复。
         </ClayAlert>
         <p className="text-sm text-clay-ink">确认要注销账号 <strong>{user?.username}</strong> 吗?</p>
+      </ClayModal>
+
+      {/* Avatar crop modal */}
+      <ClayModal
+        open={!!cropSrc}
+        onClose={onCropCancel}
+        title="裁剪头像"
+        footer={
+          <>
+            <ClayButton variant="ghost" onClick={onCropCancel}>
+              取消
+            </ClayButton>
+            <ClayButton
+              variant="primary"
+              onClick={onCropConfirm}
+              disabled={uploading}
+            >
+              {uploading ? '上传中...' : '确认上传'}
+            </ClayButton>
+          </>
+        }
+      >
+        <div className="relative w-full" style={{ height: 320 }}>
+          {cropSrc && (
+            <Cropper
+              image={cropSrc}
+              crop={crop}
+              zoom={zoom}
+              aspect={1}
+              cropShape="round"
+              showGrid={false}
+              onCropChange={setCrop}
+              onZoomChange={setZoom}
+              onCropComplete={onCropComplete}
+            />
+          )}
+        </div>
+        <div className="flex items-center gap-3 mt-4 px-2">
+          <ZoomOut className="w-4 h-4 text-clay-faint flex-shrink-0" />
+          <input
+            type="range"
+            min={1}
+            max={3}
+            step={0.05}
+            value={zoom}
+            onChange={(e) => setZoom(Number(e.target.value))}
+            className="flex-1 accent-clay-blue-200"
+          />
+          <ZoomIn className="w-4 h-4 text-clay-faint flex-shrink-0" />
+        </div>
       </ClayModal>
     </>
   )

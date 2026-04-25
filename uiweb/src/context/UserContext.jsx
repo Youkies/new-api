@@ -20,9 +20,14 @@ export function UserProvider({ children }) {
 
   const setUser = useCallback((u) => {
     setUserState((prev) => {
-      const next = u && prev?._avatar_t && !u._avatar_t
-        ? { ...u, _avatar_t: prev._avatar_t }
-        : u
+      let next = u
+      if (u) {
+        if (prev?._avatar_t && !u._avatar_t) {
+          next = { ...u, _avatar_t: prev._avatar_t }
+        } else if (u.has_avatar && !u._avatar_t) {
+          next = { ...u, _avatar_t: Date.now() }
+        }
+      }
       try {
         if (next) localStorage.setItem('user', JSON.stringify(next))
         else localStorage.removeItem('user')

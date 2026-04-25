@@ -1,6 +1,6 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import {
-  CalendarCheck2, Gift, Trophy, Flame, ChevronLeft, ChevronRight,
+  CalendarCheck2, Gift, Trophy, Flame, ChevronLeft, ChevronRight, Clock,
 } from 'lucide-react'
 import ClayCard from '../components/clay/ClayCard.jsx'
 import ClayStat from '../components/clay/ClayStat.jsx'
@@ -26,6 +26,54 @@ function buildCalendar(year, month) {
 }
 
 const DOW = ['日', '一', '二', '三', '四', '五', '六']
+
+function getSecondsUntilMidnight() {
+  const now = new Date()
+  const midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1)
+  return Math.max(0, Math.floor((midnight - now) / 1000))
+}
+
+function formatCountdown(totalSec) {
+  const h = String(Math.floor(totalSec / 3600)).padStart(2, '0')
+  const m = String(Math.floor((totalSec % 3600) / 60)).padStart(2, '0')
+  const s = String(totalSec % 60).padStart(2, '0')
+  return { h, m, s }
+}
+
+function CountdownTimer() {
+  const [secs, setSecs] = useState(getSecondsUntilMidnight)
+  const ref = useRef()
+
+  useEffect(() => {
+    ref.current = setInterval(() => {
+      const v = getSecondsUntilMidnight()
+      setSecs(v)
+      if (v <= 0) clearInterval(ref.current)
+    }, 1000)
+    return () => clearInterval(ref.current)
+  }, [])
+
+  const { h, m, s } = formatCountdown(secs)
+
+  return (
+    <div className="mt-4 flex flex-col items-center gap-2">
+      <div className="flex items-center gap-1.5 text-sm font-bold text-clay-faint">
+        <Clock className="w-3.5 h-3.5" />
+        <span>下次签到倒计时</span>
+      </div>
+      <div className="flex items-center gap-1.5">
+        {[h, m, s].map((v, i) => (
+          <div key={i} className="flex items-center gap-1.5">
+            {i > 0 && <span className="text-lg font-black text-clay-faint">:</span>}
+            <div className="w-10 h-10 rounded-clay-sm bg-clay-bg shadow-clay-inset flex items-center justify-center text-lg font-black tabular-nums">
+              {v}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
 
 export default function Checkin() {
   const toast = useToast()
@@ -202,6 +250,7 @@ export default function Checkin() {
                   ? '签到中…'
                   : '立即签到'}
             </ClayButton>
+            {stats?.checked_in_today && <CountdownTimer />}
           </div>
         </ClayCard>
       </div>

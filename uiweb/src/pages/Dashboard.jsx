@@ -35,7 +35,7 @@ const BAR_AREA_H = 180
 function UsageChart({ data, range }) {
   const [activeIdx, setActiveIdx] = useState(null)
   const maxVal = useMemo(() => Math.max(...data.map((d) => d.value), 1), [data])
-  const needScroll = range === 30
+  const needScroll = data.length > 10
 
   const shouldShowLabel = (i) => {
     if (range === 1) return i % 3 === 0 || i === data.length - 1
@@ -46,7 +46,7 @@ function UsageChart({ data, range }) {
   return (
     <div>
       <div
-        className={`rounded-[28px] bg-clay-bg shadow-clay-inset pt-11 px-4 pb-4 sm:pt-12 sm:px-6 sm:pb-6 ${needScroll ? 'overflow-x-auto' : 'overflow-hidden'}`}
+        className={`rounded-[28px] bg-clay-bg shadow-clay-inset pt-11 px-4 pb-4 sm:pt-12 sm:px-6 sm:pb-6 ${needScroll ? 'overflow-x-auto' : ''}`}
       >
         <div style={needScroll ? { minWidth: data.length * 28 + 24 } : {}}>
           <div

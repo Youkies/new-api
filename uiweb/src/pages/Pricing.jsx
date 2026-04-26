@@ -173,7 +173,7 @@ export default function Pricing() {
 
         {/* Group pills */}
         {groups.length > 1 && (
-          <div className="flex flex-wrap items-center justify-center gap-2 mb-4">
+          <div className="flex flex-wrap items-center justify-center gap-2 mb-4 px-2">
             {groups.map((g) => {
               const active = selectedGroup === g
               const ratio = g === 'all' ? null : groupRatio[g]
@@ -181,7 +181,7 @@ export default function Pricing() {
                 <button
                   key={g}
                   onClick={() => setSelectedGroup(g)}
-                  className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-clay-pill text-sm font-extrabold transition-all ${
+                  className={`inline-flex items-center justify-center gap-1.5 min-w-[5.5rem] px-4 py-2 rounded-clay-pill text-sm font-extrabold transition-all ${
                     active
                       ? 'bg-clay-pink-100 text-[#8a4860] shadow-clay'
                       : 'bg-clay-bg text-clay-faint shadow-clay-inset hover:text-clay-ink'

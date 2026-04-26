@@ -46,7 +46,7 @@ function UsageChart({ data, range }) {
   return (
     <div>
       <div
-        className={`rounded-[28px] bg-clay-bg shadow-clay-inset pt-11 px-4 pb-4 sm:pt-12 sm:px-6 sm:pb-6 ${needScroll ? 'overflow-x-auto' : ''}`}
+        className={`rounded-[28px] bg-clay-bg shadow-clay-inset pt-11 px-4 pb-4 sm:pt-12 sm:px-6 sm:pb-6 ${needScroll ? 'overflow-x-auto' : 'overflow-hidden'}`}
       >
         <div style={needScroll ? { minWidth: data.length * 28 + 24 } : {}}>
           <div
@@ -59,7 +59,7 @@ function UsageChart({ data, range }) {
               return (
                 <div
                   key={item.key}
-                  className="flex-1 flex flex-col items-center justify-end relative"
+                  className="flex-1 min-w-0 flex flex-col items-center justify-end relative"
                   style={needScroll ? { minWidth: 20 } : {}}
                   onMouseEnter={() => setActiveIdx(i)}
                   onMouseLeave={() => setActiveIdx(null)}

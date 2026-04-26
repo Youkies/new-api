@@ -47,14 +47,26 @@ export default function ClaySelect({
                   onChange?.(o.value)
                   setOpen(false)
                 }}
-                className={`w-full text-left px-4 py-2.5 rounded-clay-sm text-sm font-bold transition-all flex items-center justify-between ${
+                className={`w-full text-left px-4 py-2.5 rounded-clay-sm text-sm transition-all flex items-center justify-between gap-2 ${
                   active
                     ? 'bg-clay-pink-100 text-[#8a4860] shadow-clay-active'
                     : 'hover:bg-white/40'
                 }`}
               >
-                <span>{o.label}</span>
-                {active && <Check className="w-4 h-4" strokeWidth={3} />}
+                <div className="flex flex-col min-w-0">
+                  <span className="font-bold truncate">{o.label}</span>
+                  {o.subtitle && (
+                    <span className="text-xs text-clay-faint truncate">{o.subtitle}</span>
+                  )}
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  {o.extra && (
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-white/60 text-clay-faint shadow-sm">
+                      {o.extra}
+                    </span>
+                  )}
+                  {active && <Check className="w-4 h-4" strokeWidth={3} />}
+                </div>
               </button>
             )
           })}

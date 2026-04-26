@@ -189,7 +189,9 @@ export default function TokenManage() {
       if (data && typeof data === 'object') {
         const opts = Object.entries(data).map(([k, v]) => ({
           value: k,
-          label: v.desc || k,
+          label: k,
+          subtitle: v.desc || k,
+          extra: v.ratio != null ? `${v.ratio}x 倍率` : undefined,
         }))
         setGroupOptions(opts)
       }
@@ -206,7 +208,8 @@ export default function TokenManage() {
 
   const openCreate = () => {
     setEditing(null)
-    setForm({ name: '', remain_quota: 0, expired_time: -1, unlimited_quota: true, group: '', display_amount: '' })
+    const defaultGroup = groupOptions.find((o) => o.value === 'default') ? 'default' : (groupOptions[0]?.value || '')
+    setForm({ name: '', remain_quota: 0, expired_time: -1, unlimited_quota: true, group: defaultGroup, display_amount: '' })
     setShowModal(true)
   }
 

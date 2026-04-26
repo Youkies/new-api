@@ -35,7 +35,7 @@ body {
   }
 
   .clay-card {
-    @apply bg-clay-bg rounded-[35px] p-10 shadow-clay transition-all duration-300 ease-clay border-2 border-white/20;
+    @apply bg-clay-bg rounded-[35px] p-10 shadow-clay transition-all duration-300 ease-clay border-2 border-white/20 overflow-hidden;
   }
 
   .clay-card-interactive {

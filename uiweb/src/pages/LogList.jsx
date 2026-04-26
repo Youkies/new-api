@@ -219,9 +219,9 @@ function LogCard({ log, onClick }) {
       className={`clay-card-interactive !p-5 !rounded-clay cursor-pointer ${isError ? '!bg-red-50/40' : ''}`}
       onClick={onClick}
     >
-      {/* Row 1: type badge + model + time */}
-      <div className="flex items-center justify-between gap-2 mb-3">
-        <div className="flex items-center gap-2 min-w-0">
+      {/* Row 1: type badge + time */}
+      <div className="flex items-center justify-between gap-2 mb-1.5">
+        <div className="flex items-center gap-2">
           <div className={`w-8 h-8 rounded-full ${meta.bg} flex items-center justify-center shrink-0
             shadow-[3px_3px_6px_rgba(0,0,0,0.08),-2px_-2px_4px_rgba(255,255,255,0.6),inset_1px_1px_2px_rgba(255,255,255,0.4)]`}>
             <TypeIcon className={`w-3.5 h-3.5 ${meta.text}`} strokeWidth={2.5} />
@@ -229,11 +229,6 @@ function LogCard({ log, onClick }) {
           <span className={`text-[11px] font-extrabold px-2.5 py-0.5 rounded-clay-pill shrink-0 ${meta.bg} ${meta.text}`}>
             {meta.label}
           </span>
-          {log.model_name && (
-            <span className="font-mono text-[11px] font-bold bg-clay-bg shadow-clay-inset px-2.5 py-1 rounded-clay-pill truncate">
-              {log.model_name}
-            </span>
-          )}
         </div>
         <span className="text-[10px] text-clay-faint shrink-0 flex items-center gap-1">
           <Clock className="w-3 h-3" />
@@ -241,52 +236,51 @@ function LogCard({ log, onClick }) {
         </span>
       </div>
 
-      {/* Row 2: token usage + cache */}
-      {hasTokens && (
-        <div className="bg-clay-bg shadow-clay-inset rounded-clay-sm px-3 py-2.5 mb-3">
-          <div className="flex items-center gap-2 font-mono text-xs flex-wrap">
-            <span className="text-clay-faint">
-              <span className="not-italic text-[10px] font-bold mr-0.5">入</span>
-              {fmtTokens(log.prompt_tokens)}
-            </span>
-            <span className="text-clay-faint/50">/</span>
-            <span className="font-extrabold">
-              <span className="not-italic text-[10px] font-bold text-clay-faint mr-0.5">出</span>
-              {fmtTokens(log.completion_tokens)}
-            </span>
-            {hasCache && (
-              <>
-                <span className="w-px h-3 bg-black/10" />
-                {cache.read > 0 && (
-                  <span className="text-emerald-600">
-                    <span className="not-italic text-[10px] font-bold mr-0.5">缓读</span>
-                    {fmtTokens(cache.read)}
-                  </span>
-                )}
-                {cache.write > 0 && (
-                  <span className="text-amber-600">
-                    <span className="not-italic text-[10px] font-bold mr-0.5">缓写</span>
-                    {fmtTokens(cache.write)}
-                  </span>
-                )}
-              </>
-            )}
-          </div>
+      {/* Row 2: model name (full width) */}
+      {log.model_name && (
+        <div className="mb-2.5 ml-10">
+          <span className="font-mono text-[11px] font-bold bg-clay-bg shadow-clay-inset px-2.5 py-1 rounded-clay-pill inline-block max-w-full truncate">
+            {log.model_name}
+          </span>
         </div>
       )}
 
-      {/* Row 3: quota + timing + token name */}
-      <div className="flex items-center justify-between gap-3 text-xs">
-        <div className="flex items-center gap-3">
+      {/* Row 3: quota + tokens + timing + stream + token name */}
+      <div className="flex items-center justify-between gap-2 text-xs">
+        <div className="flex items-center gap-2 flex-wrap">
           {log.quota ? (
             <span className={`font-extrabold ${log.quota > 0 ? 'text-blue-600' : 'text-emerald-600'}`}>
               {log.quota < 0 ? '+' : '-'}{quotaToDisplay(Math.abs(log.quota)).text}
             </span>
           ) : null}
+          {hasTokens && (
+            <span className="font-mono text-clay-faint">
+              <span className="text-[10px] font-bold mr-0.5">入</span>
+              {fmtTokens(log.prompt_tokens)}
+              <span className="text-clay-faint/50 mx-0.5">/</span>
+              <span className="text-[10px] font-bold mr-0.5">出</span>
+              <span className="font-extrabold text-clay-ink">{fmtTokens(log.completion_tokens)}</span>
+            </span>
+          )}
+          {hasCache && (
+            <span className="font-mono">
+              {cache.read > 0 && (
+                <span className="text-emerald-600 text-[10px]">
+                  <span className="font-bold mr-0.5">缓读</span>{fmtTokens(cache.read)}
+                </span>
+              )}
+              {cache.read > 0 && cache.write > 0 && <span className="text-clay-faint/50 mx-0.5">/</span>}
+              {cache.write > 0 && (
+                <span className="text-amber-600 text-[10px]">
+                  <span className="font-bold mr-0.5">缓写</span>{fmtTokens(cache.write)}
+                </span>
+              )}
+            </span>
+          )}
           {log.use_time ? (
             <span className="text-clay-faint font-mono">
               {fmtUseTime(log.use_time)}
-              {fmtFrt(frt) && <span className="text-emerald-600 ml-1">/{fmtFrt(frt)}</span>}
+              {fmtFrt(frt) && <span className="text-emerald-600 ml-0.5">/{fmtFrt(frt)}</span>}
             </span>
           ) : null}
           <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-clay-pill

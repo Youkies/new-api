@@ -46,7 +46,7 @@ function UsageChart({ data, range }) {
   return (
     <div>
       <div
-        className={`rounded-[28px] bg-clay-bg shadow-clay-inset p-4 sm:p-6 ${needScroll ? 'overflow-x-auto' : ''}`}
+        className={`rounded-[28px] bg-clay-bg shadow-clay-inset pt-11 px-4 pb-4 sm:pt-12 sm:px-6 sm:pb-6 ${needScroll ? 'overflow-x-auto' : ''}`}
       >
         <div style={needScroll ? { minWidth: data.length * 28 + 24 } : {}}>
           <div
@@ -91,7 +91,7 @@ function UsageChart({ data, range }) {
 
                   {/* label */}
                   <span
-                    className={`text-[9px] sm:text-[10px] font-bold text-clay-faint mt-1.5 text-center leading-none ${
+                    className={`text-[9px] sm:text-[10px] font-bold text-clay-faint mt-1.5 text-center leading-none whitespace-nowrap ${
                       shouldShowLabel(i) ? '' : 'invisible'
                     }`}
                   >

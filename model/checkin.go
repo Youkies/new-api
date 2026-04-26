@@ -3,12 +3,42 @@ package model
 import (
 	"errors"
 	"math/rand"
+	"os"
+	"sync"
 	"time"
 
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/setting/operation_setting"
 	"gorm.io/gorm"
 )
+
+var (
+	checkinLocOnce sync.Once
+	checkinLoc     *time.Location
+)
+
+// checkinTimezone returns the timezone used for "today" semantics in checkin.
+// Configurable via CHECKIN_TIMEZONE env (default Asia/Shanghai).
+func checkinTimezone() *time.Location {
+	checkinLocOnce.Do(func() {
+		name := os.Getenv("CHECKIN_TIMEZONE")
+		if name == "" {
+			name = "Asia/Shanghai"
+		}
+		loc, err := time.LoadLocation(name)
+		if err != nil || loc == nil {
+			checkinLoc = time.Local
+			return
+		}
+		checkinLoc = loc
+	})
+	return checkinLoc
+}
+
+// todayStr returns today's date in checkin timezone (YYYY-MM-DD)
+func todayStr() string {
+	return time.Now().In(checkinTimezone()).Format("2006-01-02")
+}
 
 // Checkin 签到记录
 type Checkin struct {
@@ -41,7 +71,7 @@ func GetUserCheckinRecords(userId int, startDate, endDate string) ([]Checkin, er
 
 // HasCheckedInToday 检查用户今天是否已签到
 func HasCheckedInToday(userId int) (bool, error) {
-	today := time.Now().Format("2006-01-02")
+	today := todayStr()
 	var count int64
 	err := DB.Model(&Checkin{}).
 		Where("user_id = ? AND checkin_date = ?", userId, today).
@@ -73,7 +103,7 @@ func UserCheckin(userId int) (*Checkin, error) {
 		quotaAwarded = setting.MinQuota + rand.Intn(setting.MaxQuota-setting.MinQuota+1)
 	}
 
-	today := time.Now().Format("2006-01-02")
+	today := todayStr()
 	checkin := &Checkin{
 		UserId:       userId,
 		CheckinDate:  today,

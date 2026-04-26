@@ -32,3 +32,8 @@ data/
 .test
 token_estimator_test.go
 skills-lock.json
+
+# Local build artifacts and reference assets
+*.exe~
+uiweb-dist/
+参考html/

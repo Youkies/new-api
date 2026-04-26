@@ -41,6 +41,8 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/* \
     && update-ca-certificates
 
+ENV TZ=Asia/Shanghai
+
 COPY --from=builder2 /build/new-api /
 EXPOSE 3000
 WORKDIR /data

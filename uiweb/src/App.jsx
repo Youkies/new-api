@@ -20,6 +20,7 @@ import Chat2Link from './pages/Chat2Link.jsx'
 import TokenManage from './pages/TokenManage.jsx'
 import LogList from './pages/LogList.jsx'
 import Checkin from './pages/Checkin.jsx'
+import ApiUrls from './pages/ApiUrls.jsx'
 import ProtectedRoute from './components/layout/ProtectedRoute.jsx'
 
 export default function App() {
@@ -92,6 +93,14 @@ export default function App() {
         element={
           <ProtectedRoute>
             <Checkin />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/api-urls"
+        element={
+          <ProtectedRoute>
+            <ApiUrls />
           </ProtectedRoute>
         }
       />

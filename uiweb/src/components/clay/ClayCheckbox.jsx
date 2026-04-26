@@ -4,7 +4,6 @@ export default function ClayCheckbox({ checked = false, onChange, label, classNa
   return (
     <label className={`inline-flex items-center gap-3 cursor-pointer select-none ${className}`}>
       <span
-        onClick={() => onChange?.(!checked)}
         className={`w-7 h-7 rounded-lg flex items-center justify-center transition-all ${
           checked
             ? 'bg-clay-pink-200 shadow-clay-active text-white'

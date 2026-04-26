@@ -23,7 +23,21 @@ export async function getUserLogs({
   return res.data
 }
 
-export async function getUserLogsStat() {
-  const res = await api.get('/api/log/self/stat')
+export async function getUserLogsStat({
+  type,
+  start_timestamp,
+  end_timestamp,
+  model_name,
+  token_name,
+  group,
+} = {}) {
+  const qs = new URLSearchParams()
+  if (type) qs.set('type', String(type))
+  if (start_timestamp) qs.set('start_timestamp', String(start_timestamp))
+  if (end_timestamp) qs.set('end_timestamp', String(end_timestamp))
+  if (model_name) qs.set('model_name', model_name)
+  if (token_name) qs.set('token_name', token_name)
+  if (group) qs.set('group', group)
+  const res = await api.get(`/api/log/self/stat?${qs.toString()}`)
   return res.data
 }

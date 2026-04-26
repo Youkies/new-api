@@ -3,7 +3,7 @@ import {
   Search, ChevronLeft, ChevronRight, Filter,
   Clock, Zap,
   Activity, AlertCircle, RefreshCw, CreditCard, Settings, Terminal,
-  RotateCcw, FileText,
+  RotateCcw, FileText, TrendingUp,
 } from 'lucide-react'
 import ClayCard from '../components/clay/ClayCard.jsx'
 import ClayButton from '../components/clay/ClayButton.jsx'
@@ -13,7 +13,7 @@ import ClayModal from '../components/clay/ClayModal.jsx'
 import ClayConsoleShell from '../components/layout/ClayConsoleShell.jsx'
 import { useToast } from '../context/ToastContext.jsx'
 import { quotaToDisplay } from '../utils/quota.js'
-import { getUserLogs } from '../services/logs.js'
+import { getUserLogs, getUserLogsStat } from '../services/logs.js'
 
 const mobileQuery = typeof window !== 'undefined' ? window.matchMedia('(max-width: 767px)') : null
 function useIsMobile() {
@@ -215,107 +215,96 @@ function LogCard({ log, onClick }) {
   const frt = other.frt
   const hasTokens = log.prompt_tokens || log.completion_tokens
   const hasCache = cache.read > 0 || cache.write > 0
+  const quotaText = log.quota
+    ? `${log.quota < 0 ? '+' : '-'}${quotaToDisplay(Math.abs(log.quota)).text}`
+    : null
+  const quotaCls = log.quota > 0 ? 'text-blue-600' : 'text-emerald-600'
 
   return (
     <div
-      className={`clay-card-interactive !p-5 !rounded-clay cursor-pointer ${isError ? '!bg-red-50/40' : ''}`}
+      className={`clay-card-interactive !p-4 !rounded-clay cursor-pointer ${isError ? '!bg-red-50/40' : ''}`}
       onClick={onClick}
     >
-      {/* Row 1: type badge + (timing/stream for consume) + time */}
-      <div className="flex items-center justify-between gap-2 mb-1.5">
-        <div className="flex items-center gap-2">
-          <div className={`w-8 h-8 rounded-full ${meta.bg} flex items-center justify-center shrink-0
-            shadow-[3px_3px_6px_rgba(0,0,0,0.08),-2px_-2px_4px_rgba(255,255,255,0.6),inset_1px_1px_2px_rgba(255,255,255,0.4)]`}>
+      {/* Header: type chip + time + quota */}
+      <div className="flex items-center justify-between gap-2 mb-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <div className={`w-7 h-7 rounded-full ${meta.bg} flex items-center justify-center shrink-0
+            shadow-[2px_2px_4px_rgba(0,0,0,0.08),-1px_-1px_3px_rgba(255,255,255,0.6),inset_1px_1px_2px_rgba(255,255,255,0.4)]`}>
             <TypeIcon className={`w-3.5 h-3.5 ${meta.text}`} strokeWidth={2.5} />
           </div>
-          <span className={`text-[11px] font-extrabold px-2.5 py-0.5 rounded-clay-pill shrink-0 ${meta.bg} ${meta.text}`}>
+          <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-clay-pill shrink-0 ${meta.bg} ${meta.text}`}>
             {meta.label}
           </span>
-          {isConsume && log.use_time ? (
-            <span className="text-[10px] text-clay-faint font-mono">
-              {fmtUseTime(log.use_time)}
-              {fmtFrt(frt) && <span className="text-emerald-600 ml-0.5">/{fmtFrt(frt)}</span>}
-            </span>
-          ) : null}
           {isConsume && (
-            <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-clay-pill
+            <span className={`text-[10px] font-extrabold px-1.5 py-0.5 rounded-clay-pill shrink-0
               ${log.is_stream ? 'bg-clay-blue-100 text-[#43658b]' : 'bg-gray-200/60 text-gray-500'}`}>
               {log.is_stream ? '流' : '非流'}
             </span>
           )}
         </div>
-        <span className="text-[10px] text-clay-faint shrink-0 flex items-center gap-1">
-          <Clock className="w-3 h-3" />
-          {fmtTs(log.created_at)}
-        </span>
+        {quotaText && (
+          <span className={`text-sm font-black tabular-nums shrink-0 ${quotaCls}`}>{quotaText}</span>
+        )}
       </div>
 
-      {/* Row 2: model name (consume/error only) */}
+      {/* Model name (consume) */}
       {isConsume && log.model_name && (
-        <div className="mb-2.5 ml-10">
-          <span className="font-mono text-[11px] font-bold bg-clay-bg shadow-clay-inset px-2.5 py-1 rounded-clay-pill inline-block max-w-full truncate">
+        <div className="mb-2">
+          <span className="font-mono text-[11px] font-bold bg-clay-bg shadow-clay-inset px-2.5 py-0.5 rounded-clay-pill inline-block max-w-full truncate">
             {log.model_name}
           </span>
         </div>
       )}
 
-      {/* Row 3: type-specific content */}
-      {isConsume ? (
-        <div className="flex items-center justify-between gap-2 text-xs">
-          <div className="flex items-center gap-2 flex-wrap">
-            {log.quota ? (
-              <span className={`font-extrabold ${log.quota > 0 ? 'text-blue-600' : 'text-emerald-600'}`}>
-                {log.quota < 0 ? '+' : '-'}{quotaToDisplay(Math.abs(log.quota)).text}
-              </span>
-            ) : null}
-            {hasTokens && (
-              <span className="font-mono text-clay-faint">
-                <span className="text-[10px] font-bold mr-0.5">入</span>
-                {fmtTokens(log.prompt_tokens)}
-                <span className="text-clay-faint/50 mx-0.5">/</span>
-                <span className="text-[10px] font-bold mr-0.5">出</span>
-                <span className="font-extrabold text-clay-ink">{fmtTokens(log.completion_tokens)}</span>
-              </span>
-            )}
-            {hasCache && (
-              <span className="font-mono">
-                {cache.read > 0 && (
-                  <span className="text-emerald-600 text-[10px]">
-                    <span className="font-bold mr-0.5">缓读</span>{fmtTokens(cache.read)}
-                  </span>
-                )}
-                {cache.read > 0 && cache.write > 0 && <span className="text-clay-faint/50 mx-0.5">/</span>}
-                {cache.write > 0 && (
-                  <span className="text-amber-600 text-[10px]">
-                    <span className="font-bold mr-0.5">缓写</span>{fmtTokens(cache.write)}
-                  </span>
-                )}
-              </span>
-            )}
-          </div>
-          {log.token_name && (
-            <span className="text-clay-faint truncate max-w-[80px] text-xs">{log.token_name}</span>
+      {/* Tokens row (consume) */}
+      {isConsume && (hasTokens || hasCache) && (
+        <div className="flex items-center gap-2 flex-wrap text-[11px] font-mono mb-2">
+          {hasTokens && (
+            <span className="text-clay-faint">
+              <span className="font-bold mr-0.5">入</span>{fmtTokens(log.prompt_tokens)}
+              <span className="text-clay-faint/50 mx-1">/</span>
+              <span className="font-bold mr-0.5">出</span>
+              <span className="font-extrabold text-clay-ink">{fmtTokens(log.completion_tokens)}</span>
+            </span>
+          )}
+          {cache.read > 0 && (
+            <span className="text-emerald-600">
+              <span className="font-bold mr-0.5">缓读</span>{fmtTokens(cache.read)}
+            </span>
+          )}
+          {cache.write > 0 && (
+            <span className="text-amber-600">
+              <span className="font-bold mr-0.5">缓写</span>{fmtTokens(cache.write)}
+            </span>
           )}
         </div>
-      ) : isQuotaChange ? (
-        <div className="ml-10 text-xs">
-          {log.quota ? (
-            <span className={`font-extrabold ${log.quota < 0 ? 'text-emerald-600' : 'text-blue-600'}`}>
-              {log.quota < 0 ? '+' : '-'}{quotaToDisplay(Math.abs(log.quota)).text}
+      )}
+
+      {/* Footer: time + token name + use_time */}
+      <div className="flex items-center justify-between gap-2 text-[10px] text-clay-faint">
+        <span className="inline-flex items-center gap-1 shrink-0">
+          <Clock className="w-3 h-3" />
+          {fmtTs(log.created_at)}
+        </span>
+        <div className="flex items-center gap-2 min-w-0">
+          {isConsume && log.use_time ? (
+            <span className="font-mono shrink-0">
+              {fmtUseTime(log.use_time)}
+              {fmtFrt(frt) && <span className="text-emerald-600 ml-0.5">/{fmtFrt(frt)}</span>}
             </span>
           ) : null}
-          {log.content && (
-            <span className="text-clay-faint ml-2 truncate inline-block max-w-[200px] align-middle">{log.content}</span>
+          {log.token_name && (
+            <span className="truncate max-w-[120px]" title={log.token_name}>{log.token_name}</span>
           )}
         </div>
-      ) : (
-        <div className="ml-10 text-xs text-clay-faint">
-          {log.content ? (
-            <span className="line-clamp-2 break-all">{log.content}</span>
-          ) : (
-            <span>-</span>
-          )}
-        </div>
+      </div>
+
+      {/* Non-consume content */}
+      {!isConsume && !isQuotaChange && log.content && (
+        <div className="mt-2 text-[11px] text-clay-faint line-clamp-2 break-all">{log.content}</div>
+      )}
+      {isQuotaChange && log.content && (
+        <div className="mt-1 text-[11px] text-clay-faint truncate">{log.content}</div>
       )}
     </div>
   )
@@ -333,27 +322,26 @@ function LogRow({ log, onClick }) {
 
   return (
     <tr
-      className={`border-b border-black/5 last:border-0 hover:bg-white/30 transition-colors cursor-pointer ${isError ? 'bg-red-50/30' : ''}`}
+      className={`border-b border-black/5 last:border-0 hover:bg-white/40 transition-colors cursor-pointer ${isError ? 'bg-red-50/30' : ''}`}
       onClick={onClick}
     >
       {/* Type */}
-      <td className="px-5 py-5">
-        <div className="flex items-center gap-2.5">
-          <div className={`w-9 h-9 rounded-full ${meta.bg} flex items-center justify-center shrink-0
-            shadow-[3px_3px_6px_rgba(0,0,0,0.08),-2px_-2px_4px_rgba(255,255,255,0.6),inset_1px_1px_2px_rgba(255,255,255,0.4)]`}>
-            <TypeIcon className={`w-4 h-4 ${meta.text}`} strokeWidth={2.5} />
+      <td className="px-4 py-3">
+        <div className="flex items-center gap-2">
+          <div className={`w-7 h-7 rounded-full ${meta.bg} flex items-center justify-center shrink-0
+            shadow-[2px_2px_4px_rgba(0,0,0,0.08),-1px_-1px_3px_rgba(255,255,255,0.6),inset_1px_1px_2px_rgba(255,255,255,0.4)]`}>
+            <TypeIcon className={`w-3.5 h-3.5 ${meta.text}`} strokeWidth={2.5} />
           </div>
-          <span className={`text-[11px] font-extrabold px-3 py-1 rounded-clay-pill ${meta.bg} ${meta.text}
-            shadow-[2px_2px_4px_rgba(0,0,0,0.06),inset_1px_1px_2px_rgba(255,255,255,0.4)]`}>
+          <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-clay-pill ${meta.bg} ${meta.text}`}>
             {meta.label}
           </span>
         </div>
       </td>
 
       {/* Model */}
-      <td className="px-5 py-5">
+      <td className="px-4 py-3">
         {log.model_name ? (
-          <span className="font-mono text-xs font-extrabold bg-clay-bg shadow-clay-inset px-3 py-1.5 rounded-clay-pill inline-block max-w-[200px] truncate">
+          <span className="font-mono text-[11px] font-extrabold bg-clay-bg shadow-clay-inset px-2.5 py-1 rounded-clay-pill inline-block max-w-[200px] truncate align-middle">
             {log.model_name}
           </span>
         ) : (
@@ -362,39 +350,34 @@ function LogRow({ log, onClick }) {
       </td>
 
       {/* Token name */}
-      <td className="px-5 py-5">
-        <span className="text-xs text-clay-faint truncate block max-w-[100px]" title={log.token_name}>
+      <td className="px-4 py-3">
+        <span className="text-xs text-clay-faint truncate block max-w-[120px]" title={log.token_name}>
           {log.token_name || '-'}
         </span>
       </td>
 
       {/* Token usage */}
-      <td className="px-5 py-5 text-right">
+      <td className="px-4 py-3 text-right">
         {hasTokens ? (
-          <div className="bg-clay-bg shadow-clay-inset rounded-clay-sm px-3 py-2 font-mono text-xs
-                          inline-flex items-center gap-1.5">
+          <div className="font-mono text-[11px] inline-flex items-center gap-1.5 whitespace-nowrap">
             <span className="text-clay-faint" title="输入">
-              <span className="not-italic text-[10px] font-bold mr-0.5">入</span>
-              {fmtTokens(log.prompt_tokens)}
+              <span className="text-[10px] font-bold mr-0.5">入</span>{fmtTokens(log.prompt_tokens)}
             </span>
             <span className="text-clay-faint/50">/</span>
             <span className="font-extrabold" title="输出">
-              <span className="not-italic text-[10px] font-bold text-clay-faint mr-0.5">出</span>
-              {fmtTokens(log.completion_tokens)}
+              <span className="text-[10px] font-bold text-clay-faint mr-0.5">出</span>{fmtTokens(log.completion_tokens)}
             </span>
             {hasCache && (
               <>
-                <span className="w-px h-3 bg-black/10" />
+                <span className="w-px h-3 bg-black/10 mx-0.5" />
                 {cache.read > 0 && (
                   <span title="缓存读取" className="text-emerald-600">
-                    <span className="not-italic text-[10px] font-bold mr-0.5">缓读</span>
-                    {fmtTokens(cache.read)}
+                    <span className="text-[10px] font-bold mr-0.5">缓读</span>{fmtTokens(cache.read)}
                   </span>
                 )}
                 {cache.write > 0 && (
                   <span title="缓存写入" className="text-amber-600">
-                    <span className="not-italic text-[10px] font-bold mr-0.5">缓写</span>
-                    {fmtTokens(cache.write)}
+                    <span className="text-[10px] font-bold mr-0.5">缓写</span>{fmtTokens(cache.write)}
                   </span>
                 )}
               </>
@@ -406,9 +389,9 @@ function LogRow({ log, onClick }) {
       </td>
 
       {/* Quota */}
-      <td className="px-5 py-5 text-right">
+      <td className="px-4 py-3 text-right">
         {log.quota ? (
-          <span className={`text-sm font-extrabold ${log.quota > 0 ? 'text-blue-600' : 'text-emerald-600'}`}>
+          <span className={`text-sm font-black tabular-nums ${log.quota > 0 ? 'text-blue-600' : 'text-emerald-600'}`}>
             {log.quota < 0 ? '+' : '-'}{quotaToDisplay(Math.abs(log.quota)).text}
           </span>
         ) : (
@@ -417,17 +400,17 @@ function LogRow({ log, onClick }) {
       </td>
 
       {/* Timing */}
-      <td className="px-5 py-5 text-right">
+      <td className="px-4 py-3 text-right">
         {log.use_time ? (
-          <div className="flex items-center justify-end gap-2">
-            <span className="font-mono text-xs text-clay-faint font-bold">{fmtUseTime(log.use_time)}</span>
+          <div className="inline-flex items-center justify-end gap-1.5 whitespace-nowrap">
+            <span className="font-mono text-[11px] text-clay-faint font-bold">{fmtUseTime(log.use_time)}</span>
             {fmtFrt(frt) && (
               <>
-                <span className="text-clay-faint/50 text-xs">/</span>
-                <span className="font-mono text-xs text-emerald-600 font-extrabold">{fmtFrt(frt)}</span>
+                <span className="text-clay-faint/50 text-[11px]">/</span>
+                <span className="font-mono text-[11px] text-emerald-600 font-extrabold">{fmtFrt(frt)}</span>
               </>
             )}
-            <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-clay-pill
+            <span className={`text-[10px] font-extrabold px-1.5 py-0.5 rounded-clay-pill
               ${log.is_stream
                 ? 'bg-clay-blue-100 text-[#43658b]'
                 : 'bg-gray-200/60 text-gray-500'
@@ -441,8 +424,8 @@ function LogRow({ log, onClick }) {
       </td>
 
       {/* Time */}
-      <td className="px-5 py-5 text-right">
-        <span className="text-[11px] text-clay-faint inline-flex items-center gap-1">
+      <td className="px-4 py-3 text-right">
+        <span className="text-[11px] text-clay-faint inline-flex items-center gap-1 font-mono whitespace-nowrap">
           <Clock className="w-3 h-3 shrink-0" />
           {fmtTs(log.created_at)}
         </span>
@@ -456,6 +439,8 @@ export default function LogList() {
   const isMobile = useIsMobile()
   const [logs, setLogs] = useState([])
   const [total, setTotal] = useState(0)
+  const [todayQuota, setTodayQuota] = useState(0)
+  const [todayLoading, setTodayLoading] = useState(true)
   const [page, setPage] = useState(1)
   const [loading, setLoading] = useState(false)
   const [showFilter, setShowFilter] = useState(false)
@@ -493,6 +478,23 @@ export default function LogList() {
 
   useEffect(() => { load(page) }, [page, load])
 
+  const loadTodayStat = useCallback(async () => {
+    setTodayLoading(true)
+    try {
+      const d = new Date()
+      d.setHours(0, 0, 0, 0)
+      const startTs = Math.floor(d.getTime() / 1000)
+      const res = await getUserLogsStat({ type: 2, start_timestamp: startTs })
+      setTodayQuota(res?.data?.quota ?? 0)
+    } catch (_) {
+      setTodayQuota(0)
+    } finally {
+      setTodayLoading(false)
+    }
+  }, [])
+
+  useEffect(() => { loadTodayStat() }, [loadTodayStat])
+
   const onApply = () => {
     setPage(1)
     load(1)
@@ -518,6 +520,28 @@ export default function LogList() {
         </ClayButton>
       }
     >
+      {/* Today consumption */}
+      <ClayCard className="mb-6 !p-5 bg-gradient-to-br from-clay-pink-50 to-clay-pink-100">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 rounded-full bg-clay-pink-200 text-white shadow-clay flex items-center justify-center shrink-0">
+            <TrendingUp className="w-5 h-5" strokeWidth={2.5} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="text-xs font-bold text-clay-faint">今日消耗（自 0:00 起）</div>
+            <div className="text-2xl md:text-3xl font-black tracking-tight mt-0.5">
+              {todayLoading ? (
+                <span className="text-clay-faint text-base">加载中…</span>
+              ) : (
+                quotaToDisplay(todayQuota).text
+              )}
+            </div>
+          </div>
+          <ClayButton variant="ghost" onClick={loadTodayStat} disabled={todayLoading} aria-label="刷新">
+            <RefreshCw className={`w-4 h-4 ${todayLoading ? 'animate-spin' : ''}`} />
+          </ClayButton>
+        </div>
+      </ClayCard>
+
       {/* Filter Panel */}
       {showFilter && (
         <ClayCard className="mb-6 !p-6">
@@ -568,7 +592,7 @@ export default function LogList() {
 
       {/* Table (desktop) / Cards (mobile) */}
       {isMobile ? (
-        <div className="space-y-3">
+        <div className="space-y-2.5">
           {loading && (
             <ClayCard className="!py-12 text-center">
               <div className="flex flex-col items-center gap-3">
@@ -592,15 +616,15 @@ export default function LogList() {
       ) : (
         <ClayCard className="!p-0 overflow-x-auto">
           <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-black/5 text-left text-clay-faint">
-                <th className="px-5 py-4 font-bold">类型</th>
-                <th className="px-5 py-4 font-bold">模型</th>
-                <th className="px-5 py-4 font-bold">令牌</th>
-                <th className="px-5 py-4 font-bold text-right">Token 用量</th>
-                <th className="px-5 py-4 font-bold text-right">额度</th>
-                <th className="px-5 py-4 font-bold text-right">用时/首字</th>
-                <th className="px-5 py-4 font-bold text-right">时间</th>
+            <thead className="bg-clay-bg/50">
+              <tr className="border-b border-black/5 text-left text-[11px] uppercase tracking-wider text-clay-faint">
+                <th className="px-4 py-3 font-extrabold">类型</th>
+                <th className="px-4 py-3 font-extrabold">模型</th>
+                <th className="px-4 py-3 font-extrabold">令牌</th>
+                <th className="px-4 py-3 font-extrabold text-right">Token 用量</th>
+                <th className="px-4 py-3 font-extrabold text-right">额度</th>
+                <th className="px-4 py-3 font-extrabold text-right">用时 / 首字</th>
+                <th className="px-4 py-3 font-extrabold text-right">时间</th>
               </tr>
             </thead>
             <tbody>

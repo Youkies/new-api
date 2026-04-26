@@ -64,4 +64,23 @@
 - 移动端优化：控制台导航只显示头像圆形（去掉背景框+文字），首页登录只显示头像（隐藏"进入控制台"按钮）
 - 部署坑：NODE_TYPE=slave 不跑迁移，需手动 ALTER TABLE 加列（Zeabur MySQL 面板逐条执行）
 
+## 2026-04-26 — system_prompt_to_user_prompt + 国内中转
+
+- 问题：上游 Claude 渠道固定死 Claude Code 系统提示词，用户自己的 system prompt 被覆盖
+- 方案：新增 `system_prompt_to_user_prompt` 渠道设置，将 system 转为 user 消息保留用户指令
+- 实现：ChannelSettings 新字段 + ClaudeRequest.ConvertSystemToUserMessages()，覆盖 ClaudeHelper/TextHelper/via-responses 三路径
+- 前端 EditChannelModal 额外设置区新增开关 + 7 语言 i18n
+- 国内中转：腾讯云 81.71.120.210 Nginx 反代 newapi.youkies.cn → newapi.youkies.space
+- 关键配置：proxy_buffering off（SSE）、timeout 1000s、Let's Encrypt SSL
+- 流量模型：全部经过国内服务器双向中转，需注意带宽和流量配额
+
+- 头像缓存问题分三层逐步定位修复：
+  1. 跨页丢失：Dashboard/TopUp 等页面 setUser(r.data) 覆盖 _avatar_t → setUser 自动保留旧值
+  2. 重新登录丢失：logout 清除 _avatar_t，login 响应无此字段 → setUser 发现 has_avatar 时自动生成 Date.now()
+  3. 服务端强缓存：ETag 只用 id-len（同大小不变）+ max-age=86400 → 改为 CRC32(data) + no-cache
+- 经典控制台白屏：web 原 base='/' + 无 basename，挂到 /legacy/ 后 asset 路径和 React Router 全部失败 → vite base '/legacy/' + BrowserRouter basename="/legacy"（Dockerfile bun 构建生效，本地 npm 构建有 semi-ui 兼容问题）
+- /legacy 不带斜杠 404：Gin wildcard `/legacy/*filepath` 不匹配无斜杠路径 → 加显式 GET /legacy → 301
+- 自定义 favicon：PNG 图标替换 lucide Box，影响 ClayNav / ClayConsoleShell / ClayAuthShell 三处
+- 签到倒计时：CountdownTimer 组件，clay 内凹方块 HH:MM:SS，服务端 0 点刷新（time.Now 日期判断）
+- 远程 MySQL 密码已更新（旧密码 123456 失效）
 

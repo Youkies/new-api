@@ -46,3 +46,20 @@
 - [2026-04-26 03:30] 修复 /legacy 404：新增显式 GET /legacy → 301 /legacy/（Gin wildcard 不匹配无斜杠路径）
 - [2026-04-26 03:30] 修复经典控制台链接：/console → /legacy、/console/playground → /legacy/playground
 - [2026-04-26 03:30] 提交推送 268bc41a
+- [2026-04-26 03:40] 自定义 favicon：参考html PNG → uiweb/public/favicon.png，index.html 改 PNG 引用
+- [2026-04-26 03:45] 全站 logo 替换：ClayNav/ClayConsoleShell/ClayAuthShell 的 Box 图标 → favicon.png
+- [2026-04-26 03:45] 经典控制台白屏修复：web/vite.config.js 加 base:'/legacy/'，web/src/index.jsx 加 basename="/legacy"
+- [2026-04-26 03:50] 头像服务端缓存修复：ETag 从 id-len 改为 id-crc32(data)，Cache-Control 从 max-age=86400 改为 no-cache
+- [2026-04-26 03:55] 头像重新登录缓存修复：setUser 发现 has_avatar 但无 _avatar_t 时自动生成 Date.now()
+- [2026-04-26 04:00] 签到页倒计时：CountdownTimer 组件，今日已签到时显示到午夜 HH:MM:SS 倒计时
+- [2026-04-26 04:00] 提交推送 fbe686cd
+- [2026-04-26] feat: system_prompt_to_user_prompt 渠道设置，解决上游覆盖系统提示词问题（121339fe）
+- [2026-04-26] 国内中转配置：腾讯云 Nginx 反代 newapi.youkies.cn → newapi.youkies.space，SSL + SSE 流式 + 1000s 超时
+- [2026-04-27 03:30] 新增 API URL 子界面 (/api-urls)：双卡片复制 + ClayModal 弹窗提示 /v1 + "不再提示"
+- [2026-04-27 03:50] 修复 ClayCheckbox 点击小框无反应：移除 `<span>` 冗余 onClick 与 label/input 冲突
+- [2026-04-27 04:00] 日志页新增"今日消耗"渐变卡片（自当日 0:00），独立调 /api/log/self/stat
+- [2026-04-27 04:15] 日志列表 UI 紧凑化：桌面表格 px/py 减少 + uppercase 表头；移动卡片 4 行重排，额度右上突出
+- [2026-04-27 04:30] 签到时区修复（用户反馈凌晨刷新时间错误）：根因 Docker 容器默认 UTC；修复三层（CHECKIN_TIMEZONE env / Dockerfile TZ=Asia/Shanghai / 前端 server_now 时钟漂移补偿）
+- [2026-04-27 05:00] Pricing 页视觉重做：卡片三段式带渐变着色头部 + 输入/输出双栏（蓝粉色 + 方向箭头）+ 缓存独立行
+- [2026-04-27 05:30] ModelStatus 页四大优化：OverviewBanner 加权 SLA / ModelCard hover / Uptime 柱条 hover scale + 时间轴 / StatusLegend 阈值说明
+- [2026-04-27 05:45] 修复 tooltip 跟随柱条 + 解除 .clay-card overflow-hidden 截断（!overflow-visible）

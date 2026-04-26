@@ -7,13 +7,23 @@
 - NODE_TYPE=slave：跳过 AutoMigrate，新增列需手动 ALTER TABLE
 - 测试用远程 MySQL：38.150.2.234:30502/zeabur
 - 启动命令（bash）：`NODE_TYPE=slave SQL_DSN='root:...@tcp(38.150.2.234:30502)/zeabur' ./new-api.exe`
-- 域名：newapi-clay.youkies.space（DNS 需 CNAME 指向 Zeabur）
+- 海外域名：newapi.youkies.space（DNS 指向 Zeabur）
+- 国内中转域名：newapi.youkies.cn（已备案，Nginx 反代 → 海外服务器）
+
+## 国内中转
+
+- 服务器：81.71.120.210（腾讯云，Ubuntu 24.04）
+- Nginx 反代：/etc/nginx/sites-enabled/newapi.conf
+- SSL：Let's Encrypt 自动续期（到期 2026-07-25）
+- 关键配置：proxy_buffering off（SSE 流式）、proxy_read_timeout 1000s
+- 同机还运行 lobe.youkies.cn（LobeChat）
 
 ## uiweb 技术选型（已敲定）
 
 - 前端：Vite 5 + React 18 + JSX（不用 TypeScript）
 - 样式：Tailwind CSS 3 + 自研 clay 组件
 - 图标：lucide-react（UI 图标）+ @lobehub/icons v2（供应商/模型图标）
+- Logo/Favicon：自定义 PNG（uiweb/public/favicon.png），导航栏 logo 用 `<img>` 替代 lucide Box
 - 供应商图标：`vendorIcon.jsx` 的 `getLobeHubIcon(iconName, size)` 解析点号字符串（如 `"Claude.Color"`）为 React 组件，fallback 为 AiMass
 - @lobehub/icons stub：4 个 stub 模块（antd/antd-style/react-layout-kit/@lobehub/ui）通过 vite alias 屏蔽 Avatar/Combine 子组件的间接依赖
 - 裁剪库：react-easy-crop（头像上传裁剪预览）
@@ -41,9 +51,12 @@
 
 - 存储：User 表 `avatar` LONGBLOB + `avatar_type` VARCHAR(32)
 - 上限：200KB，前端 canvas 压缩为 JPEG
-- API：`POST/DELETE /api/user/avatar`（需登录）、`GET /api/user/avatar/:id`（公开，带 ETag 缓存）
+- API：`POST/DELETE /api/user/avatar`（需登录）、`GET /api/user/avatar/:id`（公开，ETag=CRC32 + no-cache）
 - 前端裁剪：react-easy-crop 圆形裁剪 + 缩放滑块 + 确认弹窗
-- cache-bust：上传后 user 对象挂 `_avatar_t` 时间戳，所有头像 URL 带 `?t=`；UserContext setUser 自动保留旧 `_avatar_t` 防止页面导航时丢失
+- cache-bust：`_avatar_t` 时间戳挂在 user 对象上，所有头像 URL 带 `?t=`
+  - 页面导航：setUser 自动保留旧 `_avatar_t`
+  - 重新登录：setUser 发现 `has_avatar` 但无 `_avatar_t` 时自动生成 `Date.now()`
+  - 服务端：ETag 用 CRC32(data) 内容哈希 + `Cache-Control: no-cache`（每次验证）
 - 批量查询（GetAllUsers/SearchUsers）omit avatar 字段避免性能问题
 - 移动端：控制台导航只显示头像圆形（40px，无背景框无文字），首页登录只显示头像
 
@@ -81,6 +94,8 @@ api.js / auth.js / tokens.js / logs.js / checkin.js / user.js / dashboard.js / t
 - 余额转换：quotaToDisplay() 读 localStorage 的 quota_per_unit / quota_display_type
 - 余额反转换：displayToQuota() 将展示金额转回内部额度值（令牌创建/编辑用）
 - 签到 API 路径：`/api/user/checkin`（selfRoute 前缀 `/api/user/`）
+- 签到刷新逻辑：服务器本地 `time.Now().Format("2006-01-02")` 判断，0 点刷新
+- 签到倒计时：CountdownTimer 组件，今日已签到后显示到午夜 HH:MM:SS（浏览器本地时间）
 - 定价公式：按量 `model_ratio * 2 * groupRatio`（USD/1M tokens），按次 `model_price * groupRatio`（USD/次）
 - 定价 API 响应结构：`res.data` = 模型数组，`res.vendors` / `res.group_ratio` / `res.usable_group` 是 response 同级字段
 - 模型状态 API：`GET /api/model-status?window=1h|6h|12h|24h`（公开，无需认证）

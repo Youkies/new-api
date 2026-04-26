@@ -40,18 +40,27 @@ function formatCountdown(totalSec) {
   return { h, m, s }
 }
 
-function CountdownTimer() {
-  const [secs, setSecs] = useState(getSecondsUntilMidnight)
+function CountdownTimer({ targetTs, onElapsed }) {
+  const computeSecs = () => {
+    if (!targetTs) return 0
+    return Math.max(0, targetTs - Math.floor(Date.now() / 1000))
+  }
+  const [secs, setSecs] = useState(computeSecs)
   const ref = useRef()
 
   useEffect(() => {
+    setSecs(computeSecs())
     ref.current = setInterval(() => {
-      const v = getSecondsUntilMidnight()
+      const v = computeSecs()
       setSecs(v)
-      if (v <= 0) clearInterval(ref.current)
+      if (v <= 0) {
+        clearInterval(ref.current)
+        onElapsed?.()
+      }
     }, 1000)
     return () => clearInterval(ref.current)
-  }, [])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [targetTs])
 
   const { h, m, s } = formatCountdown(secs)
 
@@ -84,6 +93,7 @@ export default function Checkin() {
   const [enabled, setEnabled] = useState(true)
   const [quotaRange, setQuotaRange] = useState([0, 0])
   const [lastAward, setLastAward] = useState(null)
+  const [nextCheckinAt, setNextCheckinAt] = useState(null)
 
   const monthStr = getMonthStr(viewDate)
   const year = viewDate.getFullYear()
@@ -106,6 +116,18 @@ export default function Checkin() {
       const d = res.data
       setStats(d.stats)
       setQuotaRange([d.min_quota ?? 0, d.max_quota ?? 0])
+      // Prefer server-provided next checkin time (server's local midnight)
+      // Adjust for clock skew: align server_now to client clock
+      if (d.next_checkin_at) {
+        if (d.server_now) {
+          const skew = Math.floor(Date.now() / 1000) - d.server_now
+          setNextCheckinAt(d.next_checkin_at + skew)
+        } else {
+          setNextCheckinAt(d.next_checkin_at)
+        }
+      } else {
+        setNextCheckinAt(Math.floor(Date.now() / 1000) + getSecondsUntilMidnight())
+      }
     } catch (e) {
       if (e?.response?.data?.message?.includes('未启用')) {
         setEnabled(false)
@@ -250,7 +272,12 @@ export default function Checkin() {
                   ? '签到中…'
                   : '立即签到'}
             </ClayButton>
-            {stats?.checked_in_today && <CountdownTimer />}
+            {stats?.checked_in_today && (
+              <CountdownTimer
+                targetTs={nextCheckinAt}
+                onElapsed={() => load(monthStr)}
+              />
+            )}
           </div>
         </ClayCard>
       </div>

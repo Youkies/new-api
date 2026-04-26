@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Search, Coins, Loader2, ChevronDown } from 'lucide-react'
+import { Search, Coins, Loader2, ChevronDown, ArrowDownToLine, ArrowUpFromLine, Database, Sparkles } from 'lucide-react'
 import ClayCard from '../components/clay/ClayCard.jsx'
 import ClayInput from '../components/clay/ClayInput.jsx'
 import ClayAlert from '../components/clay/ClayAlert.jsx'
@@ -8,16 +8,25 @@ import { useStatus } from '../context/StatusContext.jsx'
 import { getPricing } from '../services/pricing.js'
 import { getLobeHubIcon } from '../utils/vendorIcon.jsx'
 
-function PriceRow({ label, value, accent, muted }) {
-  if (!label && !value) return <div className="h-5" />
+function PriceCell({ icon: Icon, label, value, tone = 'ink', muted }) {
+  const toneCls = {
+    ink: 'text-clay-ink',
+    blue: 'text-[#3a6ea5]',
+    pink: 'text-[#a04668]',
+    emerald: 'text-emerald-700',
+    amber: 'text-amber-700',
+  }[tone] ?? 'text-clay-ink'
   return (
-    <div className="flex items-center justify-between">
-      <span className="text-xs font-bold text-clay-faint tracking-wide uppercase">{label}</span>
-      <span className={`font-mono font-extrabold text-[15px] tracking-tight ${
-        muted ? 'text-clay-faint/40' : accent ? 'text-clay-ink' : ''
+    <div className="flex-1 min-w-0">
+      <div className="flex items-center gap-1 text-[10px] font-extrabold uppercase tracking-wider text-clay-faint mb-1">
+        {Icon && <Icon className="w-3 h-3" strokeWidth={2.5} />}
+        <span>{label}</span>
+      </div>
+      <div className={`font-mono font-black text-[15px] leading-none tracking-tight tabular-nums truncate ${
+        muted ? 'text-clay-faint/40' : toneCls
       }`}>
         {value}
-      </span>
+      </div>
     </div>
   )
 }
@@ -167,9 +176,17 @@ export default function Pricing() {
         <h1 className="text-4xl md:text-5xl font-black text-center mb-3 tracking-tight">
           模型与价格
         </h1>
-        <p className="text-center text-clay-faint mb-8 max-w-2xl mx-auto">
-          所有可用模型的实时定价。{cc.type !== 'TOKENS' ? '按量计费模型价格为每百万 tokens。' : ''}
+        <p className="text-center text-clay-faint mb-3 max-w-2xl mx-auto">
+          所有可用模型的实时定价。{cc.type !== 'TOKENS' ? '按量计费按每百万 tokens 计算。' : '当前以倍率显示。'}
         </p>
+        {cc.type !== 'TOKENS' && (
+          <div className="flex justify-center mb-8">
+            <span className="inline-flex items-center gap-1.5 text-[11px] font-extrabold text-clay-faint bg-clay-bg shadow-clay-inset px-3 py-1 rounded-clay-pill">
+              <span className="w-1.5 h-1.5 rounded-full bg-clay-pink-300" />
+              单位 {unitLabel} · 实际扣费按渠道倍率
+            </span>
+          </div>
+        )}
 
         {/* Group pills */}
         {groups.length > 1 && (
@@ -309,37 +326,80 @@ export default function Pricing() {
               }
 
               return (
-                <ClayCard key={`${name}-${i}`} className="!p-4 flex flex-col hover:-translate-y-0.5 transition-all">
-                  {/* Header: icon + name + badge */}
-                  <div className="flex items-start gap-3 mb-auto pb-3">
-                    <span className="shrink-0 mt-0.5">
-                      {getLobeHubIcon(m.vendor_icon, 24)}
-                    </span>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-extrabold text-[15px] text-clay-ink break-all leading-snug">{name}</p>
-                    </div>
-                    <span className={`text-[11px] font-extrabold px-2.5 py-1 rounded-clay-sm whitespace-nowrap shrink-0 shadow-clay-inset ${
+                <ClayCard
+                  key={`${name}-${i}`}
+                  className="!p-0 flex flex-col overflow-hidden hover:-translate-y-0.5 hover:shadow-clay-hover transition-all"
+                >
+                  {/* Header with vendor tint */}
+                  <div
+                    className={`px-4 pt-4 pb-3 flex items-start gap-3 border-b border-black/[0.04] ${
                       isFixed
-                        ? 'bg-clay-yellow-100/60 text-amber-800'
-                        : 'bg-clay-blue-50/60 text-blue-800'
-                    }`}>
+                        ? 'bg-gradient-to-br from-clay-yellow-50/70 to-clay-yellow-100/40'
+                        : 'bg-gradient-to-br from-clay-blue-50/50 to-clay-pink-50/30'
+                    }`}
+                  >
+                    <div className="w-10 h-10 rounded-clay-sm bg-white/70 shadow-clay-sm flex items-center justify-center shrink-0">
+                      {getLobeHubIcon(m.vendor_icon, 22)}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-black text-[14px] text-clay-ink break-all leading-tight" title={name}>
+                        {name}
+                      </p>
+                      {m.vendor_name && (
+                        <p className="text-[10px] font-bold text-clay-faint mt-1 truncate">
+                          {m.vendor_name}
+                        </p>
+                      )}
+                    </div>
+                    <span
+                      className={`text-[10px] font-black px-2 py-0.5 rounded-clay-pill whitespace-nowrap shrink-0 ${
+                        isFixed
+                          ? 'bg-clay-yellow-200/80 text-amber-900'
+                          : 'bg-clay-blue-200/80 text-[#2c5582]'
+                      }`}
+                    >
                       {isFixed ? '按次' : '按量'}
                     </span>
                   </div>
 
-                  {/* Price rows — always 3 slots for uniform height */}
-                  <div className="rounded-clay-sm shadow-clay-inset bg-clay-bg/50 px-3.5 py-3 space-y-2">
+                  {/* Pricing block */}
+                  <div className="px-4 py-3.5 flex-1">
                     {isFixed ? (
-                      <>
-                        <PriceRow label="单次价格" value={inputDisplay} accent />
-                        <PriceRow label="" value="" />
-                        <PriceRow label="" value="" />
-                      </>
+                      <div className="bg-clay-bg/60 shadow-clay-inset rounded-clay-sm px-4 py-3.5 flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-2 text-[10px] font-extrabold uppercase tracking-wider text-clay-faint">
+                          <Sparkles className="w-3.5 h-3.5" strokeWidth={2.5} />
+                          单次价格
+                        </div>
+                        <span className="font-mono font-black text-[16px] text-amber-700 tabular-nums">
+                          {inputDisplay}
+                        </span>
+                      </div>
                     ) : (
                       <>
-                        <PriceRow label="输入" value={inputDisplay} accent />
-                        <PriceRow label="输出" value={outputDisplay} accent />
-                        <PriceRow label="缓存" value={cacheDisplay ?? '—'} muted={!cacheDisplay} />
+                        <div className="bg-clay-bg/60 shadow-clay-inset rounded-clay-sm px-3.5 py-3 flex items-stretch gap-3">
+                          <PriceCell icon={ArrowDownToLine} label="输入" value={inputDisplay} tone="blue" />
+                          <div className="w-px bg-black/5 my-0.5" />
+                          <PriceCell icon={ArrowUpFromLine} label="输出" value={outputDisplay} tone="pink" />
+                        </div>
+                        <div
+                          className={`mt-2 px-3.5 py-2 rounded-clay-sm flex items-center justify-between gap-2 ${
+                            cacheDisplay
+                              ? 'bg-emerald-50/60 shadow-clay-inset'
+                              : 'bg-transparent border border-dashed border-black/[0.06]'
+                          }`}
+                        >
+                          <div className="flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-wider text-clay-faint">
+                            <Database className="w-3 h-3" strokeWidth={2.5} />
+                            缓存读取
+                          </div>
+                          <span
+                            className={`font-mono font-black text-[13px] tabular-nums ${
+                              cacheDisplay ? 'text-emerald-700' : 'text-clay-faint/40'
+                            }`}
+                          >
+                            {cacheDisplay ?? '不支持'}
+                          </span>
+                        </div>
                       </>
                     )}
                   </div>

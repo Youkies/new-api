@@ -77,6 +77,9 @@ func TextHelper(c *gin.Context, info *relaycommon.RelayInfo) (newAPIError *types
 		!info.ChannelSetting.PassThroughBodyEnabled &&
 		service.ShouldChatCompletionsUseResponsesGlobal(info.ChannelId, info.ChannelType, info.OriginModelName) {
 		applySystemPromptIfNeeded(c, info, request)
+		if info.ChannelSetting.SystemPromptToUserPrompt {
+			convertSystemMessagesToUser(request)
+		}
 		usage, newApiErr := chatCompletionsViaResponses(c, info, adaptor, request)
 		if newApiErr != nil {
 			return newApiErr
@@ -155,6 +158,15 @@ func TextHelper(c *gin.Context, info *relaycommon.RelayInfo) (newAPIError *types
 			}
 		}
 
+		if info.ChannelSetting.SystemPromptToUserPrompt {
+			switch req := convertedRequest.(type) {
+			case *dto.ClaudeRequest:
+				req.ConvertSystemToUserMessages()
+			case *dto.GeneralOpenAIRequest:
+				convertSystemMessagesToUser(req)
+			}
+		}
+
 		jsonData, err := common.Marshal(convertedRequest)
 		if err != nil {
 			return types.NewError(err, types.ErrorCodeJsonMarshalFailed, types.ErrOptionWithSkipRetry())
@@ -214,4 +226,13 @@ func TextHelper(c *gin.Context, info *relaycommon.RelayInfo) (newAPIError *types
 		service.PostTextConsumeQuota(c, info, usage.(*dto.Usage), nil)
 	}
 	return nil
+}
+
+func convertSystemMessagesToUser(request *dto.GeneralOpenAIRequest) {
+	systemRole := request.GetSystemRoleName()
+	for i, message := range request.Messages {
+		if message.Role == systemRole {
+			request.Messages[i].Role = "user"
+		}
+	}
 }

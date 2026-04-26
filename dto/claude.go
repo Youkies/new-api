@@ -483,6 +483,55 @@ func (c *ClaudeRequest) ParseSystem() []ClaudeMediaMessage {
 	return mediaContent
 }
 
+// ConvertSystemToUserMessages moves the System field content into Messages
+// as a user message, then clears System. This is useful when the upstream
+// provider overrides the system prompt — the user's instructions are
+// preserved as a user message instead.
+func (c *ClaudeRequest) ConvertSystemToUserMessages() {
+	if c.System == nil {
+		return
+	}
+
+	var systemContent []ClaudeMediaMessage
+	if c.IsStringSystem() {
+		text := strings.TrimSpace(c.GetStringSystem())
+		if text == "" {
+			c.System = nil
+			return
+		}
+		msg := ClaudeMediaMessage{Type: ContentTypeText}
+		msg.SetText(text)
+		systemContent = []ClaudeMediaMessage{msg}
+	} else {
+		systemContent = c.ParseSystem()
+		if len(systemContent) == 0 {
+			c.System = nil
+			return
+		}
+	}
+
+	if len(c.Messages) > 0 && c.Messages[0].Role == "user" {
+		existing, err := c.Messages[0].ParseContent()
+		if err == nil && len(existing) > 0 {
+			c.Messages[0].Content = append(systemContent, existing...)
+		} else if c.Messages[0].IsStringContent() {
+			userText := ClaudeMediaMessage{Type: ContentTypeText}
+			userText.SetText(c.Messages[0].GetStringContent())
+			c.Messages[0].Content = append(systemContent, userText)
+		} else {
+			c.Messages[0].Content = systemContent
+		}
+	} else {
+		userMsg := ClaudeMessage{
+			Role:    "user",
+			Content: systemContent,
+		}
+		c.Messages = append([]ClaudeMessage{userMsg}, c.Messages...)
+	}
+
+	c.System = nil
+}
+
 type ClaudeErrorWithStatusCode struct {
 	Error      types.ClaudeError `json:"error"`
 	StatusCode int               `json:"status_code"`

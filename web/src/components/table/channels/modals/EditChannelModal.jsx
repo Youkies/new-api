@@ -195,6 +195,7 @@ const EditChannelModal = (props) => {
     pass_through_body_enabled: false,
     system_prompt: '',
     system_prompt_override: false,
+    system_prompt_to_user_prompt: false,
     settings: '',
     // 仅 Vertex: 密钥格式（存入 settings.vertex_key_type）
     vertex_key_type: 'json',
@@ -852,6 +853,8 @@ const EditChannelModal = (props) => {
           data.system_prompt = parsedSettings.system_prompt || '';
           data.system_prompt_override =
             parsedSettings.system_prompt_override || false;
+          data.system_prompt_to_user_prompt =
+            parsedSettings.system_prompt_to_user_prompt || false;
         } catch (error) {
           console.error('解析渠道设置失败:', error);
           data.force_format = false;
@@ -860,6 +863,7 @@ const EditChannelModal = (props) => {
           data.pass_through_body_enabled = false;
           data.system_prompt = '';
           data.system_prompt_override = false;
+          data.system_prompt_to_user_prompt = false;
         }
       } else {
         data.force_format = false;
@@ -868,6 +872,7 @@ const EditChannelModal = (props) => {
         data.pass_through_body_enabled = false;
         data.system_prompt = '';
         data.system_prompt_override = false;
+        data.system_prompt_to_user_prompt = false;
       }
 
       if (data.settings) {
@@ -977,6 +982,7 @@ const EditChannelModal = (props) => {
         pass_through_body_enabled: data.pass_through_body_enabled,
         system_prompt: data.system_prompt,
         system_prompt_override: data.system_prompt_override || false,
+        system_prompt_to_user_prompt: data.system_prompt_to_user_prompt || false,
       });
       initialModelsRef.current = (data.models || [])
         .map((model) => (model || '').trim())
@@ -1019,7 +1025,8 @@ const EditChannelModal = (props) => {
         data.pass_through_body_enabled ||
         data.force_format ||
         data.claude_beta_query ||
-        data.system_prompt_override;
+        data.system_prompt_override ||
+        data.system_prompt_to_user_prompt;
       if (hasAdvancedValues) {
         setAdvancedSettingsOpen(true);
       }
@@ -1366,6 +1373,7 @@ const EditChannelModal = (props) => {
       pass_through_body_enabled: false,
       system_prompt: '',
       system_prompt_override: false,
+      system_prompt_to_user_prompt: false,
     });
     // 重置密钥模式状态
     setKeyMode('append');
@@ -1736,6 +1744,7 @@ const EditChannelModal = (props) => {
       pass_through_body_enabled: localInputs.pass_through_body_enabled || false,
       system_prompt: localInputs.system_prompt || '',
       system_prompt_override: localInputs.system_prompt_override || false,
+      system_prompt_to_user_prompt: localInputs.system_prompt_to_user_prompt || false,
     };
     localInputs.setting = JSON.stringify(channelExtraSettings);
 
@@ -1817,6 +1826,7 @@ const EditChannelModal = (props) => {
     delete localInputs.pass_through_body_enabled;
     delete localInputs.system_prompt;
     delete localInputs.system_prompt_override;
+    delete localInputs.system_prompt_to_user_prompt;
     delete localInputs.is_enterprise_account;
     // 顶层的 vertex_key_type 不应发送给后端
     delete localInputs.vertex_key_type;
@@ -2512,6 +2522,7 @@ const EditChannelModal = (props) => {
 
                   <Form.TextArea field='system_prompt' label={t('系统提示词')} placeholder={t('输入系统提示词，用户的系统提示词将优先于此设置')} onChange={(value) => handleChannelSettingsChange('system_prompt', value)} autosize showClear extraText={t('用户优先：如果用户在请求中指定了系统提示词，将优先使用用户的设置')} />
                   <Form.Switch field='system_prompt_override' label={t('系统提示词拼接')} checkedText={t('开')} uncheckedText={t('关')} onChange={(value) => handleChannelSettingsChange('system_prompt_override', value)} extraText={t('如果用户请求中包含系统提示词，则使用此设置拼接到用户的系统提示词前面')} />
+                  <Form.Switch field='system_prompt_to_user_prompt' label={t('系统提示词转用户消息')} checkedText={t('开')} uncheckedText={t('关')} onChange={(value) => handleChannelSettingsChange('system_prompt_to_user_prompt', value)} extraText={t('将系统提示词转换为用户消息发送，适用于上游会覆盖系统提示词的场景')} />
                 </div>
               </div>
             );

@@ -219,7 +219,7 @@ function LogCard({ log, onClick }) {
       className={`clay-card-interactive !p-5 !rounded-clay cursor-pointer ${isError ? '!bg-red-50/40' : ''}`}
       onClick={onClick}
     >
-      {/* Row 1: type badge + time */}
+      {/* Row 1: type badge + timing/stream + time */}
       <div className="flex items-center justify-between gap-2 mb-1.5">
         <div className="flex items-center gap-2">
           <div className={`w-8 h-8 rounded-full ${meta.bg} flex items-center justify-center shrink-0
@@ -228,6 +228,16 @@ function LogCard({ log, onClick }) {
           </div>
           <span className={`text-[11px] font-extrabold px-2.5 py-0.5 rounded-clay-pill shrink-0 ${meta.bg} ${meta.text}`}>
             {meta.label}
+          </span>
+          {log.use_time ? (
+            <span className="text-[10px] text-clay-faint font-mono">
+              {fmtUseTime(log.use_time)}
+              {fmtFrt(frt) && <span className="text-emerald-600 ml-0.5">/{fmtFrt(frt)}</span>}
+            </span>
+          ) : null}
+          <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-clay-pill
+            ${log.is_stream ? 'bg-clay-blue-100 text-[#43658b]' : 'bg-gray-200/60 text-gray-500'}`}>
+            {log.is_stream ? '流' : '非流'}
           </span>
         </div>
         <span className="text-[10px] text-clay-faint shrink-0 flex items-center gap-1">
@@ -245,7 +255,7 @@ function LogCard({ log, onClick }) {
         </div>
       )}
 
-      {/* Row 3: quota + tokens + timing + stream + token name */}
+      {/* Row 3: quota + tokens + cache + token name */}
       <div className="flex items-center justify-between gap-2 text-xs">
         <div className="flex items-center gap-2 flex-wrap">
           {log.quota ? (
@@ -277,16 +287,6 @@ function LogCard({ log, onClick }) {
               )}
             </span>
           )}
-          {log.use_time ? (
-            <span className="text-clay-faint font-mono">
-              {fmtUseTime(log.use_time)}
-              {fmtFrt(frt) && <span className="text-emerald-600 ml-0.5">/{fmtFrt(frt)}</span>}
-            </span>
-          ) : null}
-          <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-clay-pill
-            ${log.is_stream ? 'bg-clay-blue-100 text-[#43658b]' : 'bg-gray-200/60 text-gray-500'}`}>
-            {log.is_stream ? '流' : '非流'}
-          </span>
         </div>
         {log.token_name && (
           <span className="text-clay-faint truncate max-w-[80px]">{log.token_name}</span>

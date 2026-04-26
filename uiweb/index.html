@@ -2,8 +2,14 @@
 <html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/png" href="/favicon.png" />
+    <link rel="icon" type="image/png" href="/favicon.png" id="favicon" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script>
+      !function(){var n=4,k='_fav_idx',s=sessionStorage,i=s.getItem(k);
+      if(!i){i=Math.floor(Math.random()*n)+1;s.setItem(k,i)}
+      document.getElementById('favicon').href='/favicon-'+i+'.png';
+    }();
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link

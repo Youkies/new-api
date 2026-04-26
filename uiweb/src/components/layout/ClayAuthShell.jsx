@@ -1,7 +1,9 @@
 import { Link } from 'react-router-dom'
 import ClayCard from '../clay/ClayCard.jsx'
+import { getFaviconSrc } from '../../utils/favicon.js'
 
 export default function ClayAuthShell({ title, subtitle, children, footer }) {
+  const logoSrc = getFaviconSrc()
   return (
     <div className="min-h-screen bg-clay-bg flex items-center justify-center px-4 py-8 relative overflow-hidden">
       {/* decorative blobs */}
@@ -19,7 +21,7 @@ export default function ClayAuthShell({ title, subtitle, children, footer }) {
 
       <div className="relative w-full max-w-md">
         <Link to="/" className="flex items-center justify-center gap-2 mb-6 text-clay-ink">
-          <img src="/favicon.png" alt="logo" className="w-6 h-6" />
+          <img src={logoSrc} alt="logo" className="w-6 h-6" />
           <span className="font-black text-xl">Youkies API · Clay</span>
         </Link>
 

@@ -17,6 +17,7 @@ import ClayAvatar from '../clay/ClayAvatar.jsx'
 import ClayFooter from './ClayFooter.jsx'
 import { useUser } from '../../context/UserContext.jsx'
 import { useToast } from '../../context/ToastContext.jsx'
+import { getFaviconSrc } from '../../utils/favicon.js'
 import { logout as apiLogout } from '../../services/auth.js'
 
 // Items hosted natively in uiweb (Stage 2 scope)
@@ -87,7 +88,7 @@ export default function ClayConsoleShell({ title, subtitle, actions, children })
                 interactive
                 className="!p-2 !px-4 !rounded-clay-pill !flex-row !flex gap-2 items-center !border-0"
               >
-                <img src="/favicon.png" alt="logo" className="w-5 h-5" />
+                <img src={getFaviconSrc()} alt="logo" className="w-5 h-5" />
                 <span className="font-black">Youkies API</span>
               </ClayCard>
             </Link>

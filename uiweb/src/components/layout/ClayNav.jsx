@@ -4,6 +4,7 @@ import ClayButton from '../clay/ClayButton.jsx'
 import ClayCard from '../clay/ClayCard.jsx'
 import ClayAvatar from '../clay/ClayAvatar.jsx'
 import { useUser } from '../../context/UserContext.jsx'
+import { getFaviconSrc } from '../../utils/favicon.js'
 
 const linkBase =
   'px-4 py-2 rounded-clay-pill font-bold text-sm transition-all hover:text-clay-pink-300'
@@ -11,6 +12,7 @@ const linkActive = 'text-clay-pink-300'
 
 export default function ClayNav() {
   const { user } = useUser()
+  const logoSrc = getFaviconSrc()
 
   return (
     <header className="flex justify-between items-center mb-10 gap-4 flex-wrap">
@@ -19,7 +21,7 @@ export default function ClayNav() {
           interactive
           className="!p-2 !px-5 !rounded-clay-pill !flex-row !flex gap-2 items-center !border-0"
         >
-          <img src="/favicon.png" alt="logo" className="w-6 h-6" />
+          <img src={logoSrc} alt="logo" className="w-6 h-6" />
           <span className="font-black text-lg">Youkies API · Clay</span>
         </ClayCard>
       </Link>

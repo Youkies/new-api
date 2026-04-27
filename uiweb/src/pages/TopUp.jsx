@@ -96,7 +96,7 @@ export default function TopUp() {
       } catch (_) {}
       try {
         const res = await topupInfo()
-        if (res?.message === 'success' && res.data) {
+        if (res?.success && res.data) {
           setInfo(res.data)
           if (!Number(topUpCount)) {
             const m = Number(res.data.min_topup) || 1

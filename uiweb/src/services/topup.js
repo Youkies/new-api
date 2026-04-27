@@ -15,6 +15,11 @@ export async function redeem(key) {
   return res.data
 }
 
+export async function requestPay(payload) {
+  const res = await api.post('/api/user/pay', payload)
+  return res.data
+}
+
 export async function affInfo() {
   const res = await api.get('/api/user/aff')
   return res.data

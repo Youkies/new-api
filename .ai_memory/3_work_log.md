@@ -63,3 +63,5 @@
 - [2026-04-27 05:00] Pricing 页视觉重做：卡片三段式带渐变着色头部 + 输入/输出双栏（蓝粉色 + 方向箭头）+ 缓存独立行
 - [2026-04-27 05:30] ModelStatus 页四大优化：OverviewBanner 加权 SLA / ModelCard hover / Uptime 柱条 hover scale + 时间轴 / StatusLegend 阈值说明
 - [2026-04-27 05:45] 修复 tooltip 跟随柱条 + 解除 .clay-card overflow-hidden 截断（!overflow-visible）
+- [2026-04-28 02:09] 移除 TopUp 页“购买额度/前往购买”卡片；LogList 改自绘 clay 时间选择器、非消费日志显示详情、移动端详情不截断，并拆分 draft/applied 筛选以减少无效刷新请求
+- [2026-04-28 02:17] 完成本地构建与 slave+远程 MySQL 启动验证：uiweb build、Go build、公开页面/API/静态资源均通过，测试进程已停止

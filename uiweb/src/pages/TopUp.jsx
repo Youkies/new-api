@@ -4,8 +4,6 @@ import {
   Wallet,
   Sparkles,
   CheckCircle2,
-  ExternalLink,
-  ShoppingCart,
   CreditCard,
   Tag,
 } from 'lucide-react'
@@ -281,7 +279,6 @@ export default function TopUp() {
 
   const balance = quotaToDisplay(user?.quota ?? 0)
   const used = quotaToDisplay(user?.used_quota ?? 0)
-  const topUpLink = status?.top_up_link
 
   const currentDiscount = discountMap[topUpCount] || 1
   const hasDiscount = currentDiscount > 0 && currentDiscount < 1 && amount > 0
@@ -458,45 +455,7 @@ export default function TopUp() {
             </div>
           </form>
         </ClayCard>
-
-        {/* 右下:购买链接(仅当配置了 top_up_link 且没有在线充值占位时;若有在线充值则放到左下并列) */}
-        {topUpLink && !(enableOnline && epayMethods.length > 0) && (
-          <ClayCard className="flex flex-col items-center justify-center text-center">
-            <div className="w-14 h-14 rounded-full shadow-clay bg-clay-green-100 flex items-center justify-center mx-auto mb-4">
-              <ShoppingCart className="w-6 h-6 text-emerald-600" />
-            </div>
-            <h2 className="text-xl font-black mb-2">购买额度</h2>
-            <p className="text-clay-faint text-sm mb-5">
-              前往商城购买兑换码,获取后在上方输入即可充值。
-            </p>
-            <a href={topUpLink} target="_blank" rel="noopener noreferrer" className="w-full">
-              <ClayButton variant="secondary" className="w-full">
-                <ExternalLink className="w-4 h-4" /> 前往购买
-              </ClayButton>
-            </a>
-          </ClayCard>
-        )}
       </div>
-
-      {/* 当在线充值占据右列时,购买链接单独一行展示 */}
-      {topUpLink && enableOnline && epayMethods.length > 0 && (
-        <div className="mt-5 grid grid-cols-1 lg:grid-cols-2 gap-5">
-          <ClayCard className="flex flex-col items-center justify-center text-center">
-            <div className="w-14 h-14 rounded-full shadow-clay bg-clay-green-100 flex items-center justify-center mx-auto mb-4">
-              <ShoppingCart className="w-6 h-6 text-emerald-600" />
-            </div>
-            <h2 className="text-xl font-black mb-2">购买额度</h2>
-            <p className="text-clay-faint text-sm mb-5">
-              前往商城购买兑换码,获取后在上方输入即可充值。
-            </p>
-            <a href={topUpLink} target="_blank" rel="noopener noreferrer" className="w-full">
-              <ClayButton variant="secondary" className="w-full">
-                <ExternalLink className="w-4 h-4" /> 前往购买
-              </ClayButton>
-            </a>
-          </ClayCard>
-        </div>
-      )}
 
       <ClayModal
         open={confirmOpen}

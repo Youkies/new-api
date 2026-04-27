@@ -1,7 +1,7 @@
-import { useEffect, useState, useCallback, useSyncExternalStore } from 'react'
+import { useEffect, useState, useCallback, useMemo, useRef, useSyncExternalStore } from 'react'
 import {
   Search, ChevronLeft, ChevronRight, Filter,
-  Clock, Zap,
+  Clock, CalendarDays,
   Activity, AlertCircle, RefreshCw, CreditCard, Settings, Terminal,
   RotateCcw, FileText, TrendingUp,
 } from 'lucide-react'
@@ -204,21 +204,256 @@ function nowLocal() {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
+function defaultLogFilter() {
+  return {
+    type: '',
+    model_name: '',
+    token_name: '',
+    start_timestamp: todayStart(),
+    end_timestamp: nowLocal(),
+  }
+}
+
+function toLocalDateTimeValue(date) {
+  if (!(date instanceof Date) || Number.isNaN(date.getTime())) return ''
+  const pad = (n) => String(n).padStart(2, '0')
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`
+}
+
+function parseLocalDateTime(value) {
+  if (!value) return new Date()
+  const d = new Date(value)
+  return Number.isNaN(d.getTime()) ? new Date() : d
+}
+
+function formatDateTimeLabel(value) {
+  if (!value) return '未设置'
+  const d = parseLocalDateTime(value)
+  const pad = (n) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}/${pad(d.getMonth() + 1)}/${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
+function sameDate(a, b) {
+  return a.getFullYear() === b.getFullYear()
+    && a.getMonth() === b.getMonth()
+    && a.getDate() === b.getDate()
+}
+
+function formatQuotaDelta(quota) {
+  if (!quota) return null
+  return `${quota < 0 ? '+' : '-'}${quotaToDisplay(Math.abs(quota)).text}`
+}
+
+function quotaDeltaClass(quota) {
+  return quota > 0 ? 'text-blue-600' : 'text-emerald-600'
+}
+
+function LogSummary({ log }) {
+  const quotaText = formatQuotaDelta(log.quota)
+  const chips = [
+    log.model_name ? ['模型', log.model_name, true] : null,
+    log.token_name ? ['令牌', log.token_name, false] : null,
+    log.group ? ['分组', log.group, false] : null,
+    log.request_id ? ['Request ID', log.request_id, true] : null,
+  ].filter(Boolean)
+
+  return (
+    <div className="min-w-0">
+      <div className="text-sm font-semibold text-clay-ink whitespace-pre-wrap break-all leading-relaxed">
+        {log.content || '-'}
+      </div>
+      {(chips.length > 0 || quotaText) && (
+        <div className="mt-2 flex flex-wrap gap-2">
+          {chips.map(([label, value, mono]) => (
+            <span
+              key={`${label}-${value}`}
+              className={`max-w-full rounded-clay-pill bg-clay-bg shadow-clay-inset px-2.5 py-1 text-[10px] font-bold text-clay-faint ${mono ? 'font-mono' : ''}`}
+              title={value}
+            >
+              {label}: {value}
+            </span>
+          ))}
+          {quotaText && (
+            <span className={`rounded-clay-pill bg-clay-bg shadow-clay-inset px-2.5 py-1 text-[10px] font-black ${quotaDeltaClass(log.quota)}`}>
+              额度: {quotaText}
+            </span>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function ClayDateTimeField({ label, value, onChange }) {
+  const [open, setOpen] = useState(false)
+  const selectedDate = useMemo(() => parseLocalDateTime(value), [value])
+  const [viewDate, setViewDate] = useState(selectedDate)
+  const rootRef = useRef(null)
+
+  useEffect(() => {
+    if (open) setViewDate(selectedDate)
+  }, [open, selectedDate])
+
+  useEffect(() => {
+    if (!open) return undefined
+    const onPointerDown = (event) => {
+      if (rootRef.current && !rootRef.current.contains(event.target)) {
+        setOpen(false)
+      }
+    }
+    document.addEventListener('pointerdown', onPointerDown)
+    return () => document.removeEventListener('pointerdown', onPointerDown)
+  }, [open])
+
+  const monthDays = useMemo(() => {
+    const year = viewDate.getFullYear()
+    const month = viewDate.getMonth()
+    const first = new Date(year, month, 1)
+    const start = new Date(year, month, 1 - first.getDay())
+    return Array.from({ length: 42 }, (_, index) => {
+      const d = new Date(start)
+      d.setDate(start.getDate() + index)
+      return d
+    })
+  }, [viewDate])
+
+  const setDate = (date) => {
+    const next = parseLocalDateTime(value)
+    next.setFullYear(date.getFullYear(), date.getMonth(), date.getDate())
+    onChange(toLocalDateTimeValue(next))
+  }
+
+  const setTimePart = (part, rawValue) => {
+    const numeric = Number(String(rawValue).replace(/\D/g, ''))
+    const next = parseLocalDateTime(value)
+    if (part === 'hour') next.setHours(Math.min(23, Math.max(0, Number.isFinite(numeric) ? numeric : 0)))
+    if (part === 'minute') next.setMinutes(Math.min(59, Math.max(0, Number.isFinite(numeric) ? numeric : 0)))
+    onChange(toLocalDateTimeValue(next))
+  }
+
+  const jumpMonth = (offset) => {
+    setViewDate((current) => new Date(current.getFullYear(), current.getMonth() + offset, 1))
+  }
+
+  const setTodayStart = () => {
+    const d = new Date()
+    d.setHours(0, 0, 0, 0)
+    onChange(toLocalDateTimeValue(d))
+    setViewDate(d)
+  }
+
+  const setNow = () => {
+    const d = new Date()
+    onChange(toLocalDateTimeValue(d))
+    setViewDate(d)
+  }
+
+  const pad = (n) => String(n).padStart(2, '0')
+  const monthLabel = `${viewDate.getFullYear()}年${pad(viewDate.getMonth() + 1)}月`
+  const selectedHour = pad(selectedDate.getHours())
+  const selectedMinute = pad(selectedDate.getMinutes())
+
+  return (
+    <div ref={rootRef} className="relative">
+      <label className="block ml-4 mb-2 font-bold text-sm text-clay-ink">{label}</label>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="w-full clay-input !py-3.5 flex items-center justify-between gap-3 text-left"
+      >
+        <span className={value ? 'font-semibold' : 'text-clay-faint'}>{formatDateTimeLabel(value)}</span>
+        <CalendarDays className="w-4 h-4 text-clay-faint shrink-0" />
+      </button>
+
+      {open && (
+        <div className="absolute left-0 top-full z-[80] mt-3 w-full min-w-[320px] max-w-[calc(100vw-2rem)] rounded-clay-lg bg-clay-bg p-4 shadow-clay border-2 border-white/30">
+          <div className="flex items-center justify-between mb-3">
+            <button type="button" onClick={() => jumpMonth(-1)} className="w-9 h-9 rounded-full bg-clay-bg shadow-clay flex items-center justify-center">
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            <div className="text-sm font-black">{monthLabel}</div>
+            <button type="button" onClick={() => jumpMonth(1)} className="w-9 h-9 rounded-full bg-clay-bg shadow-clay flex items-center justify-center">
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+
+          <div className="grid grid-cols-7 gap-1 text-center text-[10px] font-black text-clay-faint mb-1">
+            {['日', '一', '二', '三', '四', '五', '六'].map((day) => <span key={day}>{day}</span>)}
+          </div>
+          <div className="grid grid-cols-7 gap-1">
+            {monthDays.map((day) => {
+              const inMonth = day.getMonth() === viewDate.getMonth()
+              const active = value && sameDate(day, selectedDate)
+              const today = sameDate(day, new Date())
+              return (
+                <button
+                  key={day.toISOString()}
+                  type="button"
+                  onClick={() => setDate(day)}
+                  className={`aspect-square rounded-clay-sm text-xs font-black transition-all ${
+                    active
+                      ? 'bg-clay-blue-100 text-[#43658b] shadow-clay-inset'
+                      : today
+                        ? 'bg-clay-pink-50 text-clay-pink-400 shadow-clay'
+                        : 'hover:bg-white/40'
+                  } ${inMonth ? 'text-clay-ink' : 'text-clay-faint/50'}`}
+                >
+                  {day.getDate()}
+                </button>
+              )
+            })}
+          </div>
+
+          <div className="mt-4 rounded-clay bg-clay-bg shadow-clay-inset p-3">
+            <div className="text-[10px] font-black text-clay-faint mb-2">时间</div>
+            <div className="flex items-center gap-2">
+              <input
+                value={selectedHour}
+                onChange={(e) => setTimePart('hour', e.target.value)}
+                inputMode="numeric"
+                maxLength={2}
+                className="w-16 rounded-clay-sm bg-clay-bg shadow-clay px-3 py-2 text-center font-mono font-black outline-none"
+              />
+              <span className="font-black text-clay-faint">:</span>
+              <input
+                value={selectedMinute}
+                onChange={(e) => setTimePart('minute', e.target.value)}
+                inputMode="numeric"
+                maxLength={2}
+                className="w-16 rounded-clay-sm bg-clay-bg shadow-clay px-3 py-2 text-center font-mono font-black outline-none"
+              />
+            </div>
+          </div>
+
+          <div className="mt-4 flex flex-wrap gap-2">
+            <button type="button" onClick={setTodayStart} className="px-3 py-2 rounded-clay-pill bg-clay-pink-50 shadow-clay text-[11px] font-black text-[#8a4860]">
+              今天 0 点
+            </button>
+            <button type="button" onClick={setNow} className="px-3 py-2 rounded-clay-pill bg-clay-blue-50 shadow-clay text-[11px] font-black text-[#43658b]">
+              现在
+            </button>
+            <button type="button" onClick={() => { onChange(''); setOpen(false) }} className="px-3 py-2 rounded-clay-pill bg-clay-bg shadow-clay text-[11px] font-black text-clay-faint">
+              清空
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function LogCard({ log, onClick }) {
   const meta = TYPE_META[log.type] ?? TYPE_META[4]
   const TypeIcon = meta.icon
   const isError = log.type === 5
   const isConsume = log.type === 2
-  const isQuotaChange = log.type === 1 || log.type === 6
   const other = parseOther(log.other)
   const cache = getCacheTokens(other)
   const frt = other.frt
   const hasTokens = log.prompt_tokens || log.completion_tokens
   const hasCache = cache.read > 0 || cache.write > 0
-  const quotaText = log.quota
-    ? `${log.quota < 0 ? '+' : '-'}${quotaToDisplay(Math.abs(log.quota)).text}`
-    : null
-  const quotaCls = log.quota > 0 ? 'text-blue-600' : 'text-emerald-600'
+  const quotaText = formatQuotaDelta(log.quota)
+  const quotaCls = quotaDeltaClass(log.quota)
 
   return (
     <div
@@ -300,11 +535,21 @@ function LogCard({ log, onClick }) {
       </div>
 
       {/* Non-consume content */}
-      {!isConsume && !isQuotaChange && log.content && (
-        <div className="mt-2 text-[11px] text-clay-faint line-clamp-2 break-all">{log.content}</div>
-      )}
-      {isQuotaChange && log.content && (
-        <div className="mt-1 text-[11px] text-clay-faint truncate">{log.content}</div>
+      {!isConsume && (
+        <div className="mt-3 rounded-clay bg-clay-bg shadow-clay-inset px-3 py-2">
+          <div className="text-[10px] font-black text-clay-faint mb-1">详细信息</div>
+          <div className="text-xs font-semibold text-clay-ink/80 whitespace-pre-wrap break-all leading-relaxed">
+            {log.content || '-'}
+          </div>
+          {(log.model_name || log.token_name || log.group || log.request_id) && (
+            <div className="mt-2 flex flex-wrap gap-1.5 text-[10px] text-clay-faint">
+              {log.model_name && <span className="font-mono">模型: {log.model_name}</span>}
+              {log.token_name && <span>令牌: {log.token_name}</span>}
+              {log.group && <span>分组: {log.group}</span>}
+              {log.request_id && <span className="font-mono break-all">ID: {log.request_id}</span>}
+            </div>
+          )}
+        </div>
       )}
     </div>
   )
@@ -314,11 +559,42 @@ function LogRow({ log, onClick }) {
   const meta = TYPE_META[log.type] ?? TYPE_META[4]
   const TypeIcon = meta.icon
   const isError = log.type === 5
+  const isConsume = log.type === 2
   const other = parseOther(log.other)
   const cache = getCacheTokens(other)
   const frt = other.frt
   const hasTokens = log.prompt_tokens || log.completion_tokens
   const hasCache = cache.read > 0 || cache.write > 0
+
+  if (!isConsume) {
+    return (
+      <tr
+        className={`border-b border-black/5 last:border-0 hover:bg-white/40 transition-colors cursor-pointer ${isError ? 'bg-red-50/30' : ''}`}
+        onClick={onClick}
+      >
+        <td className="px-4 py-3 align-top">
+          <div className="flex items-center gap-2">
+            <div className={`w-7 h-7 rounded-full ${meta.bg} flex items-center justify-center shrink-0
+              shadow-[2px_2px_4px_rgba(0,0,0,0.08),-1px_-1px_3px_rgba(255,255,255,0.6),inset_1px_1px_2px_rgba(255,255,255,0.4)]`}>
+              <TypeIcon className={`w-3.5 h-3.5 ${meta.text}`} strokeWidth={2.5} />
+            </div>
+            <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-clay-pill ${meta.bg} ${meta.text}`}>
+              {meta.label}
+            </span>
+          </div>
+        </td>
+        <td className="px-4 py-3" colSpan={5}>
+          <LogSummary log={log} />
+        </td>
+        <td className="px-4 py-3 text-right align-top">
+          <span className="text-[11px] text-clay-faint inline-flex items-center gap-1 font-mono whitespace-nowrap">
+            <Clock className="w-3 h-3 shrink-0" />
+            {fmtTs(log.created_at)}
+          </span>
+        </td>
+      </tr>
+    )
+  }
 
   return (
     <tr
@@ -445,36 +721,40 @@ export default function LogList() {
   const [loading, setLoading] = useState(false)
   const [showFilter, setShowFilter] = useState(false)
   const [detailLog, setDetailLog] = useState(null)
+  const requestSeq = useRef(0)
 
-  const [filter, setFilter] = useState({
-    type: '',
-    model_name: '',
-    token_name: '',
-    start_timestamp: todayStart(),
-    end_timestamp: nowLocal(),
-  })
+  const [filter, setFilter] = useState(() => defaultLogFilter())
+  const [appliedFilter, setAppliedFilter] = useState(() => defaultLogFilter())
 
   const pageSize = 20
 
   const load = useCallback(async (p) => {
+    const seq = requestSeq.current + 1
+    requestSeq.current = seq
     setLoading(true)
     try {
       const params = { p, size: pageSize }
-      if (filter.type) params.type = filter.type
-      if (filter.model_name) params.model_name = filter.model_name
-      if (filter.token_name) params.token_name = filter.token_name
-      if (filter.start_timestamp) params.start_timestamp = Math.floor(new Date(filter.start_timestamp).getTime() / 1000)
-      if (filter.end_timestamp) params.end_timestamp = Math.floor(new Date(filter.end_timestamp).getTime() / 1000)
+      if (appliedFilter.type) params.type = appliedFilter.type
+      if (appliedFilter.model_name) params.model_name = appliedFilter.model_name
+      if (appliedFilter.token_name) params.token_name = appliedFilter.token_name
+      if (appliedFilter.start_timestamp) params.start_timestamp = Math.floor(new Date(appliedFilter.start_timestamp).getTime() / 1000)
+      if (appliedFilter.end_timestamp) params.end_timestamp = Math.floor(new Date(appliedFilter.end_timestamp).getTime() / 1000)
       const res = await getUserLogs(params)
       const data = res?.data
-      setLogs(data?.items ?? data ?? [])
-      setTotal(data?.total ?? 0)
+      if (seq === requestSeq.current) {
+        setLogs(data?.items ?? data ?? [])
+        setTotal(data?.total ?? 0)
+      }
     } catch (e) {
-      toast(e?.response?.data?.message ?? '加载失败', 'error')
+      if (seq === requestSeq.current) {
+        toast(e?.response?.data?.message ?? '加载失败', 'error')
+      }
     } finally {
-      setLoading(false)
+      if (seq === requestSeq.current) {
+        setLoading(false)
+      }
     }
-  }, [filter, toast])
+  }, [appliedFilter, toast])
 
   useEffect(() => { load(page) }, [page, load])
 
@@ -496,28 +776,35 @@ export default function LogList() {
   useEffect(() => { loadTodayStat() }, [loadTodayStat])
 
   const onApply = () => {
+    setAppliedFilter({ ...filter })
     setPage(1)
-    load(1)
     setShowFilter(false)
   }
 
   const onReset = () => {
-    setFilter({ type: '', model_name: '', token_name: '', start_timestamp: todayStart(), end_timestamp: nowLocal() })
+    const next = defaultLogFilter()
+    setFilter(next)
+    setAppliedFilter(next)
     setPage(1)
   }
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize))
 
-  const hasActiveFilter = filter.type || filter.model_name || filter.token_name || filter.start_timestamp || filter.end_timestamp
+  const hasActiveFilter = appliedFilter.type || appliedFilter.model_name || appliedFilter.token_name || appliedFilter.start_timestamp || appliedFilter.end_timestamp
 
   return (
     <ClayConsoleShell
       title="调用日志"
       subtitle="查看 API 调用记录与消费明细"
       actions={
-        <ClayButton variant={hasActiveFilter ? 'secondary' : 'ghost'} onClick={() => setShowFilter((v) => !v)}>
-          <Filter className="w-4 h-4" /> 筛选{hasActiveFilter ? '（已设置）' : ''}
-        </ClayButton>
+        <div className="flex items-center gap-2">
+          <ClayButton variant="ghost" onClick={() => load(page)} disabled={loading}>
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} /> 刷新
+          </ClayButton>
+          <ClayButton variant={hasActiveFilter ? 'secondary' : 'ghost'} onClick={() => setShowFilter((v) => !v)}>
+            <Filter className="w-4 h-4" /> 筛选{hasActiveFilter ? '（已设置）' : ''}
+          </ClayButton>
+        </div>
       }
     >
       {/* Today consumption */}
@@ -544,41 +831,39 @@ export default function LogList() {
 
       {/* Filter Panel */}
       {showFilter && (
-        <ClayCard className="mb-6 !p-6">
+        <ClayCard className="mb-6 !p-6 !overflow-visible">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="mb-5">
               <label className="block ml-4 mb-2 font-bold text-sm text-clay-ink">类型</label>
               <ClaySelect
                 value={filter.type}
-                onChange={(v) => setFilter({ ...filter, type: v })}
+                onChange={(v) => setFilter((current) => ({ ...current, type: v }))}
                 options={TYPE_OPTIONS}
               />
             </div>
             <ClayField
               label="模型"
               value={filter.model_name}
-              onChange={(e) => setFilter({ ...filter, model_name: e.target.value })}
+              onChange={(e) => setFilter((current) => ({ ...current, model_name: e.target.value }))}
               placeholder="如 gpt-4o"
             />
             <ClayField
               label="令牌名称"
               value={filter.token_name}
-              onChange={(e) => setFilter({ ...filter, token_name: e.target.value })}
+              onChange={(e) => setFilter((current) => ({ ...current, token_name: e.target.value }))}
               placeholder="令牌名称"
             />
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
-            <ClayField
+            <ClayDateTimeField
               label="开始时间"
-              type="datetime-local"
               value={filter.start_timestamp}
-              onChange={(e) => setFilter({ ...filter, start_timestamp: e.target.value })}
+              onChange={(value) => setFilter((current) => ({ ...current, start_timestamp: value }))}
             />
-            <ClayField
+            <ClayDateTimeField
               label="结束时间"
-              type="datetime-local"
               value={filter.end_timestamp}
-              onChange={(e) => setFilter({ ...filter, end_timestamp: e.target.value })}
+              onChange={(value) => setFilter((current) => ({ ...current, end_timestamp: value }))}
             />
           </div>
           <div className="flex gap-3 mt-5">
@@ -619,7 +904,7 @@ export default function LogList() {
             <thead className="bg-clay-bg/50">
               <tr className="border-b border-black/5 text-left text-[11px] uppercase tracking-wider text-clay-faint">
                 <th className="px-4 py-3 font-extrabold">类型</th>
-                <th className="px-4 py-3 font-extrabold">模型</th>
+                <th className="px-4 py-3 font-extrabold">详情 / 模型</th>
                 <th className="px-4 py-3 font-extrabold">令牌</th>
                 <th className="px-4 py-3 font-extrabold text-right">Token 用量</th>
                 <th className="px-4 py-3 font-extrabold text-right">额度</th>

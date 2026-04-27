@@ -34,9 +34,9 @@
 ## 用户业务约束
 
 - 注册方式：仅 QQ 邮箱
-- 充值方式：仅兑换码（TopUp 页已去掉在线支付板块）
+- 充值方式：兑换码 + ePay 在线充值（支付宝/微信支付）；TopUp 页已移除“购买兑换码/购买额度”外链卡片
 - 语言：仅中文，不需要 i18n
-- 不需要：2FA、Passkey、Turnstile、OAuth 绑定、在线支付
+- 不需要：2FA、Passkey、Turnstile、OAuth 绑定
 
 ## 路由策略
 
@@ -76,8 +76,8 @@ StatusContext（含 persistStatusFields 调用）/ UserContext / ToastContext
 ### 访客页（13 路由）
 Home / Login / Register / ResetRequest / ResetConfirm / OAuthCallback / Setup / About / UserAgreement / PrivacyPolicy / Pricing / **ModelStatus** / Forbidden / NotFound
 
-### 登录后页（7 路由）
-Dashboard / TokenManage / LogList / TopUp / Checkin / PersonalSetting / Chat2Link
+### 登录后页
+Dashboard / TokenManage / LogList / TopUp / Checkin / PersonalSetting / Chat2Link / ApiUrls / PaymentReturn(/console/log)
 
 ### 公共导航（ClayNav）
 首页 / 定价 / **状态** / 关于
@@ -96,6 +96,7 @@ api.js / auth.js / tokens.js / logs.js / checkin.js / user.js / dashboard.js / t
 - 签到 API 路径：`/api/user/checkin`（selfRoute 前缀 `/api/user/`）
 - 签到刷新逻辑：服务器本地 `time.Now().Format("2006-01-02")` 判断，0 点刷新
 - 签到倒计时：CountdownTimer 组件，今日已签到后显示到午夜 HH:MM:SS（浏览器本地时间）
+- 日志页：筛选表单使用 draft/applied 双状态，避免输入筛选条件时自动请求；时间筛选使用自绘 ClayDateTimeField，非消费日志在桌面/移动端直接显示详细信息
 - 定价公式：按量 `model_ratio * 2 * groupRatio`（USD/1M tokens），按次 `model_price * groupRatio`（USD/次）
 - 定价 API 响应结构：`res.data` = 模型数组，`res.vendors` / `res.group_ratio` / `res.usable_group` 是 response 同级字段
 - 模型状态 API：`GET /api/model-status?window=1h|6h|12h|24h`（公开，无需认证）

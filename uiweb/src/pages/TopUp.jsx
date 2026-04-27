@@ -152,8 +152,11 @@ export default function TopUp() {
     fetchAmount(preset.value)
   }
 
+  const [customInput, setCustomInput] = useState('')
+
   const onCustomChange = (e) => {
     const v = e.target.value
+    setCustomInput(v)
     setCustomMode(true)
     setSelectedPreset(null)
     if (v === '') {
@@ -346,7 +349,7 @@ export default function TopUp() {
               label="自定义数量"
               type="number"
               min={minTopUp}
-              value={customMode ? topUpCount || '' : ''}
+              value={customInput}
               onChange={onCustomChange}
               onBlur={onCustomBlur}
               placeholder={`输入充值额度,最低 ${minTopUp}`}

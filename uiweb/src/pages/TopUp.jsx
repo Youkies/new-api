@@ -149,12 +149,25 @@ export default function TopUp() {
       return
     }
     const n = Math.max(0, Math.floor(Number(v)))
-    setTopUpCount(n)
+    setTopUpCount(Number.isFinite(n) ? n : 0)
   }
 
   const onCustomBlur = () => {
     if (customMode && topUpCount > 0) fetchAmount(topUpCount)
   }
+
+  useEffect(() => {
+    if (!customMode) return
+    if (!topUpCount || topUpCount <= 0) {
+      setAmount(0)
+      return
+    }
+    const handle = setTimeout(() => {
+      fetchAmount(topUpCount)
+    }, 350)
+    return () => clearTimeout(handle)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [topUpCount, customMode])
 
   const openConfirm = () => {
     setPayMsg(null)

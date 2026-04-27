@@ -23,25 +23,27 @@ import { self } from '../services/user.js'
 import { redeem, topupInfo, quoteAmount, requestPay } from '../services/topup.js'
 import { quotaToDisplay } from '../utils/quota.js'
 
-function PayMethodIcon({ type, className = 'w-5 h-5' }) {
+function PayMethodIcon({ type, className = 'w-7 h-7' }) {
   if (type === 'alipay') {
     return (
-      <svg viewBox="0 0 24 24" className={className} aria-hidden="true">
-        <path
-          fill="#1677FF"
-          d="M11.293 0C5.057 0 0 5.057 0 11.293s5.057 11.293 11.293 11.293c2.792 0 5.343-1.012 7.31-2.689-3.299-1.61-7.32-3.534-10.378-4.991a17.85 17.85 0 0 1-3.62-2.231l.003-.001c1.057.317 4.92 1.474 9.86 3.157 1.31-1.572 2.355-3.36 3.024-5.292h-9.06v-.85h4.683V8.103H7.394V7.18h5.722V4.91s0-.39.394-.39h2.378v2.66h5.652v.923h-5.652v1.586h4.616s-.422 2.262-1.673 4.687c2.677.97 4.18 1.677 4.18 1.677.246-1.046.38-2.137.38-3.26C22.586 5.057 17.529 0 11.293 0z"
-        />
-      </svg>
+      <span
+        className={`${className} inline-flex items-center justify-center rounded-full text-white font-black text-xs shadow-clay`}
+        style={{ background: '#1677FF' }}
+        aria-label="支付宝"
+      >
+        支
+      </span>
     )
   }
   if (type === 'wxpay') {
     return (
-      <svg viewBox="0 0 24 24" className={className} aria-hidden="true">
-        <path
-          fill="#07C160"
-          d="M8.691.219C3.891.219 0 3.48 0 7.5c0 2.32 1.297 4.39 3.328 5.74l-.832 2.5 2.91-1.46c.78.16 1.583.27 2.41.27.218 0 .43-.02.64-.04a6.85 6.85 0 0 1-.297-2.07c0-3.91 3.39-7.07 7.59-7.07.18 0 .36.01.54.02C14.66 2.06 11.97.22 8.69.22zM5.78 3.74c.553 0 1 .448 1 1s-.447 1-1 1-1-.448-1-1 .447-1 1-1zm5.83 0c.553 0 1 .448 1 1s-.447 1-1 1-1-.448-1-1 .447-1 1-1zm4.32 5.04c-3.83 0-6.94 2.7-6.94 6.04 0 1.92 1.05 3.62 2.69 4.74l-.67 2.05 2.34-1.18c.84.16 1.53.32 2.32.32 3.99 0 7.41-2.7 7.41-6.07 0-3.34-3.42-5.9-7.41-5.9zm-2.27 2.95c.46 0 .83.37.83.83s-.37.83-.83.83-.83-.37-.83-.83.37-.83.83-.83zm4.65 0c.46 0 .83.37.83.83s-.37.83-.83.83-.83-.37-.83-.83.37-.83.83-.83z"
-        />
-      </svg>
+      <span
+        className={`${className} inline-flex items-center justify-center rounded-full text-white font-black text-xs shadow-clay`}
+        style={{ background: '#07C160' }}
+        aria-label="微信支付"
+      >
+        微
+      </span>
     )
   }
   return <CreditCard className={className} />
@@ -258,9 +260,9 @@ export default function TopUp() {
 
   return (
     <ClayConsoleShell title="充值中心" subtitle="兑换码或在线支付,任你选择">
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 lg:items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 lg:items-stretch">
         {/* 左上:余额 + 用量 */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+        <div className="grid grid-cols-2 gap-5">
           <ClayStat icon={Wallet} label="当前余额" value={balance.text} tone="blue" />
           <ClayStat icon={Sparkles} label="累计用量" value={used.text} tone="pink" />
         </div>
@@ -379,7 +381,7 @@ export default function TopUp() {
         )}
 
         {/* 左下:兑换码 */}
-        <ClayCard className="flex flex-col">
+        <ClayCard className="flex flex-col h-full">
           <div className="flex items-center gap-2 mb-4">
             <Gift className="w-5 h-5 text-clay-pink-300" />
             <h2 className="text-xl font-black">兑换码充值</h2>

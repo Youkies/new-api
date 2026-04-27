@@ -27,6 +27,7 @@ import ProtectedRoute from './components/layout/ProtectedRoute.jsx'
 import AdminRoute from './components/layout/AdminRoute.jsx'
 import AdminHome from './pages/admin/AdminHome.jsx'
 import AdminAnnouncements from './pages/admin/AdminAnnouncements.jsx'
+import AdminRefundAppeals from './pages/admin/AdminRefundAppeals.jsx'
 
 export default function App() {
   return (
@@ -135,6 +136,16 @@ export default function App() {
           <ProtectedRoute>
             <AdminRoute>
               <AdminAnnouncements />
+            </AdminRoute>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/refund-appeals"
+        element={
+          <ProtectedRoute>
+            <AdminRoute>
+              <AdminRefundAppeals />
             </AdminRoute>
           </ProtectedRoute>
         }

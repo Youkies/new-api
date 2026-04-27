@@ -32,9 +32,16 @@ export default function AdminHome() {
             <ShieldCheck className="w-5 h-5" strokeWidth={2.5} />
           </div>
           <h2 className="text-xl font-black mb-2">申诉审核</h2>
-          <p className="text-sm text-clay-faint font-semibold leading-relaxed">
-            预留给空回补偿、自助申诉和人工审核流程，后续按真实使用场景补齐。
+          <p className="text-sm text-clay-faint font-semibold leading-relaxed mb-5">
+            审核用户提交的疑似空回补偿，人工确认后增加余额并写入管理日志。
           </p>
+          <Link
+            to="/admin/refund-appeals"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-clay-pill bg-clay-bg shadow-clay text-sm font-extrabold text-clay-ink"
+          >
+            审核申诉
+            <ArrowRight className="w-4 h-4" />
+          </Link>
         </ClayCard>
 
         <ClayCard className="!p-6">

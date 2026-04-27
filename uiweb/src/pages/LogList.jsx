@@ -3,7 +3,7 @@ import {
   Search, ChevronLeft, ChevronRight, Filter,
   Clock, CalendarDays,
   Activity, AlertCircle, RefreshCw, CreditCard, Settings, Terminal,
-  RotateCcw, FileText, TrendingUp,
+  RotateCcw, FileText, TrendingUp, ShieldCheck,
 } from 'lucide-react'
 import ClayCard from '../components/clay/ClayCard.jsx'
 import ClayButton from '../components/clay/ClayButton.jsx'
@@ -14,6 +14,7 @@ import ClayConsoleShell from '../components/layout/ClayConsoleShell.jsx'
 import { useToast } from '../context/ToastContext.jsx'
 import { quotaToDisplay } from '../utils/quota.js'
 import { getUserLogs, getUserLogsStat } from '../services/logs.js'
+import { createRefundAppeal, getRefundCandidates } from '../services/refundAppeals.js'
 
 const mobileQuery = typeof window !== 'undefined' ? window.matchMedia('(max-width: 767px)') : null
 function useIsMobile() {
@@ -717,6 +718,11 @@ export default function LogList() {
   const [total, setTotal] = useState(0)
   const [todayQuota, setTodayQuota] = useState(0)
   const [todayLoading, setTodayLoading] = useState(true)
+  const [refundSummary, setRefundSummary] = useState(null)
+  const [refundLoading, setRefundLoading] = useState(true)
+  const [refundSubmitting, setRefundSubmitting] = useState(false)
+  const [refundModalOpen, setRefundModalOpen] = useState(false)
+  const [refundReason, setRefundReason] = useState('')
   const [page, setPage] = useState(1)
   const [loading, setLoading] = useState(false)
   const [showFilter, setShowFilter] = useState(false)
@@ -775,6 +781,40 @@ export default function LogList() {
 
   useEffect(() => { loadTodayStat() }, [loadTodayStat])
 
+  const loadRefundSummary = useCallback(async () => {
+    setRefundLoading(true)
+    try {
+      const res = await getRefundCandidates()
+      if (res?.success !== false) setRefundSummary(res?.data ?? null)
+    } catch (_) {
+      setRefundSummary(null)
+    } finally {
+      setRefundLoading(false)
+    }
+  }, [])
+
+  useEffect(() => { loadRefundSummary() }, [loadRefundSummary])
+
+  const submitRefundAppeal = async () => {
+    setRefundSubmitting(true)
+    try {
+      const res = await createRefundAppeal({ reason: refundReason })
+      if (res?.success === false) {
+        toast(res.message || '提交失败', 'error')
+        return
+      }
+      const appeal = res?.data?.appeal
+      toast(`已提交空回补偿审核${appeal?.total_items ? `，共 ${appeal.total_items} 条` : ''}`, 'success')
+      setRefundModalOpen(false)
+      setRefundReason('')
+      await loadRefundSummary()
+    } catch (e) {
+      toast(e?.response?.data?.message ?? e.message ?? '提交失败', 'error')
+    } finally {
+      setRefundSubmitting(false)
+    }
+  }
+
   const onApply = () => {
     setAppliedFilter({ ...filter })
     setPage(1)
@@ -809,7 +849,7 @@ export default function LogList() {
     >
       {/* Today consumption */}
       <ClayCard className="mb-6 !p-5 bg-gradient-to-br from-clay-pink-50 to-clay-pink-100">
-        <div className="flex items-center gap-4">
+        <div className="flex flex-col md:flex-row md:items-center gap-4">
           <div className="w-12 h-12 rounded-full bg-clay-pink-200 text-white shadow-clay flex items-center justify-center shrink-0">
             <TrendingUp className="w-5 h-5" strokeWidth={2.5} />
           </div>
@@ -823,9 +863,27 @@ export default function LogList() {
               )}
             </div>
           </div>
-          <ClayButton variant="ghost" onClick={loadTodayStat} disabled={todayLoading} aria-label="刷新">
-            <RefreshCw className={`w-4 h-4 ${todayLoading ? 'animate-spin' : ''}`} />
-          </ClayButton>
+          <div className="flex flex-wrap items-center gap-2 md:ml-auto">
+            {!refundLoading && refundSummary?.available && (
+              <ClayButton
+                variant="secondary"
+                onClick={() => setRefundModalOpen(true)}
+                className="!px-5 !py-2.5 !text-sm"
+              >
+                <ShieldCheck className="w-4 h-4" />
+                自助补空回
+              </ClayButton>
+            )}
+            {!refundLoading && !refundSummary?.available && refundSummary?.pending_count > 0 && (
+              <span className="inline-flex items-center gap-1.5 px-4 py-2 rounded-clay-pill bg-white/60 shadow-clay-sm text-xs font-black text-clay-faint">
+                <ShieldCheck className="w-3.5 h-3.5" />
+                空回补偿审核中
+              </span>
+            )}
+            <ClayButton variant="ghost" onClick={loadTodayStat} disabled={todayLoading} aria-label="刷新">
+              <RefreshCw className={`w-4 h-4 ${todayLoading ? 'animate-spin' : ''}`} />
+            </ClayButton>
+          </div>
         </div>
       </ClayCard>
 
@@ -958,6 +1016,48 @@ export default function LogList() {
       {/* Detail Modal */}
       <ClayModal open={!!detailLog} onClose={() => setDetailLog(null)} title="请求详情" size="lg">
         {detailLog && <LogDetailContent log={detailLog} />}
+      </ClayModal>
+
+      <ClayModal
+        open={refundModalOpen}
+        onClose={() => setRefundModalOpen(false)}
+        title="提交空回补偿审核"
+        size="lg"
+        footer={
+          <>
+            <ClayButton variant="ghost" onClick={() => setRefundModalOpen(false)}>
+              取消
+            </ClayButton>
+            <ClayButton variant="secondary" onClick={submitRefundAppeal} disabled={refundSubmitting}>
+              <ShieldCheck className="w-4 h-4" />
+              {refundSubmitting ? '提交中' : '提交审核'}
+            </ClayButton>
+          </>
+        }
+      >
+        <div className="space-y-5">
+          <div className="rounded-clay bg-clay-bg shadow-clay-inset p-5">
+            <div className="text-sm font-bold text-clay-faint mb-1">检测结果</div>
+            <div className="text-2xl font-black text-clay-ink">
+              {refundSummary?.count ?? 0} 条疑似空回
+            </div>
+            <div className="text-sm font-semibold text-clay-faint mt-2">
+              预计补偿 {quotaToDisplay(refundSummary?.refund_quota || 0).text}，提交后由管理员人工审核，通过后写入管理日志并增加余额。
+            </div>
+          </div>
+          <label className="block">
+            <span className="block text-sm font-extrabold text-clay-ink mb-2">补充说明（可选）</span>
+            <textarea
+              value={refundReason}
+              onChange={(e) => setRefundReason(e.target.value)}
+              className="clay-input min-h-[120px] resize-y leading-7"
+              placeholder="例如：Gemini 多次空回但仍扣费"
+            />
+          </label>
+          <div className="text-xs font-semibold text-clay-faint leading-relaxed">
+            系统只会提交最近 48 小时内尚未处理的疑似空回记录，已提交或已审核的日志会自动排除。
+          </div>
+        </div>
       </ClayModal>
     </ClayConsoleShell>
   )

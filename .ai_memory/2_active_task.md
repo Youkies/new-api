@@ -2,6 +2,19 @@
 
 ## 状态：新 UI 管理端第一阶段（公告系统）第一版已实现并完成本地验证
 
+## 当前新增任务：空回补偿申诉（2026-04-28）
+
+### 本轮实现进度
+- 后端：新增 `model/ui_refund_appeal.go`、`controller/ui_refund_appeal.go`，注册 AutoMigrate；新增用户侧候选检测/提交/自查列表 API 与管理侧列表/详情/通过/驳回 API
+- 用户侧：`LogList` 静默检测最近 48 小时疑似空回，仅在有候选时显示“自助补空回”，提交后进入人工审核
+- 管理侧：`ClayAdminShell` 新增“申诉”导航；新增 `/admin/refund-appeals` 审核页，支持查看明细、通过补偿、驳回说明
+- 补偿方式：审核通过后事务内增加 `users.quota`，并写 `LogTypeManage` 管理日志，经典控制台无需改 UI
+- 验证：`uiweb npm run build`、Go build、临时 SQLite 主节点启动验证通过；未登录访问用户/管理申诉接口返回 401
+
+### 生产前置
+- 生产 `NODE_TYPE=slave` 需要手动创建 `ui_refund_appeals`、`ui_refund_appeal_items`
+- 建议设置 `UI_REFUND_APPEAL_START_AT`，用于排除上线前已经手动补偿过的历史空回记录
+
 ## 新规划（2026-04-28）
 
 ### 新 UI 管理端第一阶段：公告系统

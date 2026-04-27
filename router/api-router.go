@@ -37,6 +37,9 @@ func SetApiRouter(router *gin.Engine) {
 			uiRoute.GET("/announcements", controller.GetPublicUIAnnouncements)
 			uiRoute.GET("/announcements/active", middleware.TryUserAuth(), controller.GetActiveUIAnnouncements)
 			uiRoute.POST("/announcement_acks/:id", middleware.UserAuth(), controller.AckUIAnnouncement)
+			uiRoute.GET("/refund-appeals/candidates", middleware.UserAuth(), controller.GetUIRefundCandidates)
+			uiRoute.GET("/refund-appeals/self", middleware.UserAuth(), controller.GetUserUIRefundAppeals)
+			uiRoute.POST("/refund-appeals", middleware.UserAuth(), middleware.CriticalRateLimit(), controller.CreateUIRefundAppeal)
 
 			uiAdminRoute := uiRoute.Group("/admin")
 			uiAdminRoute.Use(middleware.AdminAuth())
@@ -47,6 +50,10 @@ func SetApiRouter(router *gin.Engine) {
 				uiAdminRoute.PUT("/announcements/:id", controller.AdminUpdateUIAnnouncement)
 				uiAdminRoute.PATCH("/announcements/:id", controller.AdminPatchUIAnnouncement)
 				uiAdminRoute.DELETE("/announcements/:id", controller.AdminDeleteUIAnnouncement)
+				uiAdminRoute.GET("/refund-appeals", controller.AdminListUIRefundAppeals)
+				uiAdminRoute.GET("/refund-appeals/:id", controller.AdminGetUIRefundAppeal)
+				uiAdminRoute.POST("/refund-appeals/:id/approve", controller.AdminApproveUIRefundAppeal)
+				uiAdminRoute.POST("/refund-appeals/:id/reject", controller.AdminRejectUIRefundAppeal)
 			}
 		}
 		apiRouter.GET("/verification", middleware.EmailVerificationRateLimit(), middleware.TurnstileCheck(), controller.SendEmailVerification)

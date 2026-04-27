@@ -60,6 +60,21 @@
 - 管理公告接口：`GET/POST /api/ui/admin/announcements`、`GET/PUT/PATCH/DELETE /api/ui/admin/announcements/:id`
 - 前端 `AnnouncementProvider` 挂在 `main.jsx`，进入新 UI 后检查强制公告；登录用户写服务端 ack，未登录/本地兜底写 localStorage
 
+## 空回补偿申诉方向
+
+- 第一版定位为“疑似空回批量提交 + 管理员人工审核”，不做自动补偿，避免误判和额度漏洞
+- 用户侧入口只放在新 UI 日志页：静默检测最近 48 小时疑似空回；仅在存在候选记录或待审核申诉时显示入口/状态，不主动弹窗提醒
+- 检测范围：`max(now - 48h, UI_REFUND_APPEAL_START_AT)` 到当前时间；`UI_REFUND_APPEAL_START_AT` 用于排除历史手动补偿过的记录
+- 疑似空回第一版判定：消费日志、扣费 `quota > 0`、输出 `completion_tokens = 0`、在时间窗口内，且该日志未出现在申诉明细表中
+- 重复提交排除：`ui_refund_appeal_items.log_id` 唯一，用户再次提交时自动排除已提交/已处理日志
+- 审核通过后补偿方式：后端事务内 `users.quota += refund_quota`，申诉和明细置为 `approved`，随后写 `LogTypeManage` 管理日志，经典控制台会自然显示为“管理”类型
+- 审核驳回：申诉和明细置为 `rejected`，不改余额；新 UI 管理端保留驳回原因
+
+### 空回补偿新表
+
+- `ui_refund_appeals`：申诉批次表，记录用户、状态、总条数、补偿额度、扫描窗口、用户说明、审核人/时间/备注
+- `ui_refund_appeal_items`：申诉明细表，记录日志 ID、模型、令牌、Request ID、扣费、token、耗时、内容快照；`log_id` 唯一防止重复补偿
+
 ### 公告系统新表
 
 - `ui_announcements`：新 UI 公告主体表，字段覆盖标题、摘要、内容、类型、作用范围、强制弹窗、置顶、启用状态、版本号、优先级、生效/失效时间、创建/更新人和软删除时间

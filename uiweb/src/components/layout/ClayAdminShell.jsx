@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, NavLink, useNavigate } from 'react-router-dom'
-import { Home, LayoutDashboard, LogOut, Megaphone, Menu } from 'lucide-react'
+import { Home, LayoutDashboard, LogOut, Megaphone, Menu, ShieldCheck } from 'lucide-react'
 import ClayAvatar from '../clay/ClayAvatar.jsx'
 import ClayCard from '../clay/ClayCard.jsx'
 import ClayFooter from './ClayFooter.jsx'
@@ -12,6 +12,7 @@ import { getFaviconSrc } from '../../utils/favicon.js'
 const NAV = [
   { to: '/admin', label: '概览', icon: LayoutDashboard },
   { to: '/admin/announcements', label: '公告', icon: Megaphone },
+  { to: '/admin/refund-appeals', label: '申诉', icon: ShieldCheck },
 ]
 
 export default function ClayAdminShell({ title, subtitle, actions, children }) {

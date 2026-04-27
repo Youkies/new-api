@@ -127,10 +127,19 @@ export default function TopUp() {
     setAmountLoading(true)
     try {
       const res = await quoteAmount({ amount: v })
-      if (res?.message === 'success') setAmount(parseFloat(res.data) || 0)
-      else setAmount(0)
-    } catch (_) {
+      if (res?.message === 'success') {
+        setAmount(parseFloat(res.data) || 0)
+        setPayMsg(null)
+      } else {
+        setAmount(0)
+        setPayMsg({ tone: 'error', text: res?.data || res?.message || '获取金额失败' })
+      }
+    } catch (err) {
       setAmount(0)
+      setPayMsg({
+        tone: 'error',
+        text: err?.response?.data?.data || err?.response?.data?.message || err.message || '获取金额失败',
+      })
     } finally {
       setAmountLoading(false)
     }

@@ -47,6 +47,26 @@
 - `/v1/*`, `/api/*` → API 路由不受影响
 - FRONTEND_BASE_URL 在 master 节点被忽略
 
+## 新 UI 管理端方向
+
+- 新 UI 管理端定位为“站点运营后台”，不复刻、不改动原版 new-api 管理设置页，避免后续同步官方更新时产生高冲突
+- 第一阶段优先做公告管理：强制弹窗公告 + 历史公告页
+- 强制公告规则：每条强制公告必须被用户确认一次；用户可勾选“不再显示此公告”并点击“我已知晓”
+- 公告确认应按 `announcement_id + version` 或等效版本号判断，公告内容更新后可重新触发确认
+- 历史公告入口只放公共主页导航/主页子页面，不加入用户控制台导航
+- 预留后续能力：空回申诉审核、页面文案配置、操作审计
+- 第一版已实现：后端 API 前缀 `/api/ui`，公共历史页 `/announcements`，轻量管理端 `/admin` 与 `/admin/announcements`
+- 公共公告接口：`GET /api/ui/announcements`、`GET /api/ui/announcements/active`、`POST /api/ui/announcement_acks/:id`
+- 管理公告接口：`GET/POST /api/ui/admin/announcements`、`GET/PUT/PATCH/DELETE /api/ui/admin/announcements/:id`
+- 前端 `AnnouncementProvider` 挂在 `main.jsx`，进入新 UI 后检查强制公告；登录用户写服务端 ack，未登录/本地兜底写 localStorage
+
+### 公告系统新表
+
+- `ui_announcements`：新 UI 公告主体表，字段覆盖标题、摘要、内容、类型、作用范围、强制弹窗、置顶、启用状态、版本号、优先级、生效/失效时间、创建/更新人和软删除时间
+- `ui_announcement_acks`：登录用户公告确认记录表，按 `announcement_id + announcement_version + user_id` 唯一，记录 `dont_show_again` 与确认时间
+- 生产环境 `NODE_TYPE=slave` 不会 AutoMigrate，新表需要手动执行 MySQL 建表 SQL；执行器可能不支持多语句，需要分两次执行 `CREATE TABLE`
+- 后端模型仍应加入 AutoMigrate，方便非 slave 环境和后续本地测试，但生产以手动建表为准
+
 ## 头像功能
 
 - 存储：User 表 `avatar` LONGBLOB + `avatar_type` VARCHAR(32)

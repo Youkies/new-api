@@ -65,3 +65,7 @@
 - [2026-04-27 05:45] 修复 tooltip 跟随柱条 + 解除 .clay-card overflow-hidden 截断（!overflow-visible）
 - [2026-04-28 02:09] 移除 TopUp 页“购买额度/前往购买”卡片；LogList 改自绘 clay 时间选择器、非消费日志显示详情、移动端详情不截断，并拆分 draft/applied 筛选以减少无效刷新请求
 - [2026-04-28 02:17] 完成本地构建与 slave+远程 MySQL 启动验证：uiweb build、Go build、公开页面/API/静态资源均通过，测试进程已停止
+- [2026-04-28 02:48] 确认新 UI 管理端第一阶段路线：先做公告管理、强制公告确认弹窗和主页历史公告页，不改原版 new-api 管理设置
+- [2026-04-28 02:51] 记录公告系统新表设计：`ui_announcements` / `ui_announcement_acks`，并整理第一阶段开发路线与验证步骤
+- [2026-04-28 02:54] 用户确认生产 MySQL 公告表已手动创建成功，开始实现公告系统与轻量管理端第一阶段
+- [2026-04-28 03:10] 完成公告系统第一版：后端 `/api/ui` 公告 API、强制弹窗队列、历史公告页、轻量管理端公告 CRUD，并通过 uiweb build、Go build、slave+MySQL 只读验证

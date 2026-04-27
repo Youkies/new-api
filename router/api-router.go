@@ -32,6 +32,23 @@ func SetApiRouter(router *gin.Engine) {
 		apiRouter.GET("/home_page_content", controller.GetHomePageContent)
 		apiRouter.GET("/pricing", middleware.TryUserAuth(), controller.GetPricing)
 		apiRouter.GET("/model-status", controller.GetModelStatus)
+		uiRoute := apiRouter.Group("/ui")
+		{
+			uiRoute.GET("/announcements", controller.GetPublicUIAnnouncements)
+			uiRoute.GET("/announcements/active", middleware.TryUserAuth(), controller.GetActiveUIAnnouncements)
+			uiRoute.POST("/announcement_acks/:id", middleware.UserAuth(), controller.AckUIAnnouncement)
+
+			uiAdminRoute := uiRoute.Group("/admin")
+			uiAdminRoute.Use(middleware.AdminAuth())
+			{
+				uiAdminRoute.GET("/announcements", controller.AdminListUIAnnouncements)
+				uiAdminRoute.POST("/announcements", controller.AdminCreateUIAnnouncement)
+				uiAdminRoute.GET("/announcements/:id", controller.AdminGetUIAnnouncement)
+				uiAdminRoute.PUT("/announcements/:id", controller.AdminUpdateUIAnnouncement)
+				uiAdminRoute.PATCH("/announcements/:id", controller.AdminPatchUIAnnouncement)
+				uiAdminRoute.DELETE("/announcements/:id", controller.AdminDeleteUIAnnouncement)
+			}
+		}
 		apiRouter.GET("/verification", middleware.EmailVerificationRateLimit(), middleware.TurnstileCheck(), controller.SendEmailVerification)
 		apiRouter.GET("/reset_password", middleware.CriticalRateLimit(), middleware.TurnstileCheck(), controller.SendPasswordResetEmail)
 		apiRouter.POST("/user/reset", middleware.CriticalRateLimit(), controller.ResetPassword)

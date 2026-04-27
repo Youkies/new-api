@@ -1,6 +1,31 @@
 # 当前任务
 
-## 状态：充值页购买卡片移除 + 日志页体验修复完成，准备 commit/push + 构建镜像
+## 状态：新 UI 管理端第一阶段（公告系统）第一版已实现并完成本地验证
+
+## 新规划（2026-04-28）
+
+### 新 UI 管理端第一阶段：公告系统
+- 目标：做轻量“站点运营后台”，不动原版 new-api 管理设置页
+- 首个模块：公告管理 + 强制公告弹窗 + 主页历史公告页
+- 强制公告规则：每条公告按 ID/version 必须确认一次；弹窗按钮为“不再显示此公告”复选框 + “我已知晓”
+- 历史公告入口只在公共主页/公共导航，不放进用户控制台导航
+- 后端新增独立表设计：`ui_announcements`、`ui_announcement_acks`；生产 `NODE_TYPE=slave` 需要手动建表，用户已手动执行建表且无报错
+- 后续模块：空回申诉审核、页面文案配置、操作审计
+
+### 开发计划路线
+1. 后端基础：新增公告模型、迁移注册、公开公告接口、管理员公告 CRUD 接口
+2. 权限边界：复用现有登录态与管理员权限，新增 `AdminRoute` / 管理端入口可见性判断
+3. 前端用户侧：新增 `AnnouncementProvider`，进入新 UI 时检查强制公告；未登录用 localStorage，登录用户走服务端 ack；弹窗只按每条公告版本确认一次
+4. 历史公告页：新增 `/announcements`，接入公共导航，不加入控制台导航
+5. 管理端第一版：新增 `/admin` 骨架与 `/admin/announcements`，支持列表、新建、编辑、启用/停用、置顶、强制弹窗、版本递增
+6. 验证：本地 `uiweb build` + Go build + `NODE_TYPE=slave` 连接 MySQL 启动；检查新表存在、公开接口、管理员接口、弹窗确认逻辑
+7. 后续迭代：空回申诉审核、页面文案配置、管理端操作审计
+
+### 本轮实现进度（2026-04-28）
+- 后端：新增 `model/ui_announcement.go`、`controller/ui_announcement.go`，注册 AutoMigrate；新增公开公告列表、强制公告列表、用户确认 ack、管理员公告 CRUD/PATCH/DELETE API
+- 前端用户侧：新增 `AnnouncementProvider` 强制公告弹窗队列，按 `id + version` 本地/服务端确认；新增 `/announcements` 历史公告页，并只接入公共导航
+- 前端管理侧：新增 `AdminRoute`、`ClayAdminShell`、`/admin`、`/admin/announcements`，支持公告列表、新建、编辑、启用/停用、置顶、删除
+- 验证：`uiweb npm run build`、Go build、`NODE_TYPE=slave` + MySQL 短启动通过；`/api/ui/announcements` 与 `/api/ui/announcements/active` 返回 `success=true`
 
 ## 本次完成（2026-04-28）
 
@@ -61,5 +86,5 @@
 - 修复 tooltip 被 .clay-card 全局 `overflow-hidden` 截断：ModelCard 加 `!overflow-visible`
 
 ## 下一步
-- git commit + push 全部 UI 优化
-- 构建 Docker 镜像并推送 ghcr
+- 需要真实管理员账号进入 `/admin/announcements` 新建一条强制公告，线上验证弹窗确认链路
+- 后续可继续做空回申诉审核、页面文案配置与管理端操作审计

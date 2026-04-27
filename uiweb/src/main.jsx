@@ -5,6 +5,7 @@ import App from './App.jsx'
 import { StatusProvider } from './context/StatusContext.jsx'
 import { UserProvider } from './context/UserContext.jsx'
 import { ToastProvider } from './context/ToastContext.jsx'
+import AnnouncementProvider from './components/announcement/AnnouncementProvider.jsx'
 import './index.css'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
@@ -13,7 +14,9 @@ ReactDOM.createRoot(document.getElementById('root')).render(
       <StatusProvider>
         <UserProvider>
           <ToastProvider>
-            <App />
+            <AnnouncementProvider>
+              <App />
+            </AnnouncementProvider>
           </ToastProvider>
         </UserProvider>
       </StatusProvider>

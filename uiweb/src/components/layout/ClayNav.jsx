@@ -36,6 +36,9 @@ export default function ClayNav() {
         <NavLink to="/status" className={({ isActive }) => `${linkBase} ${isActive ? linkActive : ''}`}>
           状态
         </NavLink>
+        <NavLink to="/announcements" className={({ isActive }) => `${linkBase} ${isActive ? linkActive : ''}`}>
+          公告
+        </NavLink>
         <NavLink to="/about" className={({ isActive }) => `${linkBase} ${isActive ? linkActive : ''}`}>
           关于
         </NavLink>

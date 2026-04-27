@@ -7,6 +7,7 @@ import UserAgreement from './pages/UserAgreement.jsx'
 import PrivacyPolicy from './pages/PrivacyPolicy.jsx'
 import Pricing from './pages/Pricing.jsx'
 import ModelStatus from './pages/ModelStatus.jsx'
+import Announcements from './pages/Announcements.jsx'
 import Login from './pages/Login.jsx'
 import Register from './pages/Register.jsx'
 import ResetRequest from './pages/ResetRequest.jsx'
@@ -23,6 +24,9 @@ import Checkin from './pages/Checkin.jsx'
 import ApiUrls from './pages/ApiUrls.jsx'
 import PaymentReturn from './pages/PaymentReturn.jsx'
 import ProtectedRoute from './components/layout/ProtectedRoute.jsx'
+import AdminRoute from './components/layout/AdminRoute.jsx'
+import AdminHome from './pages/admin/AdminHome.jsx'
+import AdminAnnouncements from './pages/admin/AdminAnnouncements.jsx'
 
 export default function App() {
   return (
@@ -31,6 +35,7 @@ export default function App() {
       <Route path="/about" element={<About />} />
       <Route path="/pricing" element={<Pricing />} />
       <Route path="/status" element={<ModelStatus />} />
+      <Route path="/announcements" element={<Announcements />} />
       <Route path="/user-agreement" element={<UserAgreement />} />
       <Route path="/privacy-policy" element={<PrivacyPolicy />} />
       <Route path="/login" element={<Login />} />
@@ -111,6 +116,26 @@ export default function App() {
         element={
           <ProtectedRoute>
             <ApiUrls />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin"
+        element={
+          <ProtectedRoute>
+            <AdminRoute>
+              <AdminHome />
+            </AdminRoute>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/announcements"
+        element={
+          <ProtectedRoute>
+            <AdminRoute>
+              <AdminAnnouncements />
+            </AdminRoute>
           </ProtectedRoute>
         }
       />

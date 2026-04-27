@@ -353,18 +353,31 @@ export default function TopUp() {
               </div>
             </div>
 
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4 px-4 py-3 rounded-2xl shadow-clay-inset bg-clay-bg">
-              <div className="text-sm text-clay-faint">实付金额</div>
-              <div className="flex items-baseline gap-2">
-                {hasDiscount && (
-                  <span className="text-sm text-clay-faint line-through">
-                    {originalAmount.toFixed(2)} 元
+            <div className="mb-4 px-4 py-3 rounded-2xl shadow-clay-inset bg-clay-bg">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                <div className="text-sm text-clay-faint">实付金额</div>
+                <div className="flex items-baseline gap-2">
+                  {hasDiscount && (
+                    <span className="text-sm text-clay-faint line-through">
+                      {originalAmount.toFixed(2)} 元
+                    </span>
+                  )}
+                  <span className="text-2xl font-black text-rose-500">
+                    {amountLoading ? '…' : `${(amount || 0).toFixed(2)} 元`}
                   </span>
-                )}
-                <span className="text-2xl font-black text-rose-500">
-                  {amountLoading ? '…' : `${(amount || 0).toFixed(2)} 元`}
-                </span>
+                </div>
               </div>
+              {hasDiscount && !amountLoading && (
+                <div className="mt-2 flex items-center justify-end gap-2 text-xs">
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-rose-100 text-rose-500 font-bold">
+                    <Tag className="w-3 h-3" />
+                    {Math.round(currentDiscount * 100)}%
+                  </span>
+                  <span className="text-emerald-600 font-bold">
+                    已节省 {(originalAmount - amount).toFixed(2)} 元
+                  </span>
+                </div>
+              )}
             </div>
 
             <ClayButton
@@ -490,6 +503,12 @@ export default function TopUp() {
               <div className="flex justify-between text-xs">
                 <span className="text-clay-faint">折扣</span>
                 <span className="text-emerald-600">{Math.round(currentDiscount * 100)}%</span>
+              </div>
+              <div className="flex justify-between text-xs">
+                <span className="text-clay-faint">已节省</span>
+                <span className="text-emerald-600 font-bold">
+                  {(originalAmount - amount).toFixed(2)} 元
+                </span>
               </div>
             </>
           )}

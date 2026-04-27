@@ -3,6 +3,7 @@ import { LogIn, UserPlus } from 'lucide-react'
 import ClayButton from '../clay/ClayButton.jsx'
 import ClayCard from '../clay/ClayCard.jsx'
 import ClayAvatar from '../clay/ClayAvatar.jsx'
+import ThemeToggle from './ThemeToggle.jsx'
 import { useUser } from '../../context/UserContext.jsx'
 import { getFaviconSrc } from '../../utils/favicon.js'
 
@@ -45,6 +46,7 @@ export default function ClayNav() {
       </nav>
 
       <div className="flex gap-3 items-center">
+        <ThemeToggle />
         {user ? (
           <Link to="/dashboard" className="flex items-center gap-2">
             <ClayAvatar

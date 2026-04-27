@@ -9,7 +9,17 @@
 - 用户侧：`LogList` 静默检测最近 48 小时疑似空回，仅在有候选时显示“自助补空回”，提交后进入人工审核
 - 管理侧：`ClayAdminShell` 新增“申诉”导航；新增 `/admin/refund-appeals` 审核页，支持查看明细、通过补偿、驳回说明
 - 补偿方式：审核通过后事务内增加 `users.quota`，并写 `LogTypeManage` 管理日志，经典控制台无需改 UI
+- 用户闭环：新 UI 日志页新增“申诉记录/申诉审核中”轻量入口，复用 `/api/ui/refund-appeals/self` 展示最近申诉、状态、补偿额度、审核说明
 - 验证：`uiweb npm run build`、Go build、临时 SQLite 主节点启动验证通过；未登录访问用户/管理申诉接口返回 401
+
+## 当前新增任务：新 UI 深色模式（Moon Clay，2026-04-28）
+
+### 本轮实现进度
+- 主题体系：新增 `ThemeProvider`，支持 `system` / `light` / `dark`，本地存储 `uiweb.theme.mode`，并在 `index.html` 预写入 `html[data-theme]` 避免首屏闪烁
+- UI 入口：公共导航、用户控制台、管理端顶部加入主题切换按钮；个人设置 > 偏好中的“主题”配置改为跟随系统/浅色黏土/Moon Clay 夜间黏土
+- 样式底座：`tailwind.config.js` 的 clay 色板与 `shadow-clay*` 改为 CSS variables；`index.css` 定义浅色/Moon Clay 两套色板、文字、阴影、凹陷输入框和焦点阴影
+- 兼容处理：深色模式下覆盖常见 `bg-white/*`、`border-black/*`、硬编码品牌文字色与灰色类，减少旧页面片段在夜间主题下突兀发白/发黑
+- 验证：`cd uiweb && npm run build` 通过；本地 dev server `http://127.0.0.1:5174/` 返回 200
 
 ### 生产前置
 - 生产 `NODE_TYPE=slave` 需要手动创建 `ui_refund_appeals`、`ui_refund_appeal_items`
@@ -52,6 +62,8 @@
 - 桌面端日志表：消费日志继续展示模型、令牌、Token、额度、耗时；非消费日志改为合并详情行，直接显示 `content` 与模型/令牌/分组/Request ID/额度 chip
 - 移动端日志卡：非消费日志详情不再 `line-clamp` 或 `truncate`，完整显示详细信息
 - 刷新速度优化：拆分“正在编辑的筛选条件”和“已应用筛选条件”，避免每次输入/改时间都自动请求日志；新增列表“刷新”按钮；增加请求序号保护，避免旧请求覆盖新结果
+- 延迟显示修复：新 UI 日志页默认结束时间改为空，避免页面打开后固定旧 `end_timestamp`；顶部刷新与今日卡片刷新统一回到第一页拉最新日志，并同步刷新今日消耗与空回候选
+- 空回申诉闭环：日志页新增用户端申诉记录弹窗，提交成功、手动刷新、打开记录时都会刷新记录状态；无历史记录时不展示入口
 - 验证：`cd uiweb && npm run build` 通过，仅保留 vendor-icons chunk 偏大的既有 Vite 警告
 
 ### 本地 slave + MySQL 构建验证

@@ -16,6 +16,7 @@ import {
 import ClayCard from '../clay/ClayCard.jsx'
 import ClayAvatar from '../clay/ClayAvatar.jsx'
 import ClayFooter from './ClayFooter.jsx'
+import ThemeToggle from './ThemeToggle.jsx'
 import { useUser } from '../../context/UserContext.jsx'
 import { useToast } from '../../context/ToastContext.jsx'
 import { getFaviconSrc } from '../../utils/favicon.js'
@@ -110,57 +111,60 @@ export default function ClayConsoleShell({ title, subtitle, actions, children })
           </nav>
 
           {/* User menu */}
-          <div className="relative" ref={userRef}>
-            <button
-              type="button"
-              onClick={() => setUserOpen((v) => !v)}
-              className="flex items-center gap-2 sm:pr-4 sm:pl-2 sm:py-1.5 rounded-full sm:rounded-clay-pill sm:bg-clay-bg sm:shadow-clay sm:hover:shadow-clay-hover transition-shadow"
-            >
-              <ClayAvatar name={displayName} src={user?.has_avatar ? `/api/user/avatar/${user.id}?t=${user._avatar_t || ''}` : undefined} size={40} />
-              <span className="font-bold text-sm hidden sm:inline">{displayName}</span>
-            </button>
+          <div className="flex items-center gap-3">
+            <ThemeToggle />
+            <div className="relative" ref={userRef}>
+              <button
+                type="button"
+                onClick={() => setUserOpen((v) => !v)}
+                className="flex items-center gap-2 sm:pr-4 sm:pl-2 sm:py-1.5 rounded-full sm:rounded-clay-pill sm:bg-clay-bg sm:shadow-clay sm:hover:shadow-clay-hover transition-shadow"
+              >
+                <ClayAvatar name={displayName} src={user?.has_avatar ? `/api/user/avatar/${user.id}?t=${user._avatar_t || ''}` : undefined} size={40} />
+                <span className="font-bold text-sm hidden sm:inline">{displayName}</span>
+              </button>
 
-            {userOpen && (
-              <div className="absolute right-0 mt-3 w-56 p-2 rounded-clay bg-clay-bg shadow-clay z-50">
-                <div className="px-4 py-3 border-b border-black/5 mb-2">
-                  <div className="font-extrabold truncate">{displayName}</div>
-                  <div className="text-xs text-clay-faint truncate">
-                    {user?.email || `ID ${user?.id ?? '-'}`}
+              {userOpen && (
+                <div className="absolute right-0 mt-3 w-56 p-2 rounded-clay bg-clay-bg shadow-clay z-50">
+                  <div className="px-4 py-3 border-b border-black/5 mb-2">
+                    <div className="font-extrabold truncate">{displayName}</div>
+                    <div className="text-xs text-clay-faint truncate">
+                      {user?.email || `ID ${user?.id ?? '-'}`}
+                    </div>
                   </div>
+                  {LEGACY.map((l) => {
+                    const Icon = l.icon
+                    return (
+                      <a
+                        key={l.href}
+                        href={l.href}
+                        className="flex items-center justify-between gap-2 px-4 py-2.5 rounded-clay-sm text-sm font-bold hover:bg-white/40"
+                      >
+                        <span className="flex items-center gap-2">
+                          <Icon className="w-4 h-4" />
+                          {l.label}
+                        </span>
+                        <ExternalLink className="w-3.5 h-3.5 text-clay-faint" />
+                      </a>
+                    )
+                  })}
+                  <a
+                    href="/legacy"
+                    className="flex items-center justify-between gap-2 px-4 py-2.5 rounded-clay-sm text-sm font-bold hover:bg-white/40"
+                  >
+                    <span>访问经典控制台</span>
+                    <ExternalLink className="w-3.5 h-3.5 text-clay-faint" />
+                  </a>
+                  <button
+                    type="button"
+                    onClick={onLogout}
+                    className="w-full flex items-center gap-2 px-4 py-2.5 rounded-clay-sm text-sm font-bold text-clay-pink-400 hover:bg-clay-pink-100/40 mt-2"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    退出登录
+                  </button>
                 </div>
-                {LEGACY.map((l) => {
-                  const Icon = l.icon
-                  return (
-                    <a
-                      key={l.href}
-                      href={l.href}
-                      className="flex items-center justify-between gap-2 px-4 py-2.5 rounded-clay-sm text-sm font-bold hover:bg-white/40"
-                    >
-                      <span className="flex items-center gap-2">
-                        <Icon className="w-4 h-4" />
-                        {l.label}
-                      </span>
-                      <ExternalLink className="w-3.5 h-3.5 text-clay-faint" />
-                    </a>
-                  )
-                })}
-                <a
-                  href="/legacy"
-                  className="flex items-center justify-between gap-2 px-4 py-2.5 rounded-clay-sm text-sm font-bold hover:bg-white/40"
-                >
-                  <span>访问经典控制台</span>
-                  <ExternalLink className="w-3.5 h-3.5 text-clay-faint" />
-                </a>
-                <button
-                  type="button"
-                  onClick={onLogout}
-                  className="w-full flex items-center gap-2 px-4 py-2.5 rounded-clay-sm text-sm font-bold text-clay-pink-400 hover:bg-clay-pink-100/40 mt-2"
-                >
-                  <LogOut className="w-4 h-4" />
-                  退出登录
-                </button>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </header>
 

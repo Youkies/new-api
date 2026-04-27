@@ -3,7 +3,7 @@ import {
   Search, ChevronLeft, ChevronRight, Filter,
   Clock, CalendarDays,
   Activity, AlertCircle, RefreshCw, CreditCard, Settings, Terminal,
-  RotateCcw, FileText, TrendingUp, ShieldCheck,
+  RotateCcw, FileText, TrendingUp, ShieldCheck, History, CheckCircle2, XCircle,
 } from 'lucide-react'
 import ClayCard from '../components/clay/ClayCard.jsx'
 import ClayButton from '../components/clay/ClayButton.jsx'
@@ -14,7 +14,7 @@ import ClayConsoleShell from '../components/layout/ClayConsoleShell.jsx'
 import { useToast } from '../context/ToastContext.jsx'
 import { quotaToDisplay } from '../utils/quota.js'
 import { getUserLogs, getUserLogsStat } from '../services/logs.js'
-import { createRefundAppeal, getRefundCandidates } from '../services/refundAppeals.js'
+import { createRefundAppeal, getRefundCandidates, listMyRefundAppeals } from '../services/refundAppeals.js'
 
 const mobileQuery = typeof window !== 'undefined' ? window.matchMedia('(max-width: 767px)') : null
 function useIsMobile() {
@@ -43,6 +43,12 @@ const TYPE_META = {
   6: { label: '退款', icon: RotateCcw, bg: 'bg-clay-yellow-100', text: 'text-[#8a6a32]', ring: 'ring-amber-200' },
 }
 
+const REFUND_STATUS_META = {
+  pending: { label: '待审核', icon: Clock, cls: 'bg-clay-yellow-100 text-[#8a6a32]' },
+  approved: { label: '已补偿', icon: CheckCircle2, cls: 'bg-clay-green-100 text-[#3d6b4f]' },
+  rejected: { label: '已驳回', icon: XCircle, cls: 'bg-clay-pink-100 text-[#8a4860]' },
+}
+
 function fmtTs(ts) {
   if (!ts) return '-'
   return new Date(ts * 1000).toLocaleString('zh-CN', {
@@ -55,6 +61,15 @@ function fmtTokens(n) {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`
   if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`
   return String(n)
+}
+
+function getPageItems(res) {
+  const items = res?.data?.items ?? res?.data ?? []
+  return Array.isArray(items) ? items : []
+}
+
+function getPageTotal(res) {
+  return res?.data?.total ?? 0
 }
 
 function fmtUseTime(sec) {
@@ -192,17 +207,96 @@ function LogDetailContent({ log }) {
   )
 }
 
+function RefundStatusBadge({ status }) {
+  const meta = REFUND_STATUS_META[status] ?? REFUND_STATUS_META.pending
+  const Icon = meta.icon
+  return (
+    <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-clay-pill text-[11px] font-black ${meta.cls}`}>
+      <Icon className="w-3.5 h-3.5" />
+      {meta.label}
+    </span>
+  )
+}
+
+function RefundAppealRecordsContent({ appeals, total, loading }) {
+  if (loading) {
+    return (
+      <div className="rounded-clay bg-clay-bg shadow-clay-inset p-8 text-center text-sm font-bold text-clay-faint">
+        加载中…
+      </div>
+    )
+  }
+
+  if (!appeals.length) {
+    return (
+      <div className="rounded-clay bg-clay-bg shadow-clay-inset p-8 text-center text-sm font-bold text-clay-faint">
+        暂无申诉记录
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-4">
+      {appeals.map((appeal) => (
+        <div key={appeal.id} className="rounded-clay bg-clay-bg shadow-clay-inset p-4 md:p-5">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <div className="text-sm font-black text-clay-ink">申诉单 #{appeal.id}</div>
+              <div className="text-xs font-bold text-clay-faint mt-1">提交于 {fmtTs(appeal.created_at)}</div>
+            </div>
+            <RefundStatusBadge status={appeal.status} />
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">
+            <div>
+              <div className="text-[11px] font-bold text-clay-faint">记录数</div>
+              <div className="text-sm font-black text-clay-ink mt-1">{appeal.total_items || 0} 条</div>
+            </div>
+            <div>
+              <div className="text-[11px] font-bold text-clay-faint">补偿额度</div>
+              <div className="text-sm font-black text-[#8a4860] mt-1">{quotaToDisplay(appeal.refund_quota || 0).text}</div>
+            </div>
+            <div>
+              <div className="text-[11px] font-bold text-clay-faint">审核时间</div>
+              <div className="text-sm font-black text-clay-ink mt-1">{fmtTs(appeal.reviewed_at)}</div>
+            </div>
+            <div>
+              <div className="text-[11px] font-bold text-clay-faint">窗口</div>
+              <div className="text-xs font-bold text-clay-faint mt-1">{fmtTs(appeal.window_start)} - {fmtTs(appeal.window_end)}</div>
+            </div>
+          </div>
+
+          {(appeal.reason || appeal.review_note) && (
+            <div className="mt-4 space-y-2">
+              {appeal.reason && (
+                <div className="text-xs font-semibold text-clay-faint leading-relaxed break-words">
+                  <span className="font-black text-clay-ink">补充说明：</span>{appeal.reason}
+                </div>
+              )}
+              {appeal.review_note && (
+                <div className="text-xs font-semibold text-clay-faint leading-relaxed break-words">
+                  <span className="font-black text-clay-ink">审核说明：</span>{appeal.review_note}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      ))}
+
+      {total > appeals.length && (
+        <div className="text-center text-xs font-bold text-clay-faint">
+          仅显示最近 {appeals.length} 条，共 {total} 条
+        </div>
+      )}
+    </div>
+  )
+}
+
 function todayStart() {
   const d = new Date()
   d.setHours(0, 0, 0, 0)
   const pad = (n) => String(n).padStart(2, '0')
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T00:00`
-}
-
-function nowLocal() {
-  const d = new Date()
-  const pad = (n) => String(n).padStart(2, '0')
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
 function defaultLogFilter() {
@@ -211,8 +305,19 @@ function defaultLogFilter() {
     model_name: '',
     token_name: '',
     start_timestamp: todayStart(),
-    end_timestamp: nowLocal(),
+    end_timestamp: '',
   }
+}
+
+function hasNonDefaultLogFilter(filter) {
+  const defaults = defaultLogFilter()
+  return Boolean(
+    filter.type ||
+    filter.model_name ||
+    filter.token_name ||
+    filter.end_timestamp ||
+    filter.start_timestamp !== defaults.start_timestamp
+  )
 }
 
 function toLocalDateTimeValue(date) {
@@ -722,6 +827,10 @@ export default function LogList() {
   const [refundLoading, setRefundLoading] = useState(true)
   const [refundSubmitting, setRefundSubmitting] = useState(false)
   const [refundModalOpen, setRefundModalOpen] = useState(false)
+  const [refundRecordsOpen, setRefundRecordsOpen] = useState(false)
+  const [refundAppeals, setRefundAppeals] = useState([])
+  const [refundAppealsTotal, setRefundAppealsTotal] = useState(0)
+  const [refundAppealsLoading, setRefundAppealsLoading] = useState(true)
   const [refundReason, setRefundReason] = useState('')
   const [page, setPage] = useState(1)
   const [loading, setLoading] = useState(false)
@@ -795,6 +904,34 @@ export default function LogList() {
 
   useEffect(() => { loadRefundSummary() }, [loadRefundSummary])
 
+  const loadRefundAppeals = useCallback(async () => {
+    setRefundAppealsLoading(true)
+    try {
+      const res = await listMyRefundAppeals({ p: 1, size: 10 })
+      if (res?.success === false) throw new Error(res.message || '申诉记录加载失败')
+      setRefundAppeals(getPageItems(res))
+      setRefundAppealsTotal(getPageTotal(res))
+    } catch (_) {
+      setRefundAppeals([])
+      setRefundAppealsTotal(0)
+    } finally {
+      setRefundAppealsLoading(false)
+    }
+  }, [])
+
+  useEffect(() => { loadRefundAppeals() }, [loadRefundAppeals])
+
+  const refreshLatest = useCallback(() => {
+    if (page !== 1) {
+      setPage(1)
+    } else {
+      load(1)
+    }
+    loadTodayStat()
+    loadRefundSummary()
+    loadRefundAppeals()
+  }, [load, loadRefundAppeals, loadRefundSummary, loadTodayStat, page])
+
   const submitRefundAppeal = async () => {
     setRefundSubmitting(true)
     try {
@@ -807,7 +944,7 @@ export default function LogList() {
       toast(`已提交空回补偿审核${appeal?.total_items ? `，共 ${appeal.total_items} 条` : ''}`, 'success')
       setRefundModalOpen(false)
       setRefundReason('')
-      await loadRefundSummary()
+      await Promise.all([loadRefundSummary(), loadRefundAppeals()])
     } catch (e) {
       toast(e?.response?.data?.message ?? e.message ?? '提交失败', 'error')
     } finally {
@@ -830,7 +967,10 @@ export default function LogList() {
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize))
 
-  const hasActiveFilter = appliedFilter.type || appliedFilter.model_name || appliedFilter.token_name || appliedFilter.start_timestamp || appliedFilter.end_timestamp
+  const hasActiveFilter = hasNonDefaultLogFilter(appliedFilter)
+  const refreshing = loading || todayLoading
+  const refundRecordCount = Math.max(refundAppealsTotal, refundAppeals.length)
+  const hasRefundRecords = refundRecordCount > 0 || (refundSummary?.pending_count ?? 0) > 0
 
   return (
     <ClayConsoleShell
@@ -838,8 +978,8 @@ export default function LogList() {
       subtitle="查看 API 调用记录与消费明细"
       actions={
         <div className="flex items-center gap-2">
-          <ClayButton variant="ghost" onClick={() => load(page)} disabled={loading}>
-            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} /> 刷新
+          <ClayButton variant="ghost" onClick={refreshLatest} disabled={refreshing}>
+            <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} /> 刷新
           </ClayButton>
           <ClayButton variant={hasActiveFilter ? 'secondary' : 'ghost'} onClick={() => setShowFilter((v) => !v)}>
             <Filter className="w-4 h-4" /> 筛选{hasActiveFilter ? '（已设置）' : ''}
@@ -874,14 +1014,21 @@ export default function LogList() {
                 自助补空回
               </ClayButton>
             )}
-            {!refundLoading && !refundSummary?.available && refundSummary?.pending_count > 0 && (
-              <span className="inline-flex items-center gap-1.5 px-4 py-2 rounded-clay-pill bg-white/60 shadow-clay-sm text-xs font-black text-clay-faint">
-                <ShieldCheck className="w-3.5 h-3.5" />
-                空回补偿审核中
-              </span>
+            {!refundAppealsLoading && hasRefundRecords && (
+              <ClayButton
+                variant={!refundSummary?.available && refundSummary?.pending_count > 0 ? 'secondary' : 'ghost'}
+                onClick={() => {
+                  setRefundRecordsOpen(true)
+                  loadRefundAppeals()
+                }}
+                className="!px-5 !py-2.5 !text-sm"
+              >
+                <History className="w-4 h-4" />
+                {refundSummary?.pending_count > 0 ? '申诉审核中' : '申诉记录'}
+              </ClayButton>
             )}
-            <ClayButton variant="ghost" onClick={loadTodayStat} disabled={todayLoading} aria-label="刷新">
-              <RefreshCw className={`w-4 h-4 ${todayLoading ? 'animate-spin' : ''}`} />
+            <ClayButton variant="ghost" onClick={refreshLatest} disabled={refreshing} aria-label="刷新">
+              <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
             </ClayButton>
           </div>
         </div>
@@ -1058,6 +1205,19 @@ export default function LogList() {
             系统只会提交最近 48 小时内尚未处理的疑似空回记录，已提交或已审核的日志会自动排除。
           </div>
         </div>
+      </ClayModal>
+
+      <ClayModal
+        open={refundRecordsOpen}
+        onClose={() => setRefundRecordsOpen(false)}
+        title="空回申诉记录"
+        size="lg"
+      >
+        <RefundAppealRecordsContent
+          appeals={refundAppeals}
+          total={refundAppealsTotal}
+          loading={refundAppealsLoading}
+        />
       </ClayModal>
     </ClayConsoleShell>
   )

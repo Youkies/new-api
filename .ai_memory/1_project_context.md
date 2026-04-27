@@ -22,6 +22,7 @@
 
 - 前端：Vite 5 + React 18 + JSX（不用 TypeScript）
 - 样式：Tailwind CSS 3 + 自研 clay 组件
+- 主题：新 UI 支持 `ThemeProvider`，本地存储 key 为 `uiweb.theme.mode`，模式为 `system` / `light` / `dark`；深色模式定调为 **Moon Clay 夜间黏土**，通过 `html[data-theme]` + CSS 变量驱动 clay 色板与阴影，不改经典控制台
 - 图标：lucide-react（UI 图标）+ @lobehub/icons v2（供应商/模型图标）
 - Logo/Favicon：自定义 PNG（uiweb/public/favicon.png），导航栏 logo 用 `<img>` 替代 lucide Box
 - 供应商图标：`vendorIcon.jsx` 的 `getLobeHubIcon(iconName, size)` 解析点号字符串（如 `"Claude.Color"`）为 React 组件，fallback 为 AiMass
@@ -132,6 +133,7 @@ api.js / auth.js / tokens.js / logs.js / checkin.js / user.js / dashboard.js / t
 - 签到刷新逻辑：服务器本地 `time.Now().Format("2006-01-02")` 判断，0 点刷新
 - 签到倒计时：CountdownTimer 组件，今日已签到后显示到午夜 HH:MM:SS（浏览器本地时间）
 - 日志页：筛选表单使用 draft/applied 双状态，避免输入筛选条件时自动请求；时间筛选使用自绘 ClayDateTimeField，非消费日志在桌面/移动端直接显示详细信息
+- Moon Clay 深色模式：避免纯黑暗黑风；使用暗灰蓝泥面、低亮度马卡龙点缀、柔和高光和更深遮挡阴影；优先通过 `tailwind.config.js` 中的 clay CSS variables 与 `index.css` token 维护
 - 定价公式：按量 `model_ratio * 2 * groupRatio`（USD/1M tokens），按次 `model_price * groupRatio`（USD/次）
 - 定价 API 响应结构：`res.data` = 模型数组，`res.vendors` / `res.group_ratio` / `res.usable_group` 是 response 同级字段
 - 模型状态 API：`GET /api/model-status?window=1h|6h|12h|24h`（公开，无需认证）

@@ -4,6 +4,7 @@ import { Home, LayoutDashboard, LogOut, Megaphone, Menu, ShieldCheck } from 'luc
 import ClayAvatar from '../clay/ClayAvatar.jsx'
 import ClayCard from '../clay/ClayCard.jsx'
 import ClayFooter from './ClayFooter.jsx'
+import ThemeToggle from './ThemeToggle.jsx'
 import { useToast } from '../../context/ToastContext.jsx'
 import { useUser } from '../../context/UserContext.jsx'
 import { logout as apiLogout } from '../../services/auth.js'
@@ -84,39 +85,42 @@ export default function ClayAdminShell({ title, subtitle, actions, children }) {
             })}
           </nav>
 
-          <div className="relative" ref={userRef}>
-            <button
-              type="button"
-              onClick={() => setUserOpen((v) => !v)}
-              className="flex items-center gap-2 sm:pr-4 sm:pl-2 sm:py-1.5 rounded-full sm:rounded-clay-pill sm:bg-clay-bg sm:shadow-clay sm:hover:shadow-clay-hover transition-shadow"
-            >
-              <ClayAvatar
-                name={displayName}
-                src={user?.has_avatar ? `/api/user/avatar/${user.id}?t=${user._avatar_t || ''}` : undefined}
-                size={40}
-              />
-              <span className="font-bold text-sm hidden sm:inline">{displayName}</span>
-            </button>
+          <div className="flex items-center gap-3">
+            <ThemeToggle />
+            <div className="relative" ref={userRef}>
+              <button
+                type="button"
+                onClick={() => setUserOpen((v) => !v)}
+                className="flex items-center gap-2 sm:pr-4 sm:pl-2 sm:py-1.5 rounded-full sm:rounded-clay-pill sm:bg-clay-bg sm:shadow-clay sm:hover:shadow-clay-hover transition-shadow"
+              >
+                <ClayAvatar
+                  name={displayName}
+                  src={user?.has_avatar ? `/api/user/avatar/${user.id}?t=${user._avatar_t || ''}` : undefined}
+                  size={40}
+                />
+                <span className="font-bold text-sm hidden sm:inline">{displayName}</span>
+              </button>
 
-            {userOpen && (
-              <div className="absolute right-0 mt-3 w-56 p-2 rounded-clay bg-clay-bg shadow-clay z-50">
-                <Link
-                  to="/"
-                  className="flex items-center gap-2 px-4 py-2.5 rounded-clay-sm text-sm font-bold hover:bg-white/40"
-                >
-                  <Home className="w-4 h-4" />
-                  返回首页
-                </Link>
-                <button
-                  type="button"
-                  onClick={onLogout}
-                  className="w-full flex items-center gap-2 px-4 py-2.5 rounded-clay-sm text-sm font-bold text-clay-pink-400 hover:bg-clay-pink-100/40 mt-2"
-                >
-                  <LogOut className="w-4 h-4" />
-                  退出登录
-                </button>
-              </div>
-            )}
+              {userOpen && (
+                <div className="absolute right-0 mt-3 w-56 p-2 rounded-clay bg-clay-bg shadow-clay z-50">
+                  <Link
+                    to="/"
+                    className="flex items-center gap-2 px-4 py-2.5 rounded-clay-sm text-sm font-bold hover:bg-white/40"
+                  >
+                    <Home className="w-4 h-4" />
+                    返回首页
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={onLogout}
+                    className="w-full flex items-center gap-2 px-4 py-2.5 rounded-clay-sm text-sm font-bold text-clay-pink-400 hover:bg-clay-pink-100/40 mt-2"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    退出登录
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </header>
 

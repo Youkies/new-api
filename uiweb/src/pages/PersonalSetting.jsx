@@ -25,6 +25,7 @@ import ClaySelect from '../components/clay/ClaySelect.jsx'
 import ClayConsoleShell from '../components/layout/ClayConsoleShell.jsx'
 import { useUser } from '../context/UserContext.jsx'
 import { useToast } from '../context/ToastContext.jsx'
+import { useTheme } from '../context/ThemeContext.jsx'
 import {
   self as apiSelf,
   updateSelf,
@@ -529,17 +530,18 @@ function NotificationsTab({ user, setUser, toast }) {
 }
 
 function PreferencesTab({ user, setUser, toast }) {
+  const { mode, resolvedTheme, setMode } = useTheme()
   const setting = user?.setting ? safeJSON(user.setting) : {}
   const [form, setForm] = useState({
     language: setting.language ?? 'zh-CN',
-    theme: setting.theme ?? 'light',
+    theme: mode,
   })
   const [saving, setSaving] = useState(false)
 
   const onSave = async () => {
     setSaving(true)
     try {
-      const res = await updateSetting(form)
+      const res = await updateSetting({ ...form, theme: mode })
       if (res?.success) {
         toast('偏好已保存', 'success')
         const r = await apiSelf()
@@ -579,15 +581,19 @@ function PreferencesTab({ user, setUser, toast }) {
         <div>
           <label className="block ml-4 mb-2 font-bold text-sm">主题</label>
           <ClaySelect
-            value={form.theme}
-            onChange={(v) => setForm({ ...form, theme: v })}
+            value={mode}
+            onChange={(v) => {
+              setMode(v)
+              setForm({ ...form, theme: v })
+            }}
             options={[
-              { value: 'light', label: '默认浅色' },
-              { value: 'auto', label: '跟随系统' },
+              { value: 'system', label: '跟随系统', subtitle: '按设备外观自动切换' },
+              { value: 'light', label: '浅色黏土', subtitle: '明亮马卡龙色' },
+              { value: 'dark', label: 'Moon Clay 夜间黏土', subtitle: '暗灰蓝泥面与柔和高光' },
             ]}
           />
           <p className="text-xs text-clay-faint ml-4 mt-2">
-            Clay Edition 暂时只支持浅色主题,深色主题开发中。
+            当前生效：{resolvedTheme === 'dark' ? 'Moon Clay 夜间黏土' : '浅色黏土'}。
           </p>
         </div>
       </div>

@@ -1,45 +1,47 @@
 /** @type {import('tailwindcss').Config} */
+const clayVar = (name) => `rgb(var(${name}) / <alpha-value>)`
+
 export default {
   content: ['./index.html', './src/**/*.{js,jsx}'],
   theme: {
     extend: {
       colors: {
         clay: {
-          bg: '#e0e5ec',
-          surface: '#e0e5ec',
+          bg: clayVar('--clay-bg'),
+          surface: clayVar('--clay-surface'),
           pink: {
-            50: '#ffc8dd',
-            100: '#ffb3d9',
-            200: '#ff99ac',
-            300: '#ff8fb3',
-            400: '#ff6a88',
+            50: clayVar('--clay-pink-50'),
+            100: clayVar('--clay-pink-100'),
+            200: clayVar('--clay-pink-200'),
+            300: clayVar('--clay-pink-300'),
+            400: clayVar('--clay-pink-400'),
           },
           blue: {
-            50: '#cae9ff',
-            100: '#a2d2ff',
-            200: '#7eb8e0',
-            300: '#5a9fd4',
+            50: clayVar('--clay-blue-50'),
+            100: clayVar('--clay-blue-100'),
+            200: clayVar('--clay-blue-200'),
+            300: clayVar('--clay-blue-300'),
           },
           purple: {
-            50: '#e4c1f9',
-            100: '#d4a5f3',
-            200: '#c48ee8',
-            300: '#b377dc',
+            50: clayVar('--clay-purple-50'),
+            100: clayVar('--clay-purple-100'),
+            200: clayVar('--clay-purple-200'),
+            300: clayVar('--clay-purple-300'),
           },
           green: {
-            50: '#d8f3dc',
-            100: '#b7e4c7',
-            200: '#95d5b2',
-            300: '#74c69d',
+            50: clayVar('--clay-green-50'),
+            100: clayVar('--clay-green-100'),
+            200: clayVar('--clay-green-200'),
+            300: clayVar('--clay-green-300'),
           },
           yellow: {
-            50: '#fff4bd',
-            100: '#ffe6a7',
-            200: '#ffd98e',
-            300: '#ffcc77',
+            50: clayVar('--clay-yellow-50'),
+            100: clayVar('--clay-yellow-100'),
+            200: clayVar('--clay-yellow-200'),
+            300: clayVar('--clay-yellow-300'),
           },
-          ink: '#4a5568',
-          faint: '#718096',
+          ink: clayVar('--clay-ink'),
+          faint: clayVar('--clay-faint'),
         },
       },
       fontFamily: {
@@ -53,14 +55,11 @@ export default {
         'clay-pill': '50px',
       },
       boxShadow: {
-        clay:
-          '9px 9px 16px rgba(163,177,198,0.6), -9px -9px 16px rgba(255,255,255,0.5), inset 5px 5px 10px rgba(163,177,198,0.2), inset -5px -5px 10px rgba(255,255,255,0.5)',
-        'clay-hover':
-          '14px 14px 24px rgba(163,177,198,0.6), -14px -14px 24px rgba(255,255,255,0.5), inset 5px 5px 10px rgba(163,177,198,0.2), inset -5px -5px 10px rgba(255,255,255,0.5)',
-        'clay-active':
-          'inset 4px 4px 8px rgba(163,177,198,0.5), inset -4px -4px 8px rgba(255,255,255,0.8)',
-        'clay-inset':
-          'inset 6px 6px 10px rgba(163,177,198,0.7), inset -6px -6px 10px rgba(255,255,255,0.8)',
+        'clay-sm': 'var(--clay-shadow-sm)',
+        clay: 'var(--clay-shadow)',
+        'clay-hover': 'var(--clay-shadow-hover)',
+        'clay-active': 'var(--clay-shadow-active)',
+        'clay-inset': 'var(--clay-shadow-inset)',
       },
       transitionTimingFunction: {
         clay: 'cubic-bezier(0.34, 1.56, 0.64, 1)',

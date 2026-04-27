@@ -96,9 +96,14 @@ export default function TopUp() {
       } catch (_) {}
       try {
         const res = await topupInfo()
-        if (res?.success && res.data) {
+        if (res?.message === 'success' && res.data) {
           setInfo(res.data)
-          if (!Number(topUpCount)) setTopUpCount(Number(res.data.min_topup) || 1)
+          if (!Number(topUpCount)) {
+            const m = Number(res.data.min_topup) || 1
+            setTopUpCount(m)
+            setSelectedPreset(m)
+            fetchAmount(m)
+          }
         }
       } catch (_) {}
     })()
@@ -122,7 +127,7 @@ export default function TopUp() {
     setAmountLoading(true)
     try {
       const res = await quoteAmount({ amount: v })
-      if (res?.success) setAmount(parseFloat(res.data) || 0)
+      if (res?.message === 'success') setAmount(parseFloat(res.data) || 0)
       else setAmount(0)
     } catch (_) {
       setAmount(0)
@@ -135,8 +140,7 @@ export default function TopUp() {
     setCustomMode(false)
     setSelectedPreset(preset.value)
     setTopUpCount(preset.value)
-    const d = preset.discount || discountMap[preset.value] || 1
-    setAmount(preset.value * priceRatio * d)
+    fetchAmount(preset.value)
   }
 
   const onCustomChange = (e) => {

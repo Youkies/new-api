@@ -21,6 +21,7 @@ import TokenManage from './pages/TokenManage.jsx'
 import LogList from './pages/LogList.jsx'
 import Checkin from './pages/Checkin.jsx'
 import ApiUrls from './pages/ApiUrls.jsx'
+import PaymentReturn from './pages/PaymentReturn.jsx'
 import ProtectedRoute from './components/layout/ProtectedRoute.jsx'
 
 export default function App() {
@@ -39,6 +40,15 @@ export default function App() {
       <Route path="/oauth/:provider" element={<OAuthCallback />} />
       <Route path="/setup" element={<Setup />} />
       <Route path="/forbidden" element={<Forbidden />} />
+
+      <Route
+        path="/console/log"
+        element={
+          <ProtectedRoute>
+            <PaymentReturn />
+          </ProtectedRoute>
+        }
+      />
 
       <Route
         path="/dashboard"

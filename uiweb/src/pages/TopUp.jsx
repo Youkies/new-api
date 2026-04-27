@@ -29,7 +29,7 @@ function PayMethodIcon({ type, className = 'w-5 h-5' }) {
       <svg viewBox="0 0 24 24" className={className} aria-hidden="true">
         <path
           fill="#1677FF"
-          d="M19.5 2H4.5A2.5 2.5 0 0 0 2 4.5v11.2c3.6-.6 8.4-2 11.6-3.7-.5-1-1.1-2.1-1.7-3.2H8v-1h4v-1.3H7v-1h5V3.7h1.6v1.8H18v1h-4.4v1.3H17c-.4 1.4-1 2.9-1.8 4.1 1.3.6 2.5 1.2 3.5 1.7L20 12c-1 .5-2.4 1-3.9 1.6 1 1.5 2 2.6 2.7 3.4l-1 1c-.7-.9-1.7-2.1-2.8-3.7-3.5 1.3-7.7 2.4-12 3.1V19.5A2.5 2.5 0 0 0 4.5 22h15a2.5 2.5 0 0 0 2.5-2.5v-15A2.5 2.5 0 0 0 19.5 2Z"
+          d="M11.293 0C5.057 0 0 5.057 0 11.293s5.057 11.293 11.293 11.293c2.792 0 5.343-1.012 7.31-2.689-3.299-1.61-7.32-3.534-10.378-4.991a17.85 17.85 0 0 1-3.62-2.231l.003-.001c1.057.317 4.92 1.474 9.86 3.157 1.31-1.572 2.355-3.36 3.024-5.292h-9.06v-.85h4.683V8.103H7.394V7.18h5.722V4.91s0-.39.394-.39h2.378v2.66h5.652v.923h-5.652v1.586h4.616s-.422 2.262-1.673 4.687c2.677.97 4.18 1.677 4.18 1.677.246-1.046.38-2.137.38-3.26C22.586 5.057 17.529 0 11.293 0z"
         />
       </svg>
     )
@@ -39,11 +39,7 @@ function PayMethodIcon({ type, className = 'w-5 h-5' }) {
       <svg viewBox="0 0 24 24" className={className} aria-hidden="true">
         <path
           fill="#07C160"
-          d="M9.3 3C4.7 3 1 6.1 1 10c0 2.2 1.2 4.2 3.2 5.5l-.8 2.4 2.8-1.4c1 .3 2 .5 3.1.5h.8c-.1-.4-.2-.9-.2-1.4 0-3.4 3.3-6.2 7.4-6.2h.7C17.4 5.8 13.7 3 9.3 3Zm-3 4.6c.6 0 1.1.4 1.1 1s-.5 1-1.1 1-1.1-.4-1.1-1 .5-1 1.1-1Zm6 0c.6 0 1.1.4 1.1 1s-.5 1-1.1 1-1.1-.4-1.1-1 .5-1 1.1-1Z"
-        />
-        <path
-          fill="#07C160"
-          d="M23 15.6c0-3.3-3.2-5.9-7-5.9s-7 2.6-7 5.9c0 3.3 3.2 5.9 7 5.9.8 0 1.5-.1 2.3-.3l2.2 1.1-.6-1.9C21.7 19.3 23 17.6 23 15.6Zm-9.3-1.5a.9.9 0 1 1 0-1.8.9.9 0 0 1 0 1.8Zm4.6 0a.9.9 0 1 1 0-1.8.9.9 0 0 1 0 1.8Z"
+          d="M8.691.219C3.891.219 0 3.48 0 7.5c0 2.32 1.297 4.39 3.328 5.74l-.832 2.5 2.91-1.46c.78.16 1.583.27 2.41.27.218 0 .43-.02.64-.04a6.85 6.85 0 0 1-.297-2.07c0-3.91 3.39-7.07 7.59-7.07.18 0 .36.01.54.02C14.66 2.06 11.97.22 8.69.22zM5.78 3.74c.553 0 1 .448 1 1s-.447 1-1 1-1-.448-1-1 .447-1 1-1zm5.83 0c.553 0 1 .448 1 1s-.447 1-1 1-1-.448-1-1 .447-1 1-1zm4.32 5.04c-3.83 0-6.94 2.7-6.94 6.04 0 1.92 1.05 3.62 2.69 4.74l-.67 2.05 2.34-1.18c.84.16 1.53.32 2.32.32 3.99 0 7.41-2.7 7.41-6.07 0-3.34-3.42-5.9-7.41-5.9zm-2.27 2.95c.46 0 .83.37.83.83s-.37.83-.83.83-.83-.37-.83-.83.37-.83.83-.83zm4.65 0c.46 0 .83.37.83.83s-.37.83-.83.83-.83-.37-.83-.83.37-.83.83-.83z"
         />
       </svg>
     )
@@ -262,122 +258,127 @@ export default function TopUp() {
 
   return (
     <ClayConsoleShell title="充值中心" subtitle="兑换码或在线支付,任你选择">
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-8">
-        <ClayStat icon={Wallet} label="当前余额" value={balance.text} tone="blue" />
-        <ClayStat icon={Sparkles} label="累计用量" value={used.text} tone="pink" />
-      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 lg:items-start">
+        {/* 左上:余额 + 用量 */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+          <ClayStat icon={Wallet} label="当前余额" value={balance.text} tone="blue" />
+          <ClayStat icon={Sparkles} label="累计用量" value={used.text} tone="pink" />
+        </div>
 
-      {enableOnline && epayMethods.length > 0 && (
-        <ClayCard className="mb-6">
-          <div className="flex items-center gap-2 mb-4">
-            <CreditCard className="w-5 h-5 text-clay-blue-300" />
-            <h2 className="text-xl font-black">在线充值</h2>
-          </div>
-
-          {payMsg && (
-            <ClayAlert tone={payMsg.tone} className="mb-4">
-              {payMsg.text}
-            </ClayAlert>
-          )}
-
-          <div className="mb-5">
-            <div className="flex items-center justify-between mb-2 ml-4">
-              <label className="font-bold text-sm text-clay-ink">选择档位</label>
-              <span className="text-xs text-clay-faint">最低 {minTopUp}</span>
+        {/* 右上:在线充值,跨两行 */}
+        {enableOnline && epayMethods.length > 0 ? (
+          <ClayCard className="lg:row-span-2">
+            <div className="flex items-center gap-2 mb-4">
+              <CreditCard className="w-5 h-5 text-clay-blue-300" />
+              <h2 className="text-xl font-black">在线充值</h2>
             </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-              {presets.map((p) => {
-                const active = !customMode && selectedPreset === p.value
-                const d = p.discount || discountMap[p.value] || 1
-                const showDiscount = d > 0 && d < 1
-                return (
-                  <button
-                    key={p.value}
-                    type="button"
-                    onClick={() => onSelectPreset(p)}
-                    className={`relative rounded-2xl px-4 py-3 text-left transition-shadow ${
-                      active
-                        ? 'shadow-clay-inset bg-clay-blue-100'
-                        : 'shadow-clay bg-clay-bg hover:shadow-clay-hover'
-                    }`}
-                  >
-                    <div className="font-black text-lg">{p.value}</div>
-                    <div className="text-xs text-clay-faint">额度</div>
-                    {showDiscount && (
-                      <span className="absolute top-2 right-2 inline-flex items-center gap-1 text-[10px] font-bold text-rose-500 bg-white/70 rounded-full px-2 py-0.5 shadow-clay">
-                        <Tag className="w-3 h-3" />
-                        {Math.round(d * 100)}%
-                      </span>
-                    )}
-                  </button>
-                )
-              })}
+
+            {payMsg && (
+              <ClayAlert tone={payMsg.tone} className="mb-4">
+                {payMsg.text}
+              </ClayAlert>
+            )}
+
+            <div className="mb-5">
+              <div className="flex items-center justify-between mb-2 ml-4">
+                <label className="font-bold text-sm text-clay-ink">选择档位</label>
+                <span className="text-xs text-clay-faint">最低 {minTopUp}</span>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                {presets.map((p) => {
+                  const active = !customMode && selectedPreset === p.value
+                  const d = p.discount || discountMap[p.value] || 1
+                  const showDiscount = d > 0 && d < 1
+                  return (
+                    <button
+                      key={p.value}
+                      type="button"
+                      onClick={() => onSelectPreset(p)}
+                      className={`relative rounded-2xl px-4 py-3 text-left transition-shadow ${
+                        active
+                          ? 'shadow-clay-inset bg-clay-blue-100'
+                          : 'shadow-clay bg-clay-bg hover:shadow-clay-hover'
+                      }`}
+                    >
+                      <div className="font-black text-lg">{p.value}</div>
+                      <div className="text-xs text-clay-faint">额度</div>
+                      {showDiscount && (
+                        <span className="absolute top-2 right-2 inline-flex items-center gap-1 text-[10px] font-bold text-rose-500 bg-white/70 rounded-full px-2 py-0.5 shadow-clay">
+                          <Tag className="w-3 h-3" />
+                          {Math.round(d * 100)}%
+                        </span>
+                      )}
+                    </button>
+                  )
+                })}
+              </div>
             </div>
-          </div>
 
-          <ClayField
-            label="自定义数量"
-            type="number"
-            min={minTopUp}
-            value={customMode ? topUpCount || '' : ''}
-            onChange={onCustomChange}
-            onBlur={onCustomBlur}
-            placeholder={`输入充值额度,最低 ${minTopUp}`}
-            hint="留空则使用上方档位"
-          />
+            <ClayField
+              label="自定义数量"
+              type="number"
+              min={minTopUp}
+              value={customMode ? topUpCount || '' : ''}
+              onChange={onCustomChange}
+              onBlur={onCustomBlur}
+              placeholder={`输入充值额度,最低 ${minTopUp}`}
+              hint="留空则使用上方档位"
+            />
 
-          <div className="mb-5">
-            <label className="block ml-4 mb-2 font-bold text-sm text-clay-ink">
-              支付方式
-            </label>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {epayMethods.map((m) => {
-                const active = payWay === m.type
-                return (
-                  <button
-                    key={m.type}
-                    type="button"
-                    onClick={() => setPayWay(m.type)}
-                    className={`flex items-center gap-3 rounded-2xl px-4 py-3 transition-shadow ${
-                      active
-                        ? 'shadow-clay-inset bg-clay-blue-100'
-                        : 'shadow-clay bg-clay-bg hover:shadow-clay-hover'
-                    }`}
-                  >
-                    <PayMethodIcon type={m.type} />
-                    <span className="font-bold">{m.name || PAY_NAME[m.type] || m.type}</span>
-                  </button>
-                )
-              })}
+            <div className="mb-5">
+              <label className="block ml-4 mb-2 font-bold text-sm text-clay-ink">
+                支付方式
+              </label>
+              <div className="grid grid-cols-2 gap-3">
+                {epayMethods.map((m) => {
+                  const active = payWay === m.type
+                  return (
+                    <button
+                      key={m.type}
+                      type="button"
+                      onClick={() => setPayWay(m.type)}
+                      className={`flex items-center justify-center gap-2 rounded-2xl px-3 py-3 transition-shadow ${
+                        active
+                          ? 'shadow-clay-inset bg-clay-blue-100'
+                          : 'shadow-clay bg-clay-bg hover:shadow-clay-hover'
+                      }`}
+                    >
+                      <PayMethodIcon type={m.type} />
+                      <span className="font-bold text-sm">{m.name || PAY_NAME[m.type] || m.type}</span>
+                    </button>
+                  )
+                })}
+              </div>
             </div>
-          </div>
 
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4 px-4 py-3 rounded-2xl shadow-clay-inset bg-clay-bg">
-            <div className="text-sm text-clay-faint">实付金额</div>
-            <div className="flex items-baseline gap-2">
-              {hasDiscount && (
-                <span className="text-sm text-clay-faint line-through">
-                  {originalAmount.toFixed(2)} 元
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4 px-4 py-3 rounded-2xl shadow-clay-inset bg-clay-bg">
+              <div className="text-sm text-clay-faint">实付金额</div>
+              <div className="flex items-baseline gap-2">
+                {hasDiscount && (
+                  <span className="text-sm text-clay-faint line-through">
+                    {originalAmount.toFixed(2)} 元
+                  </span>
+                )}
+                <span className="text-2xl font-black text-rose-500">
+                  {amountLoading ? '…' : `${(amount || 0).toFixed(2)} 元`}
                 </span>
-              )}
-              <span className="text-2xl font-black text-rose-500">
-                {amountLoading ? '…' : `${(amount || 0).toFixed(2)} 元`}
-              </span>
+              </div>
             </div>
-          </div>
 
-          <ClayButton
-            variant="primary"
-            className="w-full"
-            disabled={paying || !topUpCount}
-            onClick={openConfirm}
-          >
-            <CheckCircle2 className="w-4 h-4" /> 立即支付
-          </ClayButton>
-        </ClayCard>
-      )}
+            <ClayButton
+              variant="primary"
+              className="w-full"
+              disabled={paying || !topUpCount}
+              onClick={openConfirm}
+            >
+              <CheckCircle2 className="w-4 h-4" /> 立即支付
+            </ClayButton>
+          </ClayCard>
+        ) : (
+          <div className="hidden lg:block" />
+        )}
 
-      <div className={`grid gap-5 ${topUpLink ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1 max-w-xl mx-auto'}`}>
+        {/* 左下:兑换码 */}
         <ClayCard className="flex flex-col">
           <div className="flex items-center gap-2 mb-4">
             <Gift className="w-5 h-5 text-clay-pink-300" />
@@ -414,7 +415,8 @@ export default function TopUp() {
           </form>
         </ClayCard>
 
-        {topUpLink && (
+        {/* 右下:购买链接(仅当配置了 top_up_link 且没有在线充值占位时;若有在线充值则放到左下并列) */}
+        {topUpLink && !(enableOnline && epayMethods.length > 0) && (
           <ClayCard className="flex flex-col items-center justify-center text-center">
             <div className="w-14 h-14 rounded-full shadow-clay bg-clay-green-100 flex items-center justify-center mx-auto mb-4">
               <ShoppingCart className="w-6 h-6 text-emerald-600" />
@@ -431,6 +433,26 @@ export default function TopUp() {
           </ClayCard>
         )}
       </div>
+
+      {/* 当在线充值占据右列时,购买链接单独一行展示 */}
+      {topUpLink && enableOnline && epayMethods.length > 0 && (
+        <div className="mt-5 grid grid-cols-1 lg:grid-cols-2 gap-5">
+          <ClayCard className="flex flex-col items-center justify-center text-center">
+            <div className="w-14 h-14 rounded-full shadow-clay bg-clay-green-100 flex items-center justify-center mx-auto mb-4">
+              <ShoppingCart className="w-6 h-6 text-emerald-600" />
+            </div>
+            <h2 className="text-xl font-black mb-2">购买额度</h2>
+            <p className="text-clay-faint text-sm mb-5">
+              前往商城购买兑换码,获取后在上方输入即可充值。
+            </p>
+            <a href={topUpLink} target="_blank" rel="noopener noreferrer" className="w-full">
+              <ClayButton variant="secondary" className="w-full">
+                <ExternalLink className="w-4 h-4" /> 前往购买
+              </ClayButton>
+            </a>
+          </ClayCard>
+        </div>
+      )}
 
       <ClayModal
         open={confirmOpen}

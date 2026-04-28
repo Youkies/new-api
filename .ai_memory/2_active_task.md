@@ -1,5 +1,14 @@
 # 当前任务
 
+## 当前新增任务：会员身份分层展示（2026-04-28）
+
+### 本轮实现进度
+- 目标：普通用户、Pro优、Super优、Ultra优四档身份需要在新 UI 中可见，但移动端顶部空间不足，不适合放完整身份铭牌。
+- 前端：新增会员分层工具与展示组件，控制台头像使用身份色环/小角标；控制台标题区显示身份胶囊；用户头像菜单显示完整身份卡。
+- 公共导航：登录头像同步使用会员头像样式，移动端仅以头像视觉状态提示身份。
+- 升级入口：外部升级项目通过 `VITE_MEMBERSHIP_UPGRADE_URL`（兼容 `VITE_UPGRADE_URL`）配置；未配置时不显示升级按钮。
+- 验证：`cd uiweb && npm run build` 通过，仅保留既有 vendor-icons chunk 偏大的 Vite 警告；`git diff --check` 通过。
+
 ## 当前新增任务：Claude thinking 参数兼容修复（2026-04-28）
 ### 本轮实现进度
 - 现象：用户以 OpenAI 格式调用反代 Claude 时，上游返回 `top_p must be greater than or equal to 0.95 or unset when thinking is enabled`，以及 `Request contains an invalid argument`。

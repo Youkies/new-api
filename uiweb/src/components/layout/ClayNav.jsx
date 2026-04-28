@@ -2,7 +2,7 @@ import { Link, NavLink } from 'react-router-dom'
 import { LogIn, UserPlus } from 'lucide-react'
 import ClayButton from '../clay/ClayButton.jsx'
 import ClayCard from '../clay/ClayCard.jsx'
-import ClayAvatar from '../clay/ClayAvatar.jsx'
+import { MembershipAvatar } from '../membership/MembershipBadge.jsx'
 import ThemeToggle from './ThemeToggle.jsx'
 import { useUser } from '../../context/UserContext.jsx'
 import { getFaviconSrc } from '../../utils/favicon.js'
@@ -49,7 +49,8 @@ export default function ClayNav() {
         <ThemeToggle />
         {user ? (
           <Link to="/dashboard" className="flex items-center gap-2">
-            <ClayAvatar
+            <MembershipAvatar
+              user={user}
               name={user.display_name || user.username || '?'}
               src={user.has_avatar ? `/api/user/avatar/${user.id}?t=${user._avatar_t || ''}` : undefined}
               size={34}

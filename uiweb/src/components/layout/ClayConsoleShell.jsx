@@ -14,10 +14,10 @@ import {
   Link2,
 } from 'lucide-react'
 import ClayCard from '../clay/ClayCard.jsx'
-import ClayAvatar from '../clay/ClayAvatar.jsx'
 import ClayFooter from './ClayFooter.jsx'
 import ThemeToggle from './ThemeToggle.jsx'
 import AssistantWidget from '../assistant/AssistantWidget.jsx'
+import { MembershipAvatar, MembershipBadge, MembershipCard } from '../membership/MembershipBadge.jsx'
 import { useUser } from '../../context/UserContext.jsx'
 import { useToast } from '../../context/ToastContext.jsx'
 import { getFaviconSrc } from '../../utils/favicon.js'
@@ -65,6 +65,7 @@ export default function ClayConsoleShell({ title, subtitle, actions, children })
   }
 
   const displayName = user?.display_name || user?.username || 'user'
+  const avatarSrc = user?.has_avatar ? `/api/user/avatar/${user.id}?t=${user._avatar_t || ''}` : undefined
 
   const linkCls = ({ isActive }) =>
     `px-5 py-2.5 rounded-clay-pill font-bold text-sm transition-all flex items-center gap-2 ${
@@ -120,17 +121,21 @@ export default function ClayConsoleShell({ title, subtitle, actions, children })
                 onClick={() => setUserOpen((v) => !v)}
                 className="flex items-center gap-2 sm:pr-4 sm:pl-2 sm:py-1.5 rounded-full sm:rounded-clay-pill sm:bg-clay-bg sm:shadow-clay sm:hover:shadow-clay-hover transition-shadow"
               >
-                <ClayAvatar name={displayName} src={user?.has_avatar ? `/api/user/avatar/${user.id}?t=${user._avatar_t || ''}` : undefined} size={40} />
+                <MembershipAvatar user={user} name={displayName} src={avatarSrc} size={40} />
                 <span className="font-bold text-sm hidden sm:inline">{displayName}</span>
+                <MembershipBadge user={user} compact className="hidden xl:inline-flex !px-2.5 !py-1" />
               </button>
 
               {userOpen && (
-                <div className="absolute right-0 mt-3 w-56 p-2 rounded-clay bg-clay-bg shadow-clay z-50">
+                <div className="absolute right-0 mt-3 w-72 p-2 rounded-clay bg-clay-bg shadow-clay z-50">
                   <div className="px-4 py-3 border-b border-black/5 mb-2">
                     <div className="font-extrabold truncate">{displayName}</div>
                     <div className="text-xs text-clay-faint truncate">
                       {user?.email || `ID ${user?.id ?? '-'}`}
                     </div>
+                  </div>
+                  <div className="mb-2">
+                    <MembershipCard user={user} />
                   </div>
                   {LEGACY.map((l) => {
                     const Icon = l.icon
@@ -217,6 +222,9 @@ export default function ClayConsoleShell({ title, subtitle, actions, children })
               )}
               {subtitle && (
                 <p className="text-clay-faint mt-1 text-base">{subtitle}</p>
+              )}
+              {user && (
+                <MembershipBadge user={user} showUpgrade className="mt-3" />
               )}
             </div>
             {actions && <div className="flex gap-3 items-center">{actions}</div>}

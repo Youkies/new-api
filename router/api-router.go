@@ -41,6 +41,10 @@ func SetApiRouter(router *gin.Engine) {
 			uiRoute.GET("/refund-appeals/self", middleware.UserAuth(), controller.GetUserUIRefundAppeals)
 			uiRoute.POST("/refund-appeals", middleware.UserAuth(), middleware.CriticalRateLimit(), controller.CreateUIRefundAppeal)
 			uiRoute.GET("/assistant/config", middleware.UserAuth(), controller.GetUIAssistantClientConfig)
+			uiRoute.GET("/assistant/conversations", middleware.UserAuth(), controller.ListUIAssistantConversations)
+			uiRoute.POST("/assistant/conversations", middleware.UserAuth(), middleware.CriticalRateLimit(), controller.CreateUIAssistantConversation)
+			uiRoute.GET("/assistant/conversations/:id/messages", middleware.UserAuth(), controller.GetUIAssistantConversationMessages)
+			uiRoute.DELETE("/assistant/conversations/:id", middleware.UserAuth(), controller.DeleteUIAssistantConversation)
 			uiRoute.POST("/assistant/analyze", middleware.UserAuth(), middleware.CriticalRateLimit(), controller.AnalyzeUIAssistant)
 			uiRoute.POST("/assistant/chat", middleware.UserAuth(), middleware.CriticalRateLimit(), controller.ChatUIAssistant)
 

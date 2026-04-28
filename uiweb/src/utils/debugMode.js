@@ -304,6 +304,7 @@ function createInitialState() {
       knowledge_enabled: true,
       store_sessions: true,
       daily_limit: 8,
+      daily_used: 1,
       max_image_bytes: 800 * 1024,
       created_at: daysAgo(1),
       updated_at: nowSec(),
@@ -332,6 +333,38 @@ function createInitialState() {
         model_name: 'gpt-5.4-mini',
         error_message: '',
         created_at: daysAgo(0, 19, 8),
+      },
+    ],
+    assistantConversations: [
+      {
+        id: 1,
+        user_id: DEBUG_USER.id,
+        title: '截图报错排查',
+        last_message: '这是本地 mock 回复，不会消耗真实模型额度。',
+        created_at: daysAgo(0, 18, 40),
+        updated_at: daysAgo(0, 19, 8),
+        deleted_at: 0,
+      },
+    ],
+    assistantMessages: [
+      {
+        id: 1,
+        conversation_id: 1,
+        user_id: DEBUG_USER.id,
+        role: 'user',
+        content: '这个报错是什么意思？',
+        screenshot_count: 1,
+        created_at: daysAgo(0, 18, 41),
+      },
+      {
+        id: 2,
+        conversation_id: 1,
+        user_id: DEBUG_USER.id,
+        role: 'assistant',
+        content: '这个报错通常是请求参数格式不符合上游要求，可以先检查模型、参数和返回的错误码。',
+        reasoning: '我先识别报错类型，再把它归到参数问题，并给出用户能自助检查的步骤。',
+        screenshot_count: 0,
+        created_at: daysAgo(0, 18, 42),
       },
     ],
   }
@@ -457,6 +490,7 @@ function assistantStreamText(payload) {
   const question = last?.content || '这个问题'
   const screenshotCount = payload?.screenshots?.length || 0
   return [
+    '<think>我先根据用户描述判断这是控制台预诊断场景，再检查是否需要人工介入。这里是 mock 思考过程，会在界面里自动折叠。</think>',
     '我先按调试模式帮你预诊断一下：',
     '',
     `你描述的是“${question}”。${screenshotCount ? `我也收到了 ${screenshotCount} 张截图。` : '目前没有截图。'}`,
@@ -469,12 +503,52 @@ function assistantStreamText(payload) {
 
 export async function streamDebugAssistantChat(payload, onChunk) {
   const text = assistantStreamText(payload)
+  const last = [...(payload?.messages || [])].reverse().find((item) => item.role === 'user')
+  let conversationId = Number(payload?.conversation_id) || 0
+  if (!conversationId) {
+    conversationId = nextId(debugState.assistantConversations)
+    debugState.assistantConversations.unshift({
+      id: conversationId,
+      user_id: DEBUG_USER.id,
+      title: (last?.content || '新的对话').slice(0, 60),
+      last_message: '',
+      created_at: nowSec(),
+      updated_at: nowSec(),
+      deleted_at: 0,
+    })
+  }
+  debugState.assistantMessages.push({
+    id: nextId(debugState.assistantMessages),
+    conversation_id: conversationId,
+    user_id: DEBUG_USER.id,
+    role: 'user',
+    content: last?.content || '请帮我看一下截图里的问题。',
+    screenshot_count: payload?.screenshots?.length || 0,
+    created_at: nowSec(),
+  })
   for (let i = 0; i < text.length; i += 6) {
     const chunk = text.slice(i, i + 6)
     onChunk?.(chunk)
     await new Promise((resolve) => window.setTimeout(resolve, 28))
   }
-  return text
+  const visibleText = text.replace(/<think>[\s\S]*?<\/think>/gi, '').trim()
+  const reasoning = (text.match(/<think>([\s\S]*?)<\/think>/i)?.[1] || '').trim()
+  debugState.assistantMessages.push({
+    id: nextId(debugState.assistantMessages),
+    conversation_id: conversationId,
+    user_id: DEBUG_USER.id,
+    role: 'assistant',
+    content: visibleText,
+    reasoning,
+    screenshot_count: 0,
+    created_at: nowSec(),
+  })
+  const conversation = debugState.assistantConversations.find((item) => Number(item.id) === Number(conversationId))
+  if (conversation) {
+    conversation.last_message = visibleText.slice(0, 180)
+    conversation.updated_at = nowSec()
+  }
+  return { text, conversationId: String(conversationId) }
 }
 
 export async function mockApiResponse(config) {
@@ -602,6 +676,10 @@ export async function mockApiResponse(config) {
   if (path === '/api/subscription/plans' && method === 'GET') return ok([])
   if (path === '/api/subscription/self' && method === 'GET') return ok(null)
 
+  if (path === '/api/user/models' && method === 'GET') {
+    return ok(['gpt-5.5', 'gpt-5.4', 'gpt-5.4-mini', 'claude-opus-4-6', 'claude-opus-4-7', 'gemini-2.5-pro'])
+  }
+
   if (path === '/api/pricing' && method === 'GET') {
     return plain({
       success: true,
@@ -695,6 +773,41 @@ export async function mockApiResponse(config) {
   if (path === '/api/ui/assistant/config' && method === 'GET') {
     const { api_key_set, ...clientConfig } = debugState.assistantConfig
     return ok(clientConfig)
+  }
+  if (path === '/api/ui/assistant/conversations' && method === 'GET') {
+    const items = debugState.assistantConversations
+      .filter((item) => !item.deleted_at)
+      .sort((a, b) => b.updated_at - a.updated_at)
+    return page(paginate(items, url), items.length)
+  }
+  if (path === '/api/ui/assistant/conversations' && method === 'POST') {
+    const item = {
+      id: nextId(debugState.assistantConversations),
+      user_id: DEBUG_USER.id,
+      title: body.title || '新的对话',
+      last_message: '',
+      created_at: nowSec(),
+      updated_at: nowSec(),
+      deleted_at: 0,
+    }
+    debugState.assistantConversations.unshift(item)
+    return ok(item)
+  }
+  const assistantConversationMessagesMatch = path.match(/^\/api\/ui\/assistant\/conversations\/(\d+)\/messages$/)
+  if (assistantConversationMessagesMatch && method === 'GET') {
+    const id = Number(assistantConversationMessagesMatch[1])
+    const conversation = debugState.assistantConversations.find((item) => Number(item.id) === id && !item.deleted_at)
+    const items = debugState.assistantMessages
+      .filter((item) => Number(item.conversation_id) === id)
+      .sort((a, b) => a.created_at - b.created_at || a.id - b.id)
+    return ok({ conversation, items })
+  }
+  const assistantConversationMatch = path.match(/^\/api\/ui\/assistant\/conversations\/(\d+)$/)
+  if (assistantConversationMatch && method === 'DELETE') {
+    const id = Number(assistantConversationMatch[1])
+    const item = debugState.assistantConversations.find((conversation) => Number(conversation.id) === id)
+    if (item) item.deleted_at = nowSec()
+    return ok(null)
   }
   if (path === '/api/ui/assistant/analyze' && method === 'POST') {
     return ok({

@@ -76,6 +76,35 @@ func (UIAssistantSession) TableName() string {
 	return "ui_assistant_sessions"
 }
 
+type UIAssistantConversation struct {
+	Id          int64  `json:"id" gorm:"primaryKey;autoIncrement"`
+	UserId      int    `json:"user_id" gorm:"index:idx_ui_assistant_conversations_user_updated,priority:1;index"`
+	Title       string `json:"title" gorm:"type:varchar(191);default:''"`
+	LastMessage string `json:"last_message" gorm:"type:varchar(500);default:''"`
+	CreatedAt   int64  `json:"created_at" gorm:"default:0"`
+	UpdatedAt   int64  `json:"updated_at" gorm:"default:0;index:idx_ui_assistant_conversations_user_updated,priority:2"`
+	DeletedAt   int64  `json:"deleted_at" gorm:"default:0;index"`
+}
+
+func (UIAssistantConversation) TableName() string {
+	return "ui_assistant_conversations"
+}
+
+type UIAssistantConversationMessage struct {
+	Id              int64  `json:"id" gorm:"primaryKey;autoIncrement"`
+	ConversationId  int64  `json:"conversation_id" gorm:"index:idx_ui_assistant_messages_conversation_created,priority:1;index"`
+	UserId          int    `json:"user_id" gorm:"index"`
+	Role            string `json:"role" gorm:"type:varchar(32);default:''"`
+	Content         string `json:"content" gorm:"type:text"`
+	Reasoning       string `json:"reasoning" gorm:"type:text"`
+	ScreenshotCount int    `json:"screenshot_count" gorm:"default:0"`
+	CreatedAt       int64  `json:"created_at" gorm:"default:0;index:idx_ui_assistant_messages_conversation_created,priority:2"`
+}
+
+func (UIAssistantConversationMessage) TableName() string {
+	return "ui_assistant_conversation_messages"
+}
+
 func DefaultUIAssistantSystemPrompt() string {
 	return strings.TrimSpace(`你是 Youkies 的 AI 分身，是 Youkies API 控制台里热心、善良、体贴的小助手。
 
@@ -318,4 +347,99 @@ func GetAdminUIAssistantSessions(pageInfo *common.PageInfo) ([]*UIAssistantSessi
 		Offset(pageInfo.GetStartIdx()).
 		Find(&sessions).Error
 	return sessions, total, err
+}
+
+func normalizeUIAssistantConversationTitle(title string) string {
+	title = strings.TrimSpace(title)
+	if title == "" {
+		title = "新的对话"
+	}
+	if len([]rune(title)) > 60 {
+		title = string([]rune(title)[:60])
+	}
+	return title
+}
+
+func CreateUIAssistantConversation(userId int, title string) (*UIAssistantConversation, error) {
+	now := common.GetTimestamp()
+	conversation := &UIAssistantConversation{
+		UserId:    userId,
+		Title:     normalizeUIAssistantConversationTitle(title),
+		CreatedAt: now,
+		UpdatedAt: now,
+	}
+	return conversation, DB.Create(conversation).Error
+}
+
+func GetUIAssistantConversationForUser(id int64, userId int) (*UIAssistantConversation, error) {
+	if id <= 0 {
+		return nil, errors.New("无效的对话 ID")
+	}
+	var conversation UIAssistantConversation
+	err := DB.Where("id = ? AND user_id = ? AND deleted_at = ?", id, userId, 0).First(&conversation).Error
+	return &conversation, err
+}
+
+func GetUserUIAssistantConversations(userId int, pageInfo *common.PageInfo) ([]*UIAssistantConversation, int64, error) {
+	query := DB.Model(&UIAssistantConversation{}).Where("user_id = ? AND deleted_at = ?", userId, 0)
+	var total int64
+	if err := query.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+	var conversations []*UIAssistantConversation
+	err := query.Order("updated_at desc").
+		Limit(pageInfo.GetPageSize()).
+		Offset(pageInfo.GetStartIdx()).
+		Find(&conversations).Error
+	return conversations, total, err
+}
+
+func DeleteUIAssistantConversationForUser(id int64, userId int) error {
+	now := common.GetTimestamp()
+	return DB.Model(&UIAssistantConversation{}).
+		Where("id = ? AND user_id = ? AND deleted_at = ?", id, userId, 0).
+		Updates(map[string]interface{}{
+			"deleted_at": now,
+			"updated_at": now,
+		}).Error
+}
+
+func CreateUIAssistantConversationMessage(message *UIAssistantConversationMessage) error {
+	if message == nil {
+		return errors.New("AI 助手消息不能为空")
+	}
+	message.Role = strings.TrimSpace(message.Role)
+	message.Content = strings.TrimSpace(message.Content)
+	message.Reasoning = strings.TrimSpace(message.Reasoning)
+	if message.Role != "user" && message.Role != "assistant" {
+		return errors.New("AI 助手消息角色无效")
+	}
+	if message.Content == "" && message.Reasoning == "" {
+		return nil
+	}
+	message.CreatedAt = common.GetTimestamp()
+	return DB.Create(message).Error
+}
+
+func GetUIAssistantConversationMessages(conversationId int64, userId int) ([]*UIAssistantConversationMessage, error) {
+	var messages []*UIAssistantConversationMessage
+	err := DB.Where("conversation_id = ? AND user_id = ?", conversationId, userId).
+		Order("created_at asc").
+		Order("id asc").
+		Find(&messages).Error
+	return messages, err
+}
+
+func TouchUIAssistantConversation(conversationId int64, userId int, lastMessage string) error {
+	now := common.GetTimestamp()
+	lastMessage = strings.TrimSpace(lastMessage)
+	if len([]rune(lastMessage)) > 180 {
+		lastMessage = string([]rune(lastMessage)[:180])
+	}
+	return DB.Model(&UIAssistantConversation{}).
+		Where("id = ? AND user_id = ? AND deleted_at = ?", conversationId, userId, 0).
+		Updates(map[string]interface{}{
+			"last_message": lastMessage,
+			"updated_at":   now,
+		}).Error
 }

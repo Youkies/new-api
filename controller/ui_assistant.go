@@ -66,10 +66,16 @@ type uiAssistantChatMessagePayload struct {
 }
 
 type uiAssistantChatPayload struct {
-	Messages    []uiAssistantChatMessagePayload `json:"messages"`
-	PagePath    string                          `json:"page_path"`
-	Screenshots []uiAssistantScreenshotPayload  `json:"screenshots"`
-	UseBalance  bool                            `json:"use_balance"`
+	ConversationId int64                           `json:"conversation_id"`
+	ModelName      string                          `json:"model_name"`
+	Messages       []uiAssistantChatMessagePayload `json:"messages"`
+	PagePath       string                          `json:"page_path"`
+	Screenshots    []uiAssistantScreenshotPayload  `json:"screenshots"`
+	UseBalance     bool                            `json:"use_balance"`
+}
+
+type uiAssistantConversationPayload struct {
+	Title string `json:"title"`
 }
 
 type uiAssistantModelResult struct {
@@ -158,6 +164,7 @@ func assistantConfigClientResponse(config *model.UIAssistantConfig) gin.H {
 		"enabled":          config.Enabled,
 		"assistant_name":   config.AssistantName,
 		"welcome_message":  config.WelcomeMessage,
+		"model_name":       config.ModelName,
 		"allow_screenshot": config.AllowScreenshot,
 		"daily_limit":      assistantDailyLimit(config),
 		"max_image_bytes":  config.MaxImageBytes,
@@ -232,7 +239,12 @@ func GetUIAssistantClientConfig(c *gin.Context) {
 		common.ApiError(c, err)
 		return
 	}
-	common.ApiSuccess(c, assistantConfigClientResponse(config))
+	data := assistantConfigClientResponse(config)
+	if _, used, limit, countErr := assistantDailyLimitReached(c, config); countErr == nil {
+		data["daily_used"] = used
+		data["daily_limit"] = limit
+	}
+	common.ApiSuccess(c, data)
 }
 
 func AdminGetUIAssistantConfig(c *gin.Context) {
@@ -360,6 +372,64 @@ func AdminListUIAssistantSessions(c *gin.Context) {
 	pageInfo.SetTotal(int(total))
 	pageInfo.SetItems(sessions)
 	common.ApiSuccess(c, pageInfo)
+}
+
+func ListUIAssistantConversations(c *gin.Context) {
+	pageInfo := common.GetPageQuery(c)
+	conversations, total, err := model.GetUserUIAssistantConversations(c.GetInt("id"), pageInfo)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	pageInfo.SetTotal(int(total))
+	pageInfo.SetItems(conversations)
+	common.ApiSuccess(c, pageInfo)
+}
+
+func CreateUIAssistantConversation(c *gin.Context) {
+	var payload uiAssistantConversationPayload
+	_ = c.ShouldBindJSON(&payload)
+	conversation, err := model.CreateUIAssistantConversation(c.GetInt("id"), payload.Title)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	common.ApiSuccess(c, conversation)
+}
+
+func GetUIAssistantConversationMessages(c *gin.Context) {
+	id, err := parseInt64Param(c, "id")
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	conversation, err := model.GetUIAssistantConversationForUser(id, c.GetInt("id"))
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	messages, err := model.GetUIAssistantConversationMessages(id, c.GetInt("id"))
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	common.ApiSuccess(c, gin.H{
+		"conversation": conversation,
+		"items":        messages,
+	})
+}
+
+func DeleteUIAssistantConversation(c *gin.Context) {
+	id, err := parseInt64Param(c, "id")
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	if err = model.DeleteUIAssistantConversationForUser(id, c.GetInt("id")); err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	common.ApiSuccess(c, nil)
 }
 
 func AnalyzeUIAssistant(c *gin.Context) {
@@ -511,7 +581,17 @@ func ChatUIAssistant(c *gin.Context) {
 		assistantFreeLimitExceeded(c, used, limit)
 		return
 	}
+	selectedModel := config.ModelName
+	if useBalance {
+		payload.ModelName = strings.TrimSpace(payload.ModelName)
+		if payload.ModelName != "" {
+			selectedModel = payload.ModelName
+		}
+	}
 	latestQuestion := latestAssistantUserMessage(payload.Messages)
+	if latestQuestion == "" && len(payload.Screenshots) > 0 {
+		latestQuestion = "用户上传了截图，请帮我判断问题。"
+	}
 	knowledge := ""
 	if config.KnowledgeEnabled {
 		knowledge, err = buildAssistantKnowledge(latestQuestion)
@@ -520,7 +600,7 @@ func ChatUIAssistant(c *gin.Context) {
 			return
 		}
 	}
-	reqBody, err := buildAssistantStreamRequest(c, config, payload, knowledge)
+	reqBody, err := buildAssistantStreamRequest(c, config, payload, knowledge, selectedModel)
 	if err != nil {
 		common.ApiError(c, err)
 		return
@@ -570,12 +650,31 @@ func ChatUIAssistant(c *gin.Context) {
 		return
 	}
 
+	var conversation *model.UIAssistantConversation
+	if config.StoreSessions {
+		conversation, err = ensureUIAssistantConversation(c.GetInt("id"), payload.ConversationId, latestQuestion)
+		if err != nil {
+			common.SysError("failed to create ui assistant conversation: " + err.Error())
+			conversation = nil
+		} else if conversation != nil {
+			_ = model.CreateUIAssistantConversationMessage(&model.UIAssistantConversationMessage{
+				ConversationId:  conversation.Id,
+				UserId:          c.GetInt("id"),
+				Role:            "user",
+				Content:         latestQuestion,
+				ScreenshotCount: len(payload.Screenshots),
+			})
+			c.Writer.Header().Set("X-Assistant-Conversation-Id", strconv.FormatInt(conversation.Id, 10))
+		}
+	}
+
 	c.Writer.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	c.Writer.Header().Set("Cache-Control", "no-cache")
 	c.Writer.Header().Set("X-Accel-Buffering", "no")
 	c.Writer.WriteHeader(http.StatusOK)
 	flusher, _ := c.Writer.(http.Flusher)
 	answer, streamErr := streamAssistantResponse(resp.Body, c.Writer, flusher)
+	visibleAnswer, reasoning := splitAssistantThinking(answer)
 	if streamErr != nil {
 		_, _ = c.Writer.Write([]byte("\n\n[AI 助手连接中断，请稍后重试]"))
 		if flusher != nil {
@@ -586,7 +685,7 @@ func ChatUIAssistant(c *gin.Context) {
 		UserId:          c.GetInt("id"),
 		ScreenshotCount: len(payload.Screenshots),
 		ProviderType:    config.ProviderType,
-		ModelName:       config.ModelName,
+		ModelName:       selectedModel,
 	}
 	if useBalance {
 		session.ProviderType = model.UIAssistantProviderBalance
@@ -594,10 +693,24 @@ func ChatUIAssistant(c *gin.Context) {
 	if config.StoreSessions {
 		session.PagePath = payload.PagePath
 		session.Question = latestQuestion
-		session.Decision = inferAssistantDecision(answer)
-		session.AnswerSummary = trimRunes(answer, 1000)
+		session.Decision = inferAssistantDecision(visibleAnswer)
+		session.AnswerSummary = trimRunes(visibleAnswer, 1000)
 		if streamErr != nil {
 			session.ErrorMessage = streamErr.Error()
+		}
+		if conversation != nil {
+			_ = model.CreateUIAssistantConversationMessage(&model.UIAssistantConversationMessage{
+				ConversationId: conversation.Id,
+				UserId:         c.GetInt("id"),
+				Role:           "assistant",
+				Content:        visibleAnswer,
+				Reasoning:      reasoning,
+			})
+			lastMessage := visibleAnswer
+			if strings.TrimSpace(lastMessage) == "" {
+				lastMessage = latestQuestion
+			}
+			_ = model.TouchUIAssistantConversation(conversation.Id, c.GetInt("id"), lastMessage)
 		}
 	}
 	_ = model.CreateUIAssistantSession(session)
@@ -614,6 +727,13 @@ func parseInt64Param(c *gin.Context, key string) (int64, error) {
 		return 0, errors.New("无效的 ID")
 	}
 	return id, nil
+}
+
+func ensureUIAssistantConversation(userId int, conversationId int64, title string) (*model.UIAssistantConversation, error) {
+	if conversationId > 0 {
+		return model.GetUIAssistantConversationForUser(conversationId, userId)
+	}
+	return model.CreateUIAssistantConversation(userId, title)
 }
 
 func validateAssistantScreenshots(screenshots []uiAssistantScreenshotPayload, maxBytes int) error {
@@ -715,7 +835,7 @@ func latestAssistantUserMessage(messages []uiAssistantChatMessagePayload) string
 	return ""
 }
 
-func buildAssistantStreamRequest(c *gin.Context, config *model.UIAssistantConfig, payload uiAssistantChatPayload, knowledge string) ([]byte, error) {
+func buildAssistantStreamRequest(c *gin.Context, config *model.UIAssistantConfig, payload uiAssistantChatPayload, knowledge string, selectedModel string) ([]byte, error) {
 	messages := []openAIChatMessage{
 		{
 			Role:    "system",
@@ -756,7 +876,7 @@ func buildAssistantStreamRequest(c *gin.Context, config *model.UIAssistantConfig
 		messages = append(messages, openAIChatMessage{Role: "user", Content: content})
 	}
 	reqBody := openAIChatRequest{
-		Model:       config.ModelName,
+		Model:       selectedModel,
 		Messages:    messages,
 		Temperature: 0.2,
 		MaxTokens:   1000,
@@ -823,6 +943,43 @@ func streamAssistantResponse(reader io.Reader, writer io.Writer, flusher http.Fl
 		return answer.String(), err
 	}
 	return answer.String(), nil
+}
+
+func splitAssistantThinking(content string) (string, string) {
+	content = strings.TrimSpace(content)
+	if content == "" {
+		return "", ""
+	}
+	lower := strings.ToLower(content)
+	var answer strings.Builder
+	var reasoning strings.Builder
+	cursor := 0
+	for cursor < len(content) {
+		startRel := strings.Index(lower[cursor:], "<think>")
+		if startRel < 0 {
+			answer.WriteString(content[cursor:])
+			break
+		}
+		start := cursor + startRel
+		answer.WriteString(content[cursor:start])
+		thinkingStart := start + len("<think>")
+		endRel := strings.Index(lower[thinkingStart:], "</think>")
+		if endRel < 0 {
+			if reasoning.Len() > 0 {
+				reasoning.WriteString("\n\n")
+			}
+			reasoning.WriteString(content[thinkingStart:])
+			cursor = len(content)
+			break
+		}
+		end := thinkingStart + endRel
+		if reasoning.Len() > 0 {
+			reasoning.WriteString("\n\n")
+		}
+		reasoning.WriteString(content[thinkingStart:end])
+		cursor = end + len("</think>")
+	}
+	return strings.TrimSpace(answer.String()), strings.TrimSpace(reasoning.String())
 }
 
 func inferAssistantDecision(answer string) string {
@@ -969,9 +1126,11 @@ func normalizeAssistantContent(raw json.RawMessage) string {
 	}
 	var text string
 	if err := common.Unmarshal(raw, &text); err == nil {
-		return strings.TrimSpace(text)
+		answer, _ := splitAssistantThinking(text)
+		return answer
 	}
-	return trimmed
+	answer, _ := splitAssistantThinking(trimmed)
+	return answer
 }
 
 func parseAssistantJSON(content string) uiAssistantModelResult {

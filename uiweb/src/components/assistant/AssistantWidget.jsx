@@ -1,8 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Bot, ImagePlus, Loader2, Send, ShieldAlert, Sparkles, Trash2, X } from 'lucide-react'
+import { Bot, ChevronDown, History, ImagePlus, Loader2, MessageSquare, Plus, Send, ShieldAlert, Sparkles, Trash2, X } from 'lucide-react'
 import ClayCard from '../clay/ClayCard.jsx'
 import { useToast } from '../../context/ToastContext.jsx'
-import { getAssistantClientConfig, streamAssistantChat } from '../../services/assistant.js'
+import {
+  deleteAssistantConversation,
+  getAssistantClientConfig,
+  getAssistantConversationMessages,
+  getAssistantModels,
+  listAssistantConversations,
+  streamAssistantChat,
+} from '../../services/assistant.js'
 
 const TYPEWRITER_INTERVAL_MS = 22
 const FREE_LIMIT_CODE = 'assistant_free_limit_exceeded'
@@ -18,8 +25,91 @@ function makeId() {
   return `${Date.now()}-${Math.random().toString(16).slice(2)}`
 }
 
-function ChatBubble({ message, onUseBalance, disabled }) {
+function takeTagSuffix(value, tag) {
+  const lower = value.toLowerCase()
+  for (let length = Math.min(tag.length - 1, value.length); length > 0; length -= 1) {
+    if (tag.startsWith(lower.slice(-length))) return length
+  }
+  return 0
+}
+
+function feedThinkingParser(state, chunk) {
+  let data = `${state.pending || ''}${chunk || ''}`
+  const result = { answer: '', reasoning: '', thinkingStarted: false, thinkingDone: false }
+  state.pending = ''
+
+  while (data) {
+    const lower = data.toLowerCase()
+    if (state.mode === 'think') {
+      const closeIndex = lower.indexOf('</think>')
+      if (closeIndex < 0) {
+        const keep = takeTagSuffix(data, '</think>')
+        result.reasoning += keep > 0 ? data.slice(0, -keep) : data
+        state.pending = keep > 0 ? data.slice(-keep) : ''
+        data = ''
+      } else {
+        result.reasoning += data.slice(0, closeIndex)
+        data = data.slice(closeIndex + '</think>'.length)
+        state.mode = 'answer'
+        result.thinkingDone = true
+      }
+      continue
+    }
+
+    const openIndex = lower.indexOf('<think>')
+    if (openIndex < 0) {
+      const keep = takeTagSuffix(data, '<think>')
+      result.answer += keep > 0 ? data.slice(0, -keep) : data
+      state.pending = keep > 0 ? data.slice(-keep) : ''
+      data = ''
+    } else {
+      result.answer += data.slice(0, openIndex)
+      data = data.slice(openIndex + '<think>'.length)
+      state.mode = 'think'
+      result.thinkingStarted = true
+    }
+  }
+
+  return result
+}
+
+function flushThinkingParser(state) {
+  const pending = state.pending || ''
+  state.pending = ''
+  if (!pending) return { answer: '', reasoning: '' }
+  if (state.mode === 'think') return { answer: '', reasoning: pending }
+  return { answer: pending, reasoning: '' }
+}
+
+function formatAssistantTime(timestamp) {
+  const value = Number(timestamp) || 0
+  if (!value) return ''
+  const date = new Date(value * 1000)
+  return date.toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
+}
+
+function normalizePaidModels(data) {
+  const source = data?.data || data || []
+  const names = new Set()
+  if (Array.isArray(source)) {
+    source.forEach((item) => {
+      const name = typeof item === 'string' ? item : item?.id || item?.model_name
+      if (name) names.add(name)
+    })
+  } else if (source && typeof source === 'object') {
+    Object.values(source).forEach((value) => {
+      if (!Array.isArray(value)) return
+      value.forEach((name) => {
+        if (name) names.add(String(name))
+      })
+    })
+  }
+  return [...names].sort((a, b) => a.localeCompare(b))
+}
+
+function ChatBubble({ message, onUseBalance, onToggleReasoning, disabled }) {
   const isUser = message.role === 'user'
+  const hasReasoning = !isUser && String(message.reasoning || '').trim()
   return (
     <div className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
       <div
@@ -39,6 +129,28 @@ function ChatBubble({ message, onUseBalance, disabled }) {
                 className="w-16 h-16 md:w-20 md:h-20 rounded-clay object-cover shadow-clay-sm"
               />
             ))}
+          </div>
+        )}
+        {hasReasoning && (
+          <div className="mb-3 rounded-[18px] bg-clay-bg/60 shadow-clay-sm overflow-hidden">
+            <button
+              type="button"
+              onClick={() => onToggleReasoning?.(message.id)}
+              className="w-full px-3 py-2 flex items-center justify-between gap-2 text-[11px] font-black text-clay-faint"
+            >
+              <span>{message.reasoningDone ? '思考过程' : '正在思考'}</span>
+              <ChevronDown className={`w-3.5 h-3.5 transition-transform ${message.reasoningOpen ? 'rotate-180' : ''}`} />
+            </button>
+            {message.reasoningOpen && (
+              <div className="px-3 pb-3 whitespace-pre-wrap leading-6 text-xs font-semibold text-clay-faint/90">
+                {message.reasoning}
+              </div>
+            )}
+          </div>
+        )}
+        {message.screenshotCount > 0 && !message.screenshots?.length && (
+          <div className="mb-2 text-[11px] font-bold text-clay-faint">
+            已附 {message.screenshotCount} 张截图
           </div>
         )}
         <div className="whitespace-pre-wrap leading-7 text-sm md:text-sm font-semibold">
@@ -74,6 +186,12 @@ export default function AssistantWidget() {
   const [question, setQuestion] = useState('')
   const [screenshots, setScreenshots] = useState([])
   const [messages, setMessages] = useState([])
+  const [conversationId, setConversationId] = useState(0)
+  const [conversations, setConversations] = useState([])
+  const [historyOpen, setHistoryOpen] = useState(false)
+  const [historyLoading, setHistoryLoading] = useState(false)
+  const [paidModels, setPaidModels] = useState([])
+  const [selectedPaidModel, setSelectedPaidModel] = useState('')
   const [openingContent, setOpeningContent] = useState('')
   const [openingStreaming, setOpeningStreaming] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -81,6 +199,7 @@ export default function AssistantWidget() {
   const openingPlayedRef = useRef('')
   const messageBuffersRef = useRef(new Map())
   const messageTimersRef = useRef(new Map())
+  const messageParsersRef = useRef(new Map())
 
   const enabled = Boolean(config?.enabled)
   const maxImageBytes = config?.max_image_bytes || 800 * 1024
@@ -97,6 +216,7 @@ export default function AssistantWidget() {
         if (!mounted) return
         if (res?.success === false) return
         setConfig(res?.data || null)
+        if (res?.data?.model_name) setSelectedPaidModel(res.data.model_name)
       })
       .catch(() => {})
     return () => {
@@ -108,6 +228,7 @@ export default function AssistantWidget() {
     messageTimersRef.current.forEach((timer) => window.clearInterval(timer))
     messageTimersRef.current.clear()
     messageBuffersRef.current.clear()
+    messageParsersRef.current.clear()
   }, [])
 
   useEffect(() => {
@@ -148,10 +269,106 @@ export default function AssistantWidget() {
     return () => window.clearInterval(timer)
   }, [enabled, open, openingText])
 
+  useEffect(() => {
+    if (!open || !enabled) return
+    let mounted = true
+    setHistoryLoading(true)
+    listAssistantConversations({ p: 1, size: 30 })
+      .then((res) => {
+        if (!mounted) return
+        const items = res?.data?.items || res?.items || []
+        setConversations(Array.isArray(items) ? items : [])
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (mounted) setHistoryLoading(false)
+      })
+    getAssistantModels()
+      .then((res) => {
+        if (!mounted) return
+        const models = normalizePaidModels(res)
+        setPaidModels(models)
+        setSelectedPaidModel((current) => current || models[0] || config?.model_name || '')
+      })
+      .catch(() => {})
+    return () => {
+      mounted = false
+    }
+  }, [config?.model_name, enabled, open])
+
   const imageTotal = useMemo(
     () => screenshots.reduce((sum, item) => sum + getDataSize(item.data_url), 0),
     [screenshots],
   )
+  const freeLimit = Number(config?.daily_limit) || 8
+  const freeUsed = Math.min(Number(config?.daily_used) || 0, freeLimit)
+  const freeModelLabel = `免费 · ${config?.model_name || '后台模型'} (${freeUsed}/${freeLimit})`
+
+  const refreshConversations = async () => {
+    try {
+      const res = await listAssistantConversations({ p: 1, size: 30 })
+      const items = res?.data?.items || res?.items || []
+      setConversations(Array.isArray(items) ? items : [])
+    } catch (_) {}
+  }
+
+  const startNewConversation = () => {
+    setConversationId(0)
+    setMessages([])
+    setQuestion('')
+    setScreenshots([])
+    setError('')
+    setHistoryOpen(false)
+    messageTimersRef.current.forEach((timer) => window.clearInterval(timer))
+    messageTimersRef.current.clear()
+    messageParsersRef.current.clear()
+    messageBuffersRef.current.clear()
+  }
+
+  const openConversation = async (conversation) => {
+    if (!conversation?.id) return
+    setHistoryLoading(true)
+    try {
+      const res = await getAssistantConversationMessages(conversation.id)
+      const items = res?.data?.items || res?.items || []
+      setConversationId(Number(conversation.id) || 0)
+      setMessages((Array.isArray(items) ? items : []).map((item) => ({
+        id: `history-${item.id}`,
+        role: item.role,
+        content: item.content || '',
+        reasoning: item.reasoning || '',
+        reasoningDone: Boolean(item.reasoning),
+        reasoningOpen: false,
+        screenshotCount: item.screenshot_count || item.screenshotCount || 0,
+      })))
+      setQuestion('')
+      setScreenshots([])
+      setError('')
+      setHistoryOpen(false)
+    } catch (err) {
+      toast(err?.message || '历史对话读取失败', 'error')
+    } finally {
+      setHistoryLoading(false)
+    }
+  }
+
+  const removeConversation = async (event, conversation) => {
+    event.stopPropagation()
+    if (!conversation?.id) return
+    try {
+      await deleteAssistantConversation(conversation.id)
+      if (Number(conversationId) === Number(conversation.id)) startNewConversation()
+      await refreshConversations()
+    } catch (err) {
+      toast(err?.message || '删除历史对话失败', 'error')
+    }
+  }
+
+  const toggleReasoning = (messageId) => {
+    setMessages((prev) => prev.map((item) => (
+      item.id === messageId ? { ...item, reasoningOpen: !item.reasoningOpen } : item
+    )))
+  }
 
   if (!enabled) return null
 
@@ -238,6 +455,46 @@ export default function AssistantWidget() {
     scheduleMessageTypewriter(messageId)
   }
 
+  const appendMessageReasoning = (messageId, content, patch = {}) => {
+    if (!content && Object.keys(patch).length === 0) return
+    setMessages((prev) => prev.map((item) => (
+      item.id === messageId
+        ? { ...item, ...patch, reasoning: `${item.reasoning || ''}${content || ''}` }
+        : item
+    )))
+  }
+
+  const queueAssistantChunk = (messageId, chunk) => {
+    const parser = messageParsersRef.current.get(messageId) || { mode: 'answer', pending: '' }
+    const parsed = feedThinkingParser(parser, chunk)
+    messageParsersRef.current.set(messageId, parser)
+    if (parsed.thinkingStarted) {
+      appendMessageReasoning(messageId, '', { reasoningOpen: true, reasoningDone: false })
+    }
+    if (parsed.reasoning) {
+      appendMessageReasoning(messageId, parsed.reasoning)
+    }
+    if (parsed.thinkingDone) {
+      appendMessageReasoning(messageId, '', { reasoningOpen: false, reasoningDone: true })
+    }
+    if (parsed.answer) {
+      queueMessageTypewriter(messageId, parsed.answer)
+    }
+  }
+
+  const flushAssistantParser = (messageId) => {
+    const parser = messageParsersRef.current.get(messageId)
+    if (!parser) return
+    const parsed = flushThinkingParser(parser)
+    if (parsed.reasoning) {
+      appendMessageReasoning(messageId, parsed.reasoning, { reasoningOpen: false, reasoningDone: true })
+    }
+    if (parsed.answer) {
+      queueMessageTypewriter(messageId, parsed.answer)
+    }
+    messageParsersRef.current.delete(messageId)
+  }
+
   const flushMessageTypewriter = (messageId) => {
     const queued = messageBuffersRef.current.get(messageId) || ''
     stopMessageTypewriter(messageId)
@@ -274,7 +531,7 @@ export default function AssistantWidget() {
     if (retryAssistantId) {
       setMessages((prev) => prev.map((item) => (
         item.id === retryAssistantId
-          ? { ...item, content: '', streaming: true, action: null, pendingMessage: null, historyMessages: null }
+          ? { ...item, content: '', reasoning: '', reasoningDone: false, reasoningOpen: false, streaming: true, action: null, pendingMessage: null, historyMessages: null }
           : item
       )))
     } else {
@@ -282,6 +539,9 @@ export default function AssistantWidget() {
         id: assistantId,
         role: 'assistant',
         content: '',
+        reasoning: '',
+        reasoningDone: false,
+        reasoningOpen: false,
         streaming: true,
       }
       setMessages([...messages, userMessage, assistantMessage])
@@ -291,25 +551,34 @@ export default function AssistantWidget() {
     setLoading(true)
     setError('')
     try {
-      await streamAssistantChat(
+      const result = await streamAssistantChat(
         {
+          conversation_id: conversationId || 0,
+          model_name: useBalance ? selectedPaidModel : '',
           page_path: window.location.pathname,
           use_balance: useBalance,
           messages: [...baseMessages, userMessage].map((item) => ({
             role: item.role,
             content: item.content,
           })),
-          screenshots: userMessage.screenshots.map((item) => ({ data_url: item.data_url })),
+          screenshots: (userMessage.screenshots || []).map((item) => ({ data_url: item.data_url })),
         },
         (chunk) => {
-          queueMessageTypewriter(assistantId, chunk)
+          queueAssistantChunk(assistantId, chunk)
         },
       )
+      flushAssistantParser(assistantId)
       await waitForMessageTypewriter(assistantId)
       setMessages((prev) => prev.map((item) => (
         item.id === assistantId ? { ...item, streaming: false } : item
       )))
+      if (result?.conversationId) setConversationId(Number(result.conversationId) || 0)
+      if (!useBalance) {
+        setConfig((prev) => prev ? { ...prev, daily_used: Math.min((Number(prev.daily_used) || 0) + 1, Number(prev.daily_limit) || 8) } : prev)
+      }
+      refreshConversations()
     } catch (err) {
+      flushAssistantParser(assistantId)
       flushMessageTypewriter(assistantId)
       const message = err?.message || 'AI 助手分析失败'
       if (err?.code === FREE_LIMIT_CODE) {
@@ -384,6 +653,24 @@ export default function AssistantWidget() {
               </div>
               <button
                 type="button"
+                onClick={startNewConversation}
+                className="w-9 h-9 rounded-full bg-clay-bg shadow-clay md:bg-white/35 flex items-center justify-center shrink-0"
+                aria-label="新建对话"
+                title="新建对话"
+              >
+                <Plus className="w-4 h-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setHistoryOpen((value) => !value)}
+                className="w-9 h-9 rounded-full bg-clay-bg shadow-clay md:bg-white/35 flex items-center justify-center shrink-0"
+                aria-label="历史对话"
+                title="历史对话"
+              >
+                <History className="w-4 h-4" />
+              </button>
+              <button
+                type="button"
                 onClick={() => setOpen(false)}
                 className="w-9 h-9 rounded-full bg-clay-bg shadow-clay md:bg-white/35 flex items-center justify-center shrink-0"
                 aria-label="关闭"
@@ -399,24 +686,85 @@ export default function AssistantWidget() {
               </span>
             </div>
 
+            {historyOpen && (
+              <div className="absolute left-4 right-4 top-[7.25rem] bottom-[9.5rem] md:left-6 md:right-auto md:top-24 md:bottom-8 md:w-80 z-20 rounded-clay bg-clay-bg/95 shadow-clay border-2 border-white/35 p-3 overflow-hidden flex flex-col">
+                <div className="flex items-center justify-between gap-2 mb-3">
+                  <div className="flex items-center gap-2 font-black text-clay-ink">
+                    <MessageSquare className="w-4 h-4 text-clay-pink-300" />
+                    历史对话
+                  </div>
+                  <button
+                    type="button"
+                    onClick={startNewConversation}
+                    className="h-8 px-3 rounded-full bg-clay-pink-100 text-[#8a4860] shadow-clay text-xs font-black"
+                  >
+                    新建
+                  </button>
+                </div>
+                <div className="flex-1 overflow-y-auto space-y-2 pr-1">
+                  {historyLoading && (
+                    <div className="text-xs font-bold text-clay-faint px-2 py-4">正在读取...</div>
+                  )}
+                  {!historyLoading && conversations.length === 0 && (
+                    <div className="text-xs font-bold text-clay-faint px-2 py-4">还没有历史对话</div>
+                  )}
+                  {conversations.map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => openConversation(item)}
+                      className={`w-full text-left rounded-[18px] px-3 py-3 shadow-clay-sm ${
+                        Number(conversationId) === Number(item.id) ? 'bg-clay-pink-100 text-[#8a4860]' : 'bg-white/45 text-clay-ink'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <div className="truncate text-sm font-black">{item.title || '新的对话'}</div>
+                          <div className="mt-1 line-clamp-2 text-[11px] leading-5 font-bold opacity-75">
+                            {item.last_message || '暂无回复'}
+                          </div>
+                          <div className="mt-1 text-[10px] font-bold opacity-55">{formatAssistantTime(item.updated_at)}</div>
+                        </div>
+                        <span
+                          role="button"
+                          tabIndex={0}
+                          onClick={(event) => removeConversation(event, item)}
+                          onKeyDown={(event) => {
+                            if (event.key === 'Enter' || event.key === ' ') removeConversation(event, item)
+                          }}
+                          className="w-7 h-7 rounded-full bg-clay-bg/80 shadow-clay-sm flex items-center justify-center shrink-0"
+                          aria-label="删除历史对话"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div
               ref={scrollRef}
-              className="flex-1 overflow-y-auto px-4 py-3 md:px-6 md:pt-10 md:pb-44 md:bg-transparent md:shadow-none space-y-3 md:space-y-0"
+              className="flex-1 overflow-y-auto px-4 py-3 pb-44 md:px-6 md:pt-10 md:pb-56 md:bg-transparent md:shadow-none space-y-3 md:space-y-0"
             >
               <div className="mx-auto w-full md:max-w-[920px] space-y-3 md:space-y-8">
-                <ChatBubble
-                  message={{
-                    id: 'opening',
-                    role: 'assistant',
-                    content: openingContent,
-                    streaming: openingStreaming,
-                  }}
-                />
+                {messages.length === 0 && (
+                  <ChatBubble
+                    message={{
+                      id: 'opening',
+                      role: 'assistant',
+                      content: openingContent,
+                      streaming: openingStreaming,
+                    }}
+                  />
+                )}
                 {messages.map((message) => (
                   <ChatBubble
                     key={message.id}
                     message={message}
                     onUseBalance={continueWithBalance}
+                    onToggleReasoning={toggleReasoning}
                     disabled={loading}
                   />
                 ))}
@@ -462,6 +810,19 @@ export default function AssistantWidget() {
                   placeholder="输入问题，Enter 发送，Shift+Enter 换行..."
                 />
 
+                <div className="md:hidden mb-2 flex items-center gap-2">
+                  <span className="text-[11px] font-bold text-clay-faint shrink-0">余额模型</span>
+                  <select
+                    value={selectedPaidModel}
+                    onChange={(event) => setSelectedPaidModel(event.target.value)}
+                    className="min-w-0 flex-1 rounded-full bg-clay-bg shadow-clay-sm px-3 py-2 text-xs font-bold text-clay-ink outline-none"
+                  >
+                    {(paidModels.length ? paidModels : [config?.model_name || '']).filter(Boolean).map((name) => (
+                      <option key={name} value={name}>{name}</option>
+                    ))}
+                  </select>
+                </div>
+
                 <div className="flex items-center justify-between gap-3 pt-2">
                   <div className="flex items-center gap-2 min-w-0">
                     {config?.allow_screenshot && (
@@ -488,8 +849,20 @@ export default function AssistantWidget() {
                       </>
                     )}
                     <span className="truncate text-[11px] md:text-xs text-clay-faint font-bold">
-                      免费 {config?.daily_limit || 8} 次/日 · {(imageTotal / 1024).toFixed(0)}KB
+                      {freeModelLabel} · 截图 {(imageTotal / 1024).toFixed(0)}KB
                     </span>
+                  </div>
+                  <div className="hidden md:flex items-center gap-2 min-w-0">
+                    <span className="text-[11px] font-bold text-clay-faint shrink-0">余额模型</span>
+                    <select
+                      value={selectedPaidModel}
+                      onChange={(event) => setSelectedPaidModel(event.target.value)}
+                      className="max-w-[220px] rounded-full bg-clay-bg shadow-clay-sm px-3 py-2 text-xs font-bold text-clay-ink outline-none"
+                    >
+                      {(paidModels.length ? paidModels : [config?.model_name || '']).filter(Boolean).map((name) => (
+                        <option key={name} value={name}>{name}</option>
+                      ))}
+                    </select>
                   </div>
                   <button
                     type="button"

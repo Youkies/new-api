@@ -11,6 +11,32 @@ export async function analyzeAssistant(payload) {
   return res.data
 }
 
+export async function listAssistantConversations({ p = 1, size = 20 } = {}) {
+  const qs = new URLSearchParams({ p: String(p), size: String(size) })
+  const res = await api.get(`/api/ui/assistant/conversations?${qs.toString()}`)
+  return res.data
+}
+
+export async function createAssistantConversation(payload = {}) {
+  const res = await api.post('/api/ui/assistant/conversations', payload)
+  return res.data
+}
+
+export async function getAssistantConversationMessages(id) {
+  const res = await api.get(`/api/ui/assistant/conversations/${id}/messages`)
+  return res.data
+}
+
+export async function deleteAssistantConversation(id) {
+  const res = await api.delete(`/api/ui/assistant/conversations/${id}`)
+  return res.data
+}
+
+export async function getAssistantModels() {
+  const res = await api.get('/api/user/models')
+  return res.data
+}
+
 function getUserHeader() {
   try {
     const raw = localStorage.getItem('user')
@@ -62,7 +88,8 @@ export async function streamAssistantChat(payload, onChunk) {
     error.status = payload.status
     throw error
   }
-  if (!res.body) return ''
+  const conversationId = res.headers.get('X-Assistant-Conversation-Id') || ''
+  if (!res.body) return { text: '', conversationId }
   const reader = res.body.getReader()
   const decoder = new TextDecoder('utf-8')
   let fullText = ''
@@ -79,7 +106,7 @@ export async function streamAssistantChat(payload, onChunk) {
     fullText += tail
     onChunk?.(tail)
   }
-  return fullText
+  return { text: fullText, conversationId }
 }
 
 export async function adminGetAssistantConfig() {

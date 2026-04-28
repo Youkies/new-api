@@ -303,7 +303,7 @@ function createInitialState() {
       allow_screenshot: true,
       knowledge_enabled: true,
       store_sessions: true,
-      daily_limit: 10,
+      daily_limit: 8,
       max_image_bytes: 800 * 1024,
       created_at: daysAgo(1),
       updated_at: nowSec(),

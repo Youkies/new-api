@@ -25,9 +25,19 @@ function getUserHeader() {
 async function readErrorMessage(res) {
   try {
     const data = await res.json()
-    return data?.message || data?.error?.message || `请求失败：HTTP ${res.status}`
+    return {
+      message: data?.message || data?.error?.message || `请求失败：HTTP ${res.status}`,
+      code: data?.code || data?.error?.code || '',
+      data: data?.data || null,
+      status: res.status,
+    }
   } catch (_) {
-    return `请求失败：HTTP ${res.status}`
+    return {
+      message: `请求失败：HTTP ${res.status}`,
+      code: '',
+      data: null,
+      status: res.status,
+    }
   }
 }
 
@@ -45,7 +55,12 @@ export async function streamAssistantChat(payload, onChunk) {
     body: JSON.stringify(payload),
   })
   if (!res.ok) {
-    throw new Error(await readErrorMessage(res))
+    const payload = await readErrorMessage(res)
+    const error = new Error(payload.message)
+    error.code = payload.code
+    error.data = payload.data
+    error.status = payload.status
+    throw error
   }
   if (!res.body) return ''
   const reader = res.body.getReader()

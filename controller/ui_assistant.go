@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -22,6 +23,7 @@ import (
 const (
 	uiAssistantMaxScreenshots    = 2
 	uiAssistantMaxKnowledgeChars = 6000
+	uiAssistantFreeLimitCode     = "assistant_free_limit_exceeded"
 )
 
 type uiAssistantConfigPayload struct {
@@ -67,6 +69,7 @@ type uiAssistantChatPayload struct {
 	Messages    []uiAssistantChatMessagePayload `json:"messages"`
 	PagePath    string                          `json:"page_path"`
 	Screenshots []uiAssistantScreenshotPayload  `json:"screenshots"`
+	UseBalance  bool                            `json:"use_balance"`
 }
 
 type uiAssistantModelResult struct {
@@ -77,6 +80,7 @@ type uiAssistantModelResult struct {
 
 type openAIChatRequest struct {
 	Model       string              `json:"model"`
+	Group       string              `json:"group,omitempty"`
 	Messages    []openAIChatMessage `json:"messages"`
 	Temperature float64             `json:"temperature,omitempty"`
 	MaxTokens   int                 `json:"max_tokens,omitempty"`
@@ -103,6 +107,7 @@ type openAIImageURLPart struct {
 }
 
 type openAIChatResponse struct {
+	Message string `json:"message,omitempty"`
 	Choices []struct {
 		Message struct {
 			Content json.RawMessage `json:"content"`
@@ -141,7 +146,7 @@ func assistantConfigAdminResponse(config *model.UIAssistantConfig) gin.H {
 		"allow_screenshot":  config.AllowScreenshot,
 		"knowledge_enabled": config.KnowledgeEnabled,
 		"store_sessions":    config.StoreSessions,
-		"daily_limit":       config.DailyLimit,
+		"daily_limit":       assistantDailyLimit(config),
 		"max_image_bytes":   config.MaxImageBytes,
 		"created_at":        config.CreatedAt,
 		"updated_at":        config.UpdatedAt,
@@ -154,7 +159,7 @@ func assistantConfigClientResponse(config *model.UIAssistantConfig) gin.H {
 		"assistant_name":   config.AssistantName,
 		"welcome_message":  config.WelcomeMessage,
 		"allow_screenshot": config.AllowScreenshot,
-		"daily_limit":      config.DailyLimit,
+		"daily_limit":      assistantDailyLimit(config),
 		"max_image_bytes":  config.MaxImageBytes,
 	}
 }
@@ -175,6 +180,50 @@ func boolPayload(value *bool, fallback bool) bool {
 		return fallback
 	}
 	return *value
+}
+
+func assistantDailyLimit(config *model.UIAssistantConfig) int {
+	if config == nil || config.DailyLimit <= 0 {
+		return 8
+	}
+	if config.DailyLimit > 8 {
+		return 8
+	}
+	return config.DailyLimit
+}
+
+func assistantDailyLimitReached(c *gin.Context, config *model.UIAssistantConfig) (bool, int64, int, error) {
+	limit := assistantDailyLimit(config)
+	if limit <= 0 {
+		return false, 0, limit, nil
+	}
+	total, err := model.CountUIAssistantSessions(c.GetInt("id"), common.GetTimestamp()-86400)
+	if err != nil {
+		return false, 0, limit, err
+	}
+	return total >= int64(limit), total, limit, nil
+}
+
+func assistantFreeLimitExceeded(c *gin.Context, used int64, limit int) {
+	c.JSON(http.StatusPaymentRequired, gin.H{
+		"success": false,
+		"code":    uiAssistantFreeLimitCode,
+		"message": "今天的免费 AI 助手次数已经用完了，是否使用账户余额继续对话？继续后会按当前用户可用模型正常扣费。",
+		"data": gin.H{
+			"used":             used,
+			"free_daily_limit": limit,
+		},
+	})
+}
+
+func assistantChatError(c *gin.Context, status int, msg string) {
+	if status < 400 {
+		status = http.StatusBadGateway
+	}
+	c.JSON(status, gin.H{
+		"success": false,
+		"message": msg,
+	})
 }
 
 func GetUIAssistantClientConfig(c *gin.Context) {
@@ -350,16 +399,14 @@ func AnalyzeUIAssistant(c *gin.Context) {
 		common.ApiErrorMsg(c, "当前未开启截图分析")
 		return
 	}
-	if config.DailyLimit > 0 {
-		total, err := model.CountUIAssistantSessions(c.GetInt("id"), common.GetTimestamp()-86400)
-		if err != nil {
-			common.ApiError(c, err)
-			return
-		}
-		if total >= int64(config.DailyLimit) {
-			common.ApiErrorMsg(c, "今日 AI 助手使用次数已达上限")
-			return
-		}
+	limitReached, used, limit, err := assistantDailyLimitReached(c, config)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	if limitReached {
+		assistantFreeLimitExceeded(c, used, limit)
+		return
 	}
 	if err = validateAssistantScreenshots(payload.Screenshots, config.MaxImageBytes); err != nil {
 		common.ApiError(c, err)
@@ -378,18 +425,20 @@ func AnalyzeUIAssistant(c *gin.Context) {
 	result, rawAnswer, err := callAssistantModel(c, config, payload, knowledge)
 	session := &model.UIAssistantSession{
 		UserId:          c.GetInt("id"),
-		PagePath:        payload.PagePath,
-		Question:        payload.Question,
 		ScreenshotCount: len(payload.Screenshots),
 		ProviderType:    config.ProviderType,
 		ModelName:       config.ModelName,
 	}
+	if config.StoreSessions {
+		session.PagePath = payload.PagePath
+		session.Question = payload.Question
+	}
 	if err != nil {
-		session.Decision = model.UIAssistantDecisionManualReview
-		session.ErrorMessage = err.Error()
 		if config.StoreSessions {
-			_ = model.CreateUIAssistantSession(session)
+			session.Decision = model.UIAssistantDecisionManualReview
+			session.ErrorMessage = err.Error()
 		}
+		_ = model.CreateUIAssistantSession(session)
 		common.ApiError(c, err)
 		return
 	}
@@ -402,11 +451,11 @@ func AnalyzeUIAssistant(c *gin.Context) {
 	if result.Summary == "" {
 		result.Summary = result.Answer
 	}
-	session.Decision = result.Decision
-	session.AnswerSummary = trimRunes(result.Summary, 1000)
 	if config.StoreSessions {
-		_ = model.CreateUIAssistantSession(session)
+		session.Decision = result.Decision
+		session.AnswerSummary = trimRunes(result.Summary, 1000)
 	}
+	_ = model.CreateUIAssistantSession(session)
 	common.ApiSuccess(c, gin.H{
 		"decision":   result.Decision,
 		"summary":    result.Summary,
@@ -452,16 +501,15 @@ func ChatUIAssistant(c *gin.Context) {
 		common.ApiError(c, err)
 		return
 	}
-	if config.DailyLimit > 0 {
-		total, err := model.CountUIAssistantSessions(c.GetInt("id"), common.GetTimestamp()-86400)
-		if err != nil {
-			common.ApiError(c, err)
-			return
-		}
-		if total >= int64(config.DailyLimit) {
-			common.ApiErrorMsg(c, "今日 AI 助手使用次数已达上限")
-			return
-		}
+	limitReached, used, limit, err := assistantDailyLimitReached(c, config)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	useBalance := payload.UseBalance && limitReached
+	if limitReached && !payload.UseBalance {
+		assistantFreeLimitExceeded(c, used, limit)
+		return
 	}
 	latestQuestion := latestAssistantUserMessage(payload.Messages)
 	knowledge := ""
@@ -478,6 +526,9 @@ func ChatUIAssistant(c *gin.Context) {
 		return
 	}
 	endpoint := assistantEndpoint(c, config)
+	if useBalance {
+		endpoint = assistantPlaygroundEndpoint(c)
+	}
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 90*time.Second)
 	defer cancel()
 	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewReader(reqBody))
@@ -487,7 +538,14 @@ func ChatUIAssistant(c *gin.Context) {
 	}
 	httpReq.Header.Set("Content-Type", "application/json")
 	httpReq.Header.Set("Accept", "text/event-stream")
-	httpReq.Header.Set("Authorization", "Bearer "+config.APIKey)
+	if useBalance {
+		httpReq.Header.Set("New-Api-User", strconv.Itoa(c.GetInt("id")))
+		for _, cookie := range c.Request.Cookies() {
+			httpReq.AddCookie(cookie)
+		}
+	} else {
+		httpReq.Header.Set("Authorization", "Bearer "+config.APIKey)
+	}
 	client := &http.Client{Timeout: 90 * time.Second}
 	resp, err := client.Do(httpReq)
 	if err != nil {
@@ -498,11 +556,17 @@ func ChatUIAssistant(c *gin.Context) {
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		limited := io.LimitReader(resp.Body, 2*1024*1024)
 		var chatResp openAIChatResponse
-		if decodeErr := common.DecodeJson(limited, &chatResp); decodeErr == nil && chatResp.Error != nil && chatResp.Error.Message != "" {
-			common.ApiErrorMsg(c, chatResp.Error.Message)
-			return
+		if decodeErr := common.DecodeJson(limited, &chatResp); decodeErr == nil {
+			if chatResp.Error != nil && chatResp.Error.Message != "" {
+				assistantChatError(c, resp.StatusCode, chatResp.Error.Message)
+				return
+			}
+			if chatResp.Message != "" {
+				assistantChatError(c, resp.StatusCode, chatResp.Message)
+				return
+			}
 		}
-		common.ApiErrorMsg(c, fmt.Sprintf("AI 助手模型请求失败：HTTP %d", resp.StatusCode))
+		assistantChatError(c, resp.StatusCode, fmt.Sprintf("AI 助手模型请求失败：HTTP %d", resp.StatusCode))
 		return
 	}
 
@@ -518,22 +582,25 @@ func ChatUIAssistant(c *gin.Context) {
 			flusher.Flush()
 		}
 	}
+	session := &model.UIAssistantSession{
+		UserId:          c.GetInt("id"),
+		ScreenshotCount: len(payload.Screenshots),
+		ProviderType:    config.ProviderType,
+		ModelName:       config.ModelName,
+	}
+	if useBalance {
+		session.ProviderType = model.UIAssistantProviderBalance
+	}
 	if config.StoreSessions {
-		session := &model.UIAssistantSession{
-			UserId:          c.GetInt("id"),
-			PagePath:        payload.PagePath,
-			Question:        latestQuestion,
-			ScreenshotCount: len(payload.Screenshots),
-			Decision:        inferAssistantDecision(answer),
-			AnswerSummary:   trimRunes(answer, 1000),
-			ProviderType:    config.ProviderType,
-			ModelName:       config.ModelName,
-		}
+		session.PagePath = payload.PagePath
+		session.Question = latestQuestion
+		session.Decision = inferAssistantDecision(answer)
+		session.AnswerSummary = trimRunes(answer, 1000)
 		if streamErr != nil {
 			session.ErrorMessage = streamErr.Error()
 		}
-		_ = model.CreateUIAssistantSession(session)
 	}
+	_ = model.CreateUIAssistantSession(session)
 }
 
 func parseInt64Param(c *gin.Context, key string) (int64, error) {
@@ -652,7 +719,7 @@ func buildAssistantStreamRequest(c *gin.Context, config *model.UIAssistantConfig
 	messages := []openAIChatMessage{
 		{
 			Role:    "system",
-			Content: strings.TrimSpace(config.SystemPrompt + "\n\n你现在以对话形式回复用户。不要返回 JSON，不要使用代码块包裹整段回复。回答要自然、简洁、可执行；必要时用编号步骤。"),
+			Content: strings.TrimSpace(config.SystemPrompt + "\n\n你现在以对话形式回复用户。你是热心、善良、体贴的小助手：先理解和安抚用户，再给出清楚步骤。不要返回 JSON，不要使用代码块包裹整段回复。回答要自然、简洁、可执行；必要时用编号步骤。"),
 		},
 	}
 	for i, message := range payload.Messages {
@@ -700,7 +767,7 @@ func buildAssistantStreamRequest(c *gin.Context, config *model.UIAssistantConfig
 
 func buildAssistantChatUserText(payload uiAssistantChatPayload, latestQuestion string, knowledge string) string {
 	var builder strings.Builder
-	builder.WriteString("请以 Youkies 控制台 AI 助手的身份回复用户。\n\n当前页面：")
+	builder.WriteString("请以 Youkies 控制台 AI 助手的身份回复用户。语气要温柔、耐心、体贴，像认真陪用户排查问题的小助手。\n\n当前页面：")
 	if payload.PagePath == "" {
 		builder.WriteString("未知")
 	} else {
@@ -859,9 +926,21 @@ func assistantEndpoint(c *gin.Context, config *model.UIAssistantConfig) string {
 	return baseURL + "/v1/chat/completions"
 }
 
+func assistantPlaygroundEndpoint(c *gin.Context) string {
+	scheme := strings.TrimSpace(c.GetHeader("X-Forwarded-Proto"))
+	if scheme == "" {
+		if c.Request.TLS != nil {
+			scheme = "https"
+		} else {
+			scheme = "http"
+		}
+	}
+	return scheme + "://" + c.Request.Host + "/pg/chat/completions"
+}
+
 func buildAssistantUserText(payload uiAssistantAnalyzePayload, knowledge string) string {
 	var builder strings.Builder
-	builder.WriteString("请根据以下信息做预诊断，并只返回 JSON，不要使用 Markdown 包裹：\n")
+	builder.WriteString("请根据以下信息做预诊断。你是热心、善良、体贴的小助手，结论要温和、清楚、可执行。只返回 JSON，不要使用 Markdown 包裹：\n")
 	builder.WriteString(`{"decision":"self_solve|submit_appeal|manual_review|insufficient_info","summary":"一句话结论","answer":"给用户看的中文说明和步骤"}`)
 	builder.WriteString("\n\n当前页面：")
 	if payload.PagePath == "" {

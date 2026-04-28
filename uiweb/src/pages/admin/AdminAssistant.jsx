@@ -66,7 +66,7 @@ function formFromConfig(config) {
     allow_screenshot: config?.allow_screenshot !== false,
     knowledge_enabled: config?.knowledge_enabled !== false,
     store_sessions: config?.store_sessions !== false,
-    daily_limit: config?.daily_limit || 10,
+    daily_limit: config?.daily_limit || 8,
     max_image_kb: Math.round((config?.max_image_bytes || 800 * 1024) / 1024),
   }
 }
@@ -74,7 +74,7 @@ function formFromConfig(config) {
 function configPayload(form) {
   return {
     ...form,
-    daily_limit: Number(form.daily_limit) || 10,
+    daily_limit: Math.min(8, Math.max(1, Number(form.daily_limit) || 8)),
     max_image_bytes: Math.max(128, Number(form.max_image_kb) || 800) * 1024,
   }
 }
@@ -245,7 +245,7 @@ export default function AdminAssistant() {
           </div>
 
           <ClayAlert tone="info">
-            推荐创建一个站内用户 `ai-assistant`，给它单独分组、额度和专用 Token，然后在这里选择“站内助手账号”。这样助手成本和用户真实额度互相隔离。
+            推荐创建一个站内用户 `ai-assistant`，给它单独分组、额度和专用 Token，用于承担每位用户每日免费对话。免费次数用完后，用户可选择使用自己的余额继续对话，并按当前模型正常扣费。
           </ClayAlert>
 
           <ClayCard className="!overflow-visible">
@@ -292,9 +292,11 @@ export default function AdminAssistant() {
                   placeholder="gpt-5.4-mini"
                 />
               </Field>
-              <Field label="每日每用户次数">
+              <Field label="每日每用户免费次数">
                 <ClayInput
                   type="number"
+                  min="1"
+                  max="8"
                   value={form.daily_limit}
                   onChange={(e) => updateForm('daily_limit', e.target.value)}
                 />

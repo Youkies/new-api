@@ -5,6 +5,7 @@ import { useToast } from '../../context/ToastContext.jsx'
 import { getAssistantClientConfig, streamAssistantChat } from '../../services/assistant.js'
 
 const TYPEWRITER_INTERVAL_MS = 22
+const FREE_LIMIT_CODE = 'assistant_free_limit_exceeded'
 
 function getDataSize(dataURL) {
   const raw = String(dataURL || '')
@@ -17,7 +18,7 @@ function makeId() {
   return `${Date.now()}-${Math.random().toString(16).slice(2)}`
 }
 
-function ChatBubble({ message }) {
+function ChatBubble({ message, onUseBalance, disabled }) {
   const isUser = message.role === 'user'
   return (
     <div className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
@@ -44,6 +45,21 @@ function ChatBubble({ message }) {
           {message.content || (message.streaming ? '正在思考…' : '')}
           {message.streaming && <span className="inline-block w-2 h-4 ml-1 align-middle bg-clay-blue-200 animate-pulse rounded-full" />}
         </div>
+        {message.action === 'use_balance' && (
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => onUseBalance?.(message)}
+              disabled={disabled}
+              className="rounded-clay-pill bg-clay-blue-100 px-4 py-2 text-xs font-black text-[#43658b] shadow-clay disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              使用余额继续
+            </button>
+            <span className="text-[11px] font-bold text-clay-faint">
+              将按你当前可用模型正常扣费
+            </span>
+          </div>
+        )}
       </div>
     </div>
   )
@@ -241,36 +257,45 @@ export default function AssistantWidget() {
     check()
   })
 
-  const submit = async () => {
+  const submit = async ({ useBalance = false, pendingMessage = null, assistantId: retryAssistantId = null, historyMessages = null } = {}) => {
     const trimmed = question.trim()
-    if (!trimmed && screenshots.length === 0) {
+    if (!pendingMessage && !trimmed && screenshots.length === 0) {
       toast('请先描述问题或上传截图', 'warning')
       return
     }
-    const userMessage = {
+    const userMessage = pendingMessage || {
       id: makeId(),
       role: 'user',
       content: trimmed || '请帮我看一下截图里的问题。',
       screenshots,
     }
-    const assistantId = makeId()
-    const assistantMessage = {
-      id: assistantId,
-      role: 'assistant',
-      content: '',
-      streaming: true,
+    const assistantId = retryAssistantId || makeId()
+    const baseMessages = historyMessages || messages
+    if (retryAssistantId) {
+      setMessages((prev) => prev.map((item) => (
+        item.id === retryAssistantId
+          ? { ...item, content: '', streaming: true, action: null, pendingMessage: null, historyMessages: null }
+          : item
+      )))
+    } else {
+      const assistantMessage = {
+        id: assistantId,
+        role: 'assistant',
+        content: '',
+        streaming: true,
+      }
+      setMessages([...messages, userMessage, assistantMessage])
+      setQuestion('')
+      setScreenshots([])
     }
-    const nextMessages = [...messages, userMessage, assistantMessage]
-    setMessages(nextMessages)
-    setQuestion('')
-    setScreenshots([])
     setLoading(true)
     setError('')
     try {
       await streamAssistantChat(
         {
           page_path: window.location.pathname,
-          messages: [...messages, userMessage].map((item) => ({
+          use_balance: useBalance,
+          messages: [...baseMessages, userMessage].map((item) => ({
             role: item.role,
             content: item.content,
           })),
@@ -287,6 +312,24 @@ export default function AssistantWidget() {
     } catch (err) {
       flushMessageTypewriter(assistantId)
       const message = err?.message || 'AI 助手分析失败'
+      if (err?.code === FREE_LIMIT_CODE) {
+        const limit = err?.data?.free_daily_limit || config?.daily_limit || 8
+        const used = err?.data?.used || limit
+        const prompt = `今天的 ${limit} 次免费 AI 助手对话已经用完了。你可以使用账户余额继续这次对话，后续会按你当前可用模型正常扣费。\n\n当前免费使用：${used}/${limit}`
+        setMessages((prev) => prev.map((item) => (
+          item.id === assistantId
+            ? {
+                ...item,
+                streaming: false,
+                content: prompt,
+                action: 'use_balance',
+                pendingMessage: userMessage,
+                historyMessages: baseMessages,
+              }
+            : item
+        )))
+        return
+      }
       setError(message)
       setMessages((prev) => prev.map((item) => (
         item.id === assistantId
@@ -296,6 +339,16 @@ export default function AssistantWidget() {
     } finally {
       setLoading(false)
     }
+  }
+
+  const continueWithBalance = (message) => {
+    if (!message?.pendingMessage) return
+    submit({
+      useBalance: true,
+      pendingMessage: message.pendingMessage,
+      assistantId: message.id,
+      historyMessages: message.historyMessages || [],
+    })
   }
 
   const handleKeyDown = (event) => {
@@ -359,7 +412,14 @@ export default function AssistantWidget() {
                     streaming: openingStreaming,
                   }}
                 />
-                {messages.map((message) => <ChatBubble key={message.id} message={message} />)}
+                {messages.map((message) => (
+                  <ChatBubble
+                    key={message.id}
+                    message={message}
+                    onUseBalance={continueWithBalance}
+                    disabled={loading}
+                  />
+                ))}
               </div>
             </div>
 
@@ -428,12 +488,12 @@ export default function AssistantWidget() {
                       </>
                     )}
                     <span className="truncate text-[11px] md:text-xs text-clay-faint font-bold">
-                      {config?.daily_limit || 10} 次/日 · {(imageTotal / 1024).toFixed(0)}KB
+                      免费 {config?.daily_limit || 8} 次/日 · {(imageTotal / 1024).toFixed(0)}KB
                     </span>
                   </div>
                   <button
                     type="button"
-                    onClick={submit}
+                    onClick={() => submit()}
                     disabled={loading}
                     className="h-10 px-5 md:px-6 rounded-full bg-clay-blue-100 text-[#43658b] shadow-clay flex items-center justify-center gap-2 font-black disabled:opacity-60 disabled:cursor-not-allowed"
                   >

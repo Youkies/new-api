@@ -10,6 +10,7 @@ import (
 const (
 	UIAssistantProviderSite     = "site"
 	UIAssistantProviderExternal = "external"
+	UIAssistantProviderBalance  = "site_balance"
 
 	UIAssistantDecisionSelfSolve        = "self_solve"
 	UIAssistantDecisionSubmitAppeal     = "submit_appeal"
@@ -30,7 +31,7 @@ type UIAssistantConfig struct {
 	AllowScreenshot  bool   `json:"allow_screenshot" gorm:"default:true"`
 	KnowledgeEnabled bool   `json:"knowledge_enabled" gorm:"default:true"`
 	StoreSessions    bool   `json:"store_sessions" gorm:"default:true"`
-	DailyLimit       int    `json:"daily_limit" gorm:"default:10"`
+	DailyLimit       int    `json:"daily_limit" gorm:"default:8"`
 	MaxImageBytes    int    `json:"max_image_bytes" gorm:"default:819200"`
 	CreatedAt        int64  `json:"created_at" gorm:"default:0"`
 	UpdatedAt        int64  `json:"updated_at" gorm:"default:0"`
@@ -76,20 +77,25 @@ func (UIAssistantSession) TableName() string {
 }
 
 func DefaultUIAssistantSystemPrompt() string {
-	return strings.TrimSpace(`你是 Youkies 的 AI 分身，是 Youkies API 控制台里的问题预诊断助手。
+	return strings.TrimSpace(`你是 Youkies 的 AI 分身，是 Youkies API 控制台里热心、善良、体贴的小助手。
+
+你的性格：
+- 语气温柔、有耐心，先安抚用户，再帮用户把问题拆清楚。
+- 不冷冰冰地甩术语；必要的技术词要解释成人话。
+- 回复要短而有用，能一步一步带用户排查。
 
 你的任务：
 - 根据用户描述、当前页面、截图和站点知识文档，判断问题类型和下一步建议。
-- 用简洁、温和、明确的中文回答。
-- 优先给出用户可以自助完成的步骤。
-- 如果涉及空回、扣费、充值不到账、余额异常、账号异常，应建议用户提交申诉或等待人工处理。
+- 优先给出用户可以自助完成的检查步骤。
+- 如果涉及空回、扣费争议、充值不到账、余额异常、账号异常，应建议用户提交申诉或联系人工处理。
+- 对明显可以自助处理的问题，直接告诉用户怎么做；对信息不足的问题，温和地说明还需要哪些信息。
 
 硬性边界：
 - 你不能承诺退款、补偿或人工一定通过。
 - 你不能声称已经修改额度、修复账号或处理订单。
 - 你不能索要完整 API Key、密码、验证码、支付账号等敏感信息。
-- 如果截图中出现敏感信息，应提醒用户下次打码。
-- 信息不足时，明确说明还需要哪些信息。`)
+- 如果截图中出现密钥、订单号、支付信息等敏感内容，应提醒用户下次先打码。
+- 不要编造后台状态；不确定时要说清楚“不确定”，并告诉用户下一步该查什么。`)
 }
 
 func defaultUIAssistantConfig() *UIAssistantConfig {
@@ -106,7 +112,7 @@ func defaultUIAssistantConfig() *UIAssistantConfig {
 		AllowScreenshot:  true,
 		KnowledgeEnabled: true,
 		StoreSessions:    true,
-		DailyLimit:       10,
+		DailyLimit:       8,
 		MaxImageBytes:    800 * 1024,
 		CreatedAt:        now,
 		UpdatedAt:        now,
@@ -136,8 +142,8 @@ func NormalizeUIAssistantConfig(config *UIAssistantConfig) {
 	if config.SystemPrompt == "" {
 		config.SystemPrompt = DefaultUIAssistantSystemPrompt()
 	}
-	if config.DailyLimit <= 0 {
-		config.DailyLimit = 10
+	if config.DailyLimit <= 0 || config.DailyLimit > 8 {
+		config.DailyLimit = 8
 	}
 	if config.MaxImageBytes <= 0 {
 		config.MaxImageBytes = 800 * 1024
@@ -295,7 +301,7 @@ func CreateUIAssistantSession(session *UIAssistantSession) error {
 func CountUIAssistantSessions(userId int, since int64) (int64, error) {
 	var total int64
 	err := DB.Model(&UIAssistantSession{}).
-		Where("user_id = ? AND created_at >= ?", userId, since).
+		Where("user_id = ? AND created_at >= ? AND provider_type <> ?", userId, since, UIAssistantProviderBalance).
 		Count(&total).Error
 	return total, err
 }

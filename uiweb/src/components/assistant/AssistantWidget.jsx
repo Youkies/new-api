@@ -3,6 +3,7 @@ import { Bot, ChevronDown, History, ImagePlus, Loader2, MessageSquare, Plus, Sen
 import ClayCard from '../clay/ClayCard.jsx'
 import { useToast } from '../../context/ToastContext.jsx'
 import {
+  createAssistantConversation,
   deleteAssistantConversation,
   getAssistantClientConfig,
   getAssistantConversationMessages,
@@ -141,25 +142,73 @@ function pickDefaultModelGroup(payload, groups) {
   return groups.find((group) => group.models.length > 0)?.name || groups[0]?.name || ''
 }
 
+function makeConversationTitle(text, hasScreenshots = false) {
+  const normalized = String(text || '')
+    .replace(/\s+/g, ' ')
+    .replace(/[<>#`*_~|{}[\]()]/g, '')
+    .trim()
+  const fallback = hasScreenshots ? '截图问题排查' : '新的对话'
+  if (!normalized) return fallback
+  const chars = [...normalized]
+  return chars.length > 18 ? `${chars.slice(0, 18).join('')}…` : normalized
+}
+
 function AssistantClaySelect({ label, value, onChange, options, disabled, placeholder = '暂无可选' }) {
+  const [open, setOpen] = useState(false)
+  const wrapperRef = useRef(null)
+  const selected = options.find((option) => option.value === value)
+  const displayLabel = selected?.label || placeholder
+
+  useEffect(() => {
+    if (!open) return undefined
+    const closeOnOutside = (event) => {
+      if (!wrapperRef.current?.contains(event.target)) {
+        setOpen(false)
+      }
+    }
+    document.addEventListener('pointerdown', closeOnOutside)
+    return () => document.removeEventListener('pointerdown', closeOnOutside)
+  }, [open])
+
   return (
-    <label className="relative min-w-0 rounded-full bg-clay-bg/85 md:bg-clay-bg shadow-clay-sm border border-white/40 px-3 py-2 flex items-center gap-2">
-      <span className="text-[10px] md:text-[11px] font-black text-clay-faint shrink-0">{label}</span>
-      <select
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
+    <div ref={wrapperRef} className="relative min-w-0">
+      <button
+        type="button"
         disabled={disabled}
-        className="min-w-0 flex-1 appearance-none bg-transparent pr-5 text-xs font-black text-clay-ink outline-none disabled:opacity-60"
+        onClick={() => setOpen((current) => !current)}
+        className="w-full min-w-0 rounded-full bg-clay-bg/85 md:bg-clay-bg shadow-clay-sm border border-white/40 px-3 py-2 flex items-center gap-2 text-left disabled:opacity-60 disabled:cursor-not-allowed"
       >
-        {options.length === 0 && <option value="">{placeholder}</option>}
-        {options.map((option) => (
-          <option key={option.value} value={option.value} disabled={option.disabled}>
-            {option.label}
-          </option>
-        ))}
-      </select>
-      <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 w-3.5 h-3.5 -translate-y-1/2 text-clay-faint" />
-    </label>
+        <span className="text-[10px] md:text-[11px] font-black text-clay-faint shrink-0">{label}</span>
+        <span className="min-w-0 flex-1 truncate text-xs font-black text-clay-ink">{displayLabel}</span>
+        <ChevronDown className={`w-3.5 h-3.5 shrink-0 text-clay-faint transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open && (
+        <div className="absolute left-0 right-0 bottom-[calc(100%+0.5rem)] z-50 max-h-64 overflow-y-auto rounded-[22px] bg-clay-bg/95 shadow-clay border-2 border-white/40 p-1.5 backdrop-blur-xl">
+          {options.length === 0 && (
+            <div className="px-3 py-2 text-xs font-bold text-clay-faint">{placeholder}</div>
+          )}
+          {options.map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              disabled={option.disabled}
+              onClick={() => {
+                if (option.disabled) return
+                onChange(option.value)
+                setOpen(false)
+              }}
+              className={`w-full rounded-[16px] px-3 py-2 text-left text-xs font-black transition-colors disabled:opacity-45 disabled:cursor-not-allowed ${
+                option.value === value
+                  ? 'bg-clay-pink-100 text-[#8a4860] shadow-clay-sm'
+                  : 'text-clay-ink hover:bg-white/50'
+              }`}
+            >
+              <span className="block truncate">{option.label}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -246,9 +295,11 @@ export default function AssistantWidget() {
   const [conversations, setConversations] = useState([])
   const [historyOpen, setHistoryOpen] = useState(false)
   const [historyLoading, setHistoryLoading] = useState(false)
+  const [historyError, setHistoryError] = useState('')
   const [modelGroups, setModelGroups] = useState([])
   const [selectedPaidGroup, setSelectedPaidGroup] = useState('default')
   const [selectedPaidModel, setSelectedPaidModel] = useState('')
+  const [balanceMode, setBalanceMode] = useState(false)
   const [openingContent, setOpeningContent] = useState('')
   const [openingStreaming, setOpeningStreaming] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -328,14 +379,22 @@ export default function AssistantWidget() {
   useEffect(() => {
     if (!open || !enabled) return
     let mounted = true
+    setHistoryError('')
     setHistoryLoading(true)
     listAssistantConversations({ p: 1, size: 30 })
       .then((res) => {
         if (!mounted) return
+        if (res?.success === false) {
+          setHistoryError(res?.message || '历史对话读取失败')
+          setConversations([])
+          return
+        }
         const items = res?.data?.items || res?.items || []
         setConversations(Array.isArray(items) ? items : [])
       })
-      .catch(() => {})
+      .catch((err) => {
+        if (mounted) setHistoryError(err?.message || '历史对话读取失败')
+      })
       .finally(() => {
         if (mounted) setHistoryLoading(false)
       })
@@ -367,6 +426,9 @@ export default function AssistantWidget() {
   const freeLimit = Number(config?.daily_limit) || 8
   const freeUsed = Math.min(Number(config?.daily_used) || 0, freeLimit)
   const freeModelLabel = `免费 · ${config?.model_name || '后台模型'} (${freeUsed}/${freeLimit})`
+  const currentUsageLabel = balanceMode
+    ? `余额续聊 · ${selectedPaidGroup || 'default'} · ${selectedPaidModel || '请选择模型'}`
+    : freeModelLabel
   const selectedGroupModels = useMemo(() => getGroupModels(modelGroups, selectedPaidGroup), [modelGroups, selectedPaidGroup])
   const groupOptions = useMemo(() => modelGroups.map((group) => ({
     value: group.name,
@@ -395,10 +457,36 @@ export default function AssistantWidget() {
 
   const refreshConversations = async () => {
     try {
+      setHistoryError('')
       const res = await listAssistantConversations({ p: 1, size: 30 })
+      if (res?.success === false) {
+        setHistoryError(res?.message || '历史对话读取失败')
+        return
+      }
       const items = res?.data?.items || res?.items || []
       setConversations(Array.isArray(items) ? items : [])
-    } catch (_) {}
+    } catch (err) {
+      setHistoryError(err?.message || '历史对话读取失败')
+    }
+  }
+
+  const ensureConversationBeforeSend = async (userMessage) => {
+    if (conversationId) return Number(conversationId) || 0
+    try {
+      const res = await createAssistantConversation({
+        title: makeConversationTitle(userMessage?.content, (userMessage?.screenshots || []).length > 0),
+      })
+      if (res?.success === false) return 0
+      const id = Number(res?.data?.id || res?.id) || 0
+      if (id > 0) {
+        setConversationId(id)
+        refreshConversations()
+      }
+      return id
+    } catch (err) {
+      setHistoryError(err?.message || '历史对话创建失败')
+      return 0
+    }
   }
 
   const startNewConversation = () => {
@@ -605,11 +693,12 @@ export default function AssistantWidget() {
 
   const submit = async ({ useBalance = false, pendingMessage = null, assistantId: retryAssistantId = null, historyMessages = null } = {}) => {
     const trimmed = question.trim()
+    const effectiveUseBalance = useBalance || balanceMode
     if (!pendingMessage && !trimmed && screenshots.length === 0) {
       toast('请先描述问题或上传截图', 'warning')
       return
     }
-    if (useBalance && (!selectedPaidGroup || !selectedPaidModel)) {
+    if (effectiveUseBalance && (!selectedPaidGroup || !selectedPaidModel)) {
       toast('请先选择可用分组和模型', 'warning')
       return
     }
@@ -644,13 +733,14 @@ export default function AssistantWidget() {
     setLoading(true)
     setError('')
     try {
+      const nextConversationId = await ensureConversationBeforeSend(userMessage)
       const result = await streamAssistantChat(
         {
-          conversation_id: conversationId || 0,
-          group: useBalance ? selectedPaidGroup : '',
-          model_name: useBalance ? selectedPaidModel : '',
+          conversation_id: nextConversationId || conversationId || 0,
+          group: effectiveUseBalance ? selectedPaidGroup : '',
+          model_name: effectiveUseBalance ? selectedPaidModel : '',
           page_path: window.location.pathname,
-          use_balance: useBalance,
+          use_balance: effectiveUseBalance,
           messages: [...baseMessages, userMessage].map((item) => ({
             role: item.role,
             content: item.content,
@@ -667,7 +757,7 @@ export default function AssistantWidget() {
         item.id === assistantId ? { ...item, streaming: false } : item
       )))
       if (result?.conversationId) setConversationId(Number(result.conversationId) || 0)
-      if (!useBalance) {
+      if (!effectiveUseBalance) {
         setConfig((prev) => prev ? { ...prev, daily_used: Math.min((Number(prev.daily_used) || 0) + 1, Number(prev.daily_limit) || 8) } : prev)
       }
       refreshConversations()
@@ -675,6 +765,7 @@ export default function AssistantWidget() {
       flushAssistantParser(assistantId)
       flushMessageTypewriter(assistantId)
       const message = err?.message || 'AI 助手分析失败'
+      if (err?.data?.conversation_id) setConversationId(Number(err.data.conversation_id) || 0)
       if (err?.code === FREE_LIMIT_CODE) {
         const limit = err?.data?.free_daily_limit || config?.daily_limit || 8
         const used = err?.data?.used || limit
@@ -706,6 +797,7 @@ export default function AssistantWidget() {
 
   const continueWithBalance = (message) => {
     if (!message?.pendingMessage) return
+    setBalanceMode(true)
     submit({
       useBalance: true,
       pendingMessage: message.pendingMessage,
@@ -801,7 +893,12 @@ export default function AssistantWidget() {
                   {historyLoading && (
                     <div className="text-xs font-bold text-clay-faint px-2 py-4">正在读取...</div>
                   )}
-                  {!historyLoading && conversations.length === 0 && (
+                  {!historyLoading && historyError && (
+                    <div className="rounded-[18px] bg-clay-pink-100/80 px-3 py-3 text-xs font-bold leading-5 text-[#8a4860] shadow-clay-sm">
+                      {historyError}
+                    </div>
+                  )}
+                  {!historyLoading && !historyError && conversations.length === 0 && (
                     <div className="text-xs font-bold text-clay-faint px-2 py-4">还没有历史对话</div>
                   )}
                   {conversations.map((item) => (
@@ -922,6 +1019,11 @@ export default function AssistantWidget() {
                     disabled={loading || modelOptions.length === 0}
                   />
                 </div>
+                {balanceMode && (
+                  <div className="mb-2 rounded-clay-pill bg-clay-blue-100/70 px-3 py-1.5 text-[11px] font-black text-[#43658b] shadow-clay-sm">
+                    已确认使用余额续聊，本次打开后不再重复提醒。
+                  </div>
+                )}
 
                 <div className="flex items-center justify-between gap-3 pt-2">
                   <div className="flex items-center gap-2 min-w-0">
@@ -949,7 +1051,7 @@ export default function AssistantWidget() {
                       </>
                     )}
                     <span className="truncate text-[11px] md:text-xs text-clay-faint font-bold">
-                      {freeModelLabel} · 截图 {(imageTotal / 1024).toFixed(0)}KB
+                      {currentUsageLabel} · 截图 {(imageTotal / 1024).toFixed(0)}KB
                     </span>
                   </div>
                   <button

@@ -2,6 +2,9 @@ import axios from 'axios'
 import { isDebugMode, mockApiResponse } from '../utils/debugMode.js'
 
 const realAdapter = axios.getAdapter(axios.defaults.adapter)
+const AUTH_EXPIRED_KEY = 'uiweb.auth.expired'
+const AUTH_REDIRECT_KEY = 'uiweb.auth.redirect'
+let redirectingToLogin = false
 
 const api = axios.create({
   baseURL: '',
@@ -40,13 +43,27 @@ api.interceptors.request.use((config) => {
   return config
 })
 
+function handleAuthExpired() {
+  if (isDebugMode() || redirectingToLogin || typeof window === 'undefined') return
+  redirectingToLogin = true
+  const current = `${window.location.pathname}${window.location.search}${window.location.hash}`
+  try {
+    localStorage.removeItem('user')
+    sessionStorage.setItem(AUTH_EXPIRED_KEY, '1')
+    if (!current.startsWith('/login')) {
+      sessionStorage.setItem(AUTH_REDIRECT_KEY, current)
+    }
+  } catch (_) {}
+  if (!current.startsWith('/login')) {
+    window.location.replace('/login?expired=1')
+  }
+}
+
 api.interceptors.response.use(
   (res) => res,
   (err) => {
     if (!isDebugMode() && err?.response?.status === 401) {
-      try {
-        localStorage.removeItem('user')
-      } catch (_) {}
+      handleAuthExpired()
     }
     return Promise.reject(err)
   },

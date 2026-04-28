@@ -4,6 +4,8 @@ import ClayCard from '../clay/ClayCard.jsx'
 import { useToast } from '../../context/ToastContext.jsx'
 import { getAssistantClientConfig, streamAssistantChat } from '../../services/assistant.js'
 
+const TYPEWRITER_INTERVAL_MS = 22
+
 function getDataSize(dataURL) {
   const raw = String(dataURL || '')
   const comma = raw.indexOf(',')
@@ -20,7 +22,7 @@ function ChatBubble({ message }) {
   return (
     <div className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
       <div
-        className={`max-w-[84%] md:max-w-[86%] rounded-[22px] md:rounded-clay-lg px-4 py-3 md:px-5 md:py-4 ${
+        className={`max-w-[84%] md:max-w-[76%] lg:max-w-[72%] rounded-[22px] md:rounded-clay-lg px-4 py-3 md:px-5 md:py-4 ${
           isUser
             ? 'bg-clay-pink-100 text-[#8a4860] shadow-clay'
             : 'bg-white/70 md:bg-white/45 text-clay-ink shadow-clay-sm md:shadow-clay'
@@ -61,6 +63,8 @@ export default function AssistantWidget() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const openingPlayedRef = useRef('')
+  const messageBuffersRef = useRef(new Map())
+  const messageTimersRef = useRef(new Map())
 
   const enabled = Boolean(config?.enabled)
   const maxImageBytes = config?.max_image_bytes || 800 * 1024
@@ -82,6 +86,12 @@ export default function AssistantWidget() {
     return () => {
       mounted = false
     }
+  }, [])
+
+  useEffect(() => () => {
+    messageTimersRef.current.forEach((timer) => window.clearInterval(timer))
+    messageTimersRef.current.clear()
+    messageBuffersRef.current.clear()
   }, [])
 
   useEffect(() => {
@@ -117,7 +127,7 @@ export default function AssistantWidget() {
         window.clearInterval(timer)
         setOpeningStreaming(false)
       }
-    }, 22)
+    }, TYPEWRITER_INTERVAL_MS)
 
     return () => window.clearInterval(timer)
   }, [enabled, open, openingText])
@@ -164,6 +174,73 @@ export default function AssistantWidget() {
     }
   }
 
+  const stopMessageTypewriter = (messageId) => {
+    const timer = messageTimersRef.current.get(messageId)
+    if (timer) window.clearInterval(timer)
+    messageTimersRef.current.delete(messageId)
+    messageBuffersRef.current.delete(messageId)
+  }
+
+  const appendToMessage = (messageId, content) => {
+    if (!content) return
+    setMessages((prev) => prev.map((item) => (
+      item.id === messageId
+        ? { ...item, content: `${item.content}${content}` }
+        : item
+    )))
+  }
+
+  const getTypewriterBatchSize = (length) => {
+    if (length > 240) return 8
+    if (length > 120) return 5
+    if (length > 48) return 3
+    if (length > 16) return 2
+    return 1
+  }
+
+  const scheduleMessageTypewriter = (messageId) => {
+    if (messageTimersRef.current.has(messageId)) return
+    const timer = window.setInterval(() => {
+      const queued = messageBuffersRef.current.get(messageId) || ''
+      if (!queued) {
+        const activeTimer = messageTimersRef.current.get(messageId)
+        if (activeTimer) window.clearInterval(activeTimer)
+        messageTimersRef.current.delete(messageId)
+        return
+      }
+      const size = getTypewriterBatchSize(queued.length)
+      appendToMessage(messageId, queued.slice(0, size))
+      messageBuffersRef.current.set(messageId, queued.slice(size))
+    }, TYPEWRITER_INTERVAL_MS)
+    messageTimersRef.current.set(messageId, timer)
+  }
+
+  const queueMessageTypewriter = (messageId, content) => {
+    if (!content) return
+    const queued = messageBuffersRef.current.get(messageId) || ''
+    messageBuffersRef.current.set(messageId, `${queued}${content}`)
+    scheduleMessageTypewriter(messageId)
+  }
+
+  const flushMessageTypewriter = (messageId) => {
+    const queued = messageBuffersRef.current.get(messageId) || ''
+    stopMessageTypewriter(messageId)
+    appendToMessage(messageId, queued)
+  }
+
+  const waitForMessageTypewriter = (messageId) => new Promise((resolve) => {
+    const check = () => {
+      const queued = messageBuffersRef.current.get(messageId) || ''
+      const active = messageTimersRef.current.has(messageId)
+      if (!queued && !active) {
+        resolve()
+        return
+      }
+      window.setTimeout(check, TYPEWRITER_INTERVAL_MS)
+    }
+    check()
+  })
+
   const submit = async () => {
     const trimmed = question.trim()
     if (!trimmed && screenshots.length === 0) {
@@ -200,22 +277,20 @@ export default function AssistantWidget() {
           screenshots: userMessage.screenshots.map((item) => ({ data_url: item.data_url })),
         },
         (chunk) => {
-          setMessages((prev) => prev.map((item) => (
-            item.id === assistantId
-              ? { ...item, content: `${item.content}${chunk}` }
-              : item
-          )))
+          queueMessageTypewriter(assistantId, chunk)
         },
       )
+      await waitForMessageTypewriter(assistantId)
       setMessages((prev) => prev.map((item) => (
         item.id === assistantId ? { ...item, streaming: false } : item
       )))
     } catch (err) {
+      flushMessageTypewriter(assistantId)
       const message = err?.message || 'AI 助手分析失败'
       setError(message)
       setMessages((prev) => prev.map((item) => (
         item.id === assistantId
-          ? { ...item, streaming: false, content: `抱歉，刚才没有成功连上 AI 助手。\n\n${message}` }
+          ? { ...item, streaming: false, content: `${item.content ? `${item.content}\n\n` : ''}抱歉，刚才没有成功连上 AI 助手。\n\n${message}` }
           : item
       )))
     } finally {
@@ -243,9 +318,9 @@ export default function AssistantWidget() {
       </button>
 
       {open && (
-        <div className="fixed inset-0 z-[9999] bg-clay-bg/90 md:bg-clay-bg/70 md:backdrop-blur-sm flex items-stretch md:items-center justify-center p-0 md:p-5">
-          <ClayCard className="relative w-full md:max-w-2xl h-[100dvh] md:h-[760px] !p-0 md:!p-7 flex flex-col !overflow-hidden max-md:!rounded-none max-md:!shadow-none max-md:!border-0 max-md:!bg-clay-bg">
-            <div className="flex items-center justify-between gap-3 px-4 pt-4 pb-3 md:p-0 md:mb-4 shrink-0">
+        <div className="fixed inset-0 z-[9999] bg-clay-bg/90 md:bg-clay-bg/70 md:backdrop-blur-sm flex items-stretch md:items-center justify-center p-0 md:p-6 lg:p-8">
+          <ClayCard className="relative w-full md:max-w-[960px] lg:max-w-[1120px] xl:max-w-[1200px] h-[100dvh] md:h-[84vh] md:min-h-[680px] md:max-h-[920px] !p-0 md:!p-8 flex flex-col !overflow-hidden max-md:!rounded-none max-md:!shadow-none max-md:!border-0 max-md:!bg-clay-bg">
+            <div className="flex items-center justify-between gap-3 px-4 pt-4 pb-3 md:p-0 md:mb-5 shrink-0">
               <div className="flex items-center gap-3 min-w-0">
                 <div className="clay-icon-box !w-10 !h-10 md:!w-12 md:!h-12 text-clay-pink-300 shrink-0">
                   <Sparkles className="w-5 h-5" />
@@ -264,7 +339,7 @@ export default function AssistantWidget() {
               </button>
             </div>
 
-            <div className="mx-4 md:mx-0 mb-2 md:mb-4 shrink-0 rounded-clay-pill md:rounded-clay-lg bg-clay-yellow-100 text-[#8a6a32] shadow-clay px-3.5 py-2 md:px-4 md:py-3 flex items-start gap-2.5">
+            <div className="mx-4 md:mx-0 mb-2 md:mb-5 shrink-0 rounded-clay-pill md:rounded-clay-lg bg-clay-yellow-100 text-[#8a6a32] shadow-clay px-3.5 py-2 md:px-5 md:py-3 flex items-start gap-2.5">
               <ShieldAlert className="w-4 h-4 md:w-5 md:h-5 mt-0.5 shrink-0" strokeWidth={2.5} />
               <span className="text-[11px] md:text-sm leading-5 md:leading-6 font-bold">
                 AI 仅做预诊断，不承诺退款或替代审核；截图含密钥、订单号请先打码。
@@ -273,7 +348,7 @@ export default function AssistantWidget() {
 
             <div
               ref={scrollRef}
-              className="flex-1 overflow-y-auto px-4 py-3 md:rounded-clay md:bg-white/35 md:shadow-clay-inset md:p-4 md:mb-4 space-y-3 md:space-y-4"
+              className="flex-1 overflow-y-auto px-4 py-3 md:rounded-clay md:bg-white/35 md:shadow-clay-inset md:p-6 lg:p-7 md:mb-5 space-y-3 md:space-y-5"
             >
               <ChatBubble
                 message={{
@@ -315,9 +390,9 @@ export default function AssistantWidget() {
                 </div>
               )}
 
-              <div className="rounded-[26px] md:rounded-clay bg-clay-bg md:bg-white/45 shadow-clay border-2 border-white/30 p-3 md:p-4">
+              <div className="rounded-[26px] md:rounded-clay bg-clay-bg md:bg-white/45 shadow-clay border-2 border-white/30 p-3 md:p-5">
                 <textarea
-                  className="w-full min-h-[56px] md:min-h-[84px] max-h-[128px] bg-transparent outline-none border-0 resize-none leading-7 text-[16px] md:text-sm font-semibold placeholder:text-clay-faint/70"
+                  className="w-full min-h-[56px] md:min-h-[96px] max-h-[128px] md:max-h-[160px] bg-transparent outline-none border-0 resize-none leading-7 text-[16px] md:text-sm font-semibold placeholder:text-clay-faint/70"
                   value={question}
                   onChange={(e) => setQuestion(e.target.value)}
                   onPaste={onPaste}

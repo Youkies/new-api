@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { LogIn, User, Lock, Github } from 'lucide-react'
 import ClayAuthShell from '../components/layout/ClayAuthShell.jsx'
@@ -23,8 +23,21 @@ export default function Login() {
   const [form, setForm] = useState({ username: '', password: '' })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [notice, setNotice] = useState('')
 
   const passwordLoginDisabled = status?.password_login === false
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search)
+    let expired = params.get('expired') === '1'
+    try {
+      expired = expired || sessionStorage.getItem('uiweb.auth.expired') === '1'
+      sessionStorage.removeItem('uiweb.auth.expired')
+    } catch (_) {}
+    if (expired) {
+      setNotice('登录状态已过期，请重新登录。')
+    }
+  }, [location.search])
 
   const onSubmit = async (e) => {
     e.preventDefault()
@@ -39,7 +52,12 @@ export default function Login() {
       if (res?.success) {
         setUser(res.data)
         toast('登录成功,欢迎回来', 'success')
-        const from = location.state?.from || '/dashboard'
+        let storedFrom = ''
+        try {
+          storedFrom = sessionStorage.getItem('uiweb.auth.redirect') || ''
+          sessionStorage.removeItem('uiweb.auth.redirect')
+        } catch (_) {}
+        const from = location.state?.from || storedFrom || '/dashboard'
         if (from.startsWith('/console') || from.startsWith('http')) {
           // Explicit legacy path: bridge back to original web/.
           window.location.replace(from)
@@ -69,6 +87,12 @@ export default function Login() {
         </>
       }
     >
+      {notice && !error && (
+        <ClayAlert tone="info" className="mb-5">
+          {notice}
+        </ClayAlert>
+      )}
+
       {error && (
         <ClayAlert tone="error" className="mb-5">
           {error}

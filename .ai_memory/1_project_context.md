@@ -9,6 +9,7 @@
 - 启动命令（bash）：`NODE_TYPE=slave SQL_DSN='root:...@tcp(38.150.2.234:30502)/zeabur' ./new-api.exe`
 - 海外域名：newapi.youkies.space（DNS 指向 Zeabur）
 - 国内中转域名：newapi.youkies.cn（已备案，Nginx 反代 → 海外服务器）
+- 生产必须固定 `SESSION_SECRET`（不要用 `random_string`）：如果不配置，后端每次启动会随机生成 session secret，重新部署后旧登录 cookie 失效，用户需要重新登录；如需加密签名也稳定，可同步固定 `CRYPTO_SECRET`
 
 ## 国内中转
 

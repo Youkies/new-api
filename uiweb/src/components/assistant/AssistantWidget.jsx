@@ -153,11 +153,12 @@ function makeConversationTitle(text, hasScreenshots = false) {
   return chars.length > 18 ? `${chars.slice(0, 18).join('')}…` : normalized
 }
 
-function AssistantClaySelect({ label, value, onChange, options, disabled, placeholder = '暂无可选' }) {
+function AssistantClaySelect({ label, value, onChange, options, disabled, placeholder = '暂无可选', align = 'left' }) {
   const [open, setOpen] = useState(false)
   const wrapperRef = useRef(null)
   const selected = options.find((option) => option.value === value)
   const displayLabel = selected?.label || placeholder
+  const popupAlignClass = align === 'right' ? 'right-0' : 'left-0'
 
   useEffect(() => {
     if (!open) return undefined
@@ -183,7 +184,7 @@ function AssistantClaySelect({ label, value, onChange, options, disabled, placeh
         <ChevronDown className={`w-3.5 h-3.5 shrink-0 text-clay-faint transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
       {open && (
-        <div className="absolute left-0 right-0 bottom-[calc(100%+0.5rem)] z-50 max-h-64 overflow-y-auto rounded-[22px] bg-clay-bg/95 shadow-clay border-2 border-white/40 p-1.5 backdrop-blur-xl">
+        <div className={`absolute ${popupAlignClass} bottom-[calc(100%+0.5rem)] z-50 w-[min(82vw,28rem)] md:w-full md:min-w-64 max-h-64 overflow-y-auto rounded-[22px] bg-clay-bg/95 shadow-clay border-2 border-white/40 p-1.5 backdrop-blur-xl`}>
           {options.length === 0 && (
             <div className="px-3 py-2 text-xs font-bold text-clay-faint">{placeholder}</div>
           )}
@@ -197,13 +198,13 @@ function AssistantClaySelect({ label, value, onChange, options, disabled, placeh
                 onChange(option.value)
                 setOpen(false)
               }}
-              className={`w-full rounded-[16px] px-3 py-2 text-left text-xs font-black transition-colors disabled:opacity-45 disabled:cursor-not-allowed ${
+              className={`w-full rounded-[16px] px-3 py-2 text-left text-xs font-black leading-5 transition-colors disabled:opacity-45 disabled:cursor-not-allowed ${
                 option.value === value
                   ? 'bg-clay-pink-100 text-[#8a4860] shadow-clay-sm'
                   : 'text-clay-ink hover:bg-white/50'
               }`}
             >
-              <span className="block truncate">{option.label}</span>
+              <span className="block break-all">{option.label}</span>
             </button>
           ))}
         </div>
@@ -939,9 +940,9 @@ export default function AssistantWidget() {
 
             <div
               ref={scrollRef}
-              className="flex-1 overflow-y-auto px-4 py-3 pb-44 md:px-6 md:pt-10 md:pb-56 md:bg-transparent md:shadow-none space-y-3 md:space-y-0"
+              className="flex-1 min-h-0 overflow-y-auto px-4 pt-3 pb-4 md:px-6 md:pt-10 md:pb-6 md:bg-transparent md:shadow-none space-y-3 md:space-y-0"
             >
-              <div className="mx-auto w-full md:max-w-[920px] space-y-3 md:space-y-8">
+              <div className="mx-auto w-full md:max-w-[920px] min-h-full flex flex-col justify-end gap-3 md:gap-8">
                 {messages.length === 0 && (
                   <ChatBubble
                     message={{
@@ -964,7 +965,7 @@ export default function AssistantWidget() {
               </div>
             </div>
 
-            <div className="shrink-0 px-4 pt-2 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] md:absolute md:left-1/2 md:bottom-8 md:w-[min(920px,calc(100vw-3rem))] md:-translate-x-1/2 md:px-0 md:pt-0 md:pb-0">
+            <div className="relative z-30 shrink-0 mx-auto w-full px-4 pt-2 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] md:w-[min(920px,calc(100vw-3rem))] md:px-0 md:pt-2 md:pb-8">
               {screenshots.length > 0 && (
                 <div className="flex flex-wrap gap-2 mb-2">
                   {screenshots.map((item, index) => (
@@ -1017,6 +1018,7 @@ export default function AssistantWidget() {
                     onChange={setSelectedPaidModel}
                     options={modelOptions}
                     disabled={loading || modelOptions.length === 0}
+                    align="right"
                   />
                 </div>
                 {balanceMode && (
@@ -1058,7 +1060,7 @@ export default function AssistantWidget() {
                     type="button"
                     onClick={() => submit()}
                     disabled={loading}
-                    className="h-10 px-5 md:px-6 rounded-full bg-clay-blue-100 text-[#43658b] shadow-clay flex items-center justify-center gap-2 font-black disabled:opacity-60 disabled:cursor-not-allowed"
+                    className="h-12 md:h-10 min-w-[112px] md:min-w-0 shrink-0 px-5 md:px-6 rounded-full bg-clay-blue-100 text-[#43658b] shadow-clay flex items-center justify-center gap-2 font-black whitespace-nowrap leading-none disabled:opacity-60 disabled:cursor-not-allowed"
                   >
                     {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                     <span>{loading ? '回复中' : '发送'}</span>

@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { ArrowRight, Activity, Cloud, Layers, Smile } from 'lucide-react'
+import { ArrowRight, Activity, Cloud, Layers, Megaphone, Smile } from 'lucide-react'
 import ClayCard from '../components/clay/ClayCard.jsx'
 import ClayButton from '../components/clay/ClayButton.jsx'
 import ClayPageShell from '../components/layout/ClayPageShell.jsx'
@@ -42,6 +42,11 @@ export default function Home() {
             <Link to="/status" className="md:hidden">
               <ClayButton variant="ghost">
                 <Activity className="w-4 h-4" /> 模型状态
+              </ClayButton>
+            </Link>
+            <Link to="/announcements" className="md:hidden">
+              <ClayButton variant="ghost">
+                <Megaphone className="w-4 h-4" /> 站点公告
               </ClayButton>
             </Link>
           </div>

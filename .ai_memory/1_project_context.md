@@ -61,6 +61,16 @@
 - 管理公告接口：`GET/POST /api/ui/admin/announcements`、`GET/PUT/PATCH/DELETE /api/ui/admin/announcements/:id`
 - 前端 `AnnouncementProvider` 挂在 `main.jsx`，进入新 UI 后检查强制公告；登录用户写服务端 ack，未登录/本地兜底写 localStorage
 
+## AI 助手方向
+
+- 用户控制台右下角挂载 AI 助手悬浮球，名称默认 `Youkies 的 AI 分身`，挂载点为 `ClayConsoleShell`
+- 第一版定位为“问题预诊断/提交前整理”：支持问题描述 + 手动上传/粘贴截图 + 当前页面路径，不自动承诺退款、不修改余额、不代替管理员审核
+- 管理端配置页为 `/admin/assistant`，可配置启用状态、助手名称、欢迎语、模型来源、Base URL、助手专用 Token/API Key、模型名、系统提示词、截图开关、知识文档开关、会话摘要开关、每日限流和截图大小
+- 模型来源第一版支持 OpenAI-compatible 接口；推荐“站内助手账号”：手动创建 `ai-assistant` 用户，分配独立分组/额度/专用 Token，再在配置页填入 Token 和模型名；也保留外部自定义 Base URL/API Key
+- 知识文档第一版存在 `ui_assistant_documents`，按排序取启用文档片段拼入模型上下文；会话只保存摘要、判断、页面路径、用户问题和截图数量，不保存截图原图
+- AI 助手接口：用户侧 `GET /api/ui/assistant/config`、`POST /api/ui/assistant/analyze`；管理侧 `GET/PUT /api/ui/admin/assistant/config`、`GET/POST/PUT/DELETE /api/ui/admin/assistant/documents`、`GET /api/ui/admin/assistant/sessions`
+- 新表：`ui_assistant_configs`、`ui_assistant_documents`、`ui_assistant_sessions`；生产 `NODE_TYPE=slave` 不会 AutoMigrate，需要手动建表
+
 ## 空回补偿申诉方向
 
 - 第一版定位为“疑似空回批量提交 + 管理员人工审核”，不做自动补偿，避免误判和额度漏洞
@@ -116,7 +126,7 @@ Home / Login / Register / ResetRequest / ResetConfirm / OAuthCallback / Setup / 
 Dashboard / TokenManage / LogList / TopUp / Checkin / PersonalSetting / Chat2Link / ApiUrls / PaymentReturn(/console/log)
 
 ### 公共导航（ClayNav）
-首页 / 定价 / **状态** / 关于
+首页 / 定价 / **状态** / 公告 / 关于；移动端首页 Hero 快捷入口包含价格、模型状态、站点公告
 
 ### 控制台导航（ClayConsoleShell NAV）
 仪表盘 / 令牌 / 日志 / 充值 / 签到 / 设置

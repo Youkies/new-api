@@ -40,6 +40,8 @@ func SetApiRouter(router *gin.Engine) {
 			uiRoute.GET("/refund-appeals/candidates", middleware.UserAuth(), controller.GetUIRefundCandidates)
 			uiRoute.GET("/refund-appeals/self", middleware.UserAuth(), controller.GetUserUIRefundAppeals)
 			uiRoute.POST("/refund-appeals", middleware.UserAuth(), middleware.CriticalRateLimit(), controller.CreateUIRefundAppeal)
+			uiRoute.GET("/assistant/config", middleware.UserAuth(), controller.GetUIAssistantClientConfig)
+			uiRoute.POST("/assistant/analyze", middleware.UserAuth(), middleware.CriticalRateLimit(), controller.AnalyzeUIAssistant)
 
 			uiAdminRoute := uiRoute.Group("/admin")
 			uiAdminRoute.Use(middleware.AdminAuth())
@@ -54,6 +56,13 @@ func SetApiRouter(router *gin.Engine) {
 				uiAdminRoute.GET("/refund-appeals/:id", controller.AdminGetUIRefundAppeal)
 				uiAdminRoute.POST("/refund-appeals/:id/approve", controller.AdminApproveUIRefundAppeal)
 				uiAdminRoute.POST("/refund-appeals/:id/reject", controller.AdminRejectUIRefundAppeal)
+				uiAdminRoute.GET("/assistant/config", controller.AdminGetUIAssistantConfig)
+				uiAdminRoute.PUT("/assistant/config", controller.AdminSaveUIAssistantConfig)
+				uiAdminRoute.GET("/assistant/documents", controller.AdminListUIAssistantDocuments)
+				uiAdminRoute.POST("/assistant/documents", controller.AdminCreateUIAssistantDocument)
+				uiAdminRoute.PUT("/assistant/documents/:id", controller.AdminUpdateUIAssistantDocument)
+				uiAdminRoute.DELETE("/assistant/documents/:id", controller.AdminDeleteUIAssistantDocument)
+				uiAdminRoute.GET("/assistant/sessions", controller.AdminListUIAssistantSessions)
 			}
 		}
 		apiRouter.GET("/verification", middleware.EmailVerificationRateLimit(), middleware.TurnstileCheck(), controller.SendEmailVerification)

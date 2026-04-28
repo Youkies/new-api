@@ -17,6 +17,7 @@ import ClayCard from '../clay/ClayCard.jsx'
 import ClayAvatar from '../clay/ClayAvatar.jsx'
 import ClayFooter from './ClayFooter.jsx'
 import ThemeToggle from './ThemeToggle.jsx'
+import AssistantWidget from '../assistant/AssistantWidget.jsx'
 import { useUser } from '../../context/UserContext.jsx'
 import { useToast } from '../../context/ToastContext.jsx'
 import { getFaviconSrc } from '../../utils/favicon.js'
@@ -223,6 +224,7 @@ export default function ClayConsoleShell({ title, subtitle, actions, children })
         )}
 
         <main>{children}</main>
+        <AssistantWidget />
 
         <ClayFooter />
       </div>

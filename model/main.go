@@ -284,6 +284,9 @@ func migrateDB() error {
 		&UIAnnouncementAck{},
 		&UIRefundAppeal{},
 		&UIRefundAppealItem{},
+		&UIAssistantConfig{},
+		&UIAssistantDocument{},
+		&UIAssistantSession{},
 	)
 	if err != nil {
 		return err
@@ -336,6 +339,9 @@ func migrateDBFast() error {
 		{&UIAnnouncementAck{}, "UIAnnouncementAck"},
 		{&UIRefundAppeal{}, "UIRefundAppeal"},
 		{&UIRefundAppealItem{}, "UIRefundAppealItem"},
+		{&UIAssistantConfig{}, "UIAssistantConfig"},
+		{&UIAssistantDocument{}, "UIAssistantDocument"},
+		{&UIAssistantSession{}, "UIAssistantSession"},
 	}
 	// 动态计算migration数量，确保errChan缓冲区足够大
 	errChan := make(chan error, len(migrations))

@@ -42,6 +42,7 @@ func SetApiRouter(router *gin.Engine) {
 			uiRoute.POST("/refund-appeals", middleware.UserAuth(), middleware.CriticalRateLimit(), controller.CreateUIRefundAppeal)
 			uiRoute.GET("/assistant/config", middleware.UserAuth(), controller.GetUIAssistantClientConfig)
 			uiRoute.POST("/assistant/analyze", middleware.UserAuth(), middleware.CriticalRateLimit(), controller.AnalyzeUIAssistant)
+			uiRoute.POST("/assistant/chat", middleware.UserAuth(), middleware.CriticalRateLimit(), controller.ChatUIAssistant)
 
 			uiAdminRoute := uiRoute.Group("/admin")
 			uiAdminRoute.Use(middleware.AdminAuth())

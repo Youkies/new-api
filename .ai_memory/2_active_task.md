@@ -54,12 +54,13 @@
 
 ### AI 助手第一版
 - 后端：新增 `model/ui_assistant.go`、`controller/ui_assistant.go`，注册 AutoMigrate；新增配置、知识文档、会话摘要三组模型和用户/管理 API
-- 用户侧：`ClayConsoleShell` 挂载右下角 AI 助手悬浮球，支持问题描述、上传/粘贴截图、当前页面路径，并展示预诊断结论
+- 用户侧：`ClayConsoleShell` 挂载右下角 AI 助手悬浮球，支持对话式消息、问题描述、上传/粘贴截图、当前页面路径，并通过流式接口边生成边展示回复
 - 管理侧：新增 `/admin/assistant` 配置页，支持启用开关、助手名称/欢迎语、站内助手账号或外部自定义模型来源、Token/API Key、模型名、系统提示词、截图/知识库/会话开关、每日限流、截图大小、知识文档 CRUD、最近会话查看
 - 模型来源策略：推荐手动创建 `ai-assistant` 站内用户并给专用 Token；配置页也保留外部 OpenAI-compatible Base URL/API Key
 - 隐私与边界：不保存截图原图，仅保存会话摘要；内置系统提示词限制 AI 不承诺退款、不修改额度、不代替管理员审核
 - 验证：`go build ./...` 与 `cd uiweb && npm run build` 通过，仅保留 vendor-icons chunk 偏大的既有 Vite 警告
 - 生产前置：`NODE_TYPE=slave` 需要手动创建 `ui_assistant_configs`、`ui_assistant_documents`、`ui_assistant_sessions`
+- 新增流式聊天接口：`POST /api/ui/assistant/chat`，后端以 OpenAI-compatible `stream: true` 调用上游并将增量文本转发给前端
 
 ### 移动端首页公告入口
 - 移动端首页 Hero 操作区新增 `/announcements` “站点公告”快捷按钮，使用 lucide `Megaphone` 图标，与现有“模型状态”移动端入口同层级

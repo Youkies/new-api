@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"encoding/base64"
@@ -57,6 +58,17 @@ type uiAssistantAnalyzePayload struct {
 	Screenshots []uiAssistantScreenshotPayload `json:"screenshots"`
 }
 
+type uiAssistantChatMessagePayload struct {
+	Role    string `json:"role"`
+	Content string `json:"content"`
+}
+
+type uiAssistantChatPayload struct {
+	Messages    []uiAssistantChatMessagePayload `json:"messages"`
+	PagePath    string                          `json:"page_path"`
+	Screenshots []uiAssistantScreenshotPayload  `json:"screenshots"`
+}
+
 type uiAssistantModelResult struct {
 	Decision string `json:"decision"`
 	Summary  string `json:"summary"`
@@ -68,6 +80,7 @@ type openAIChatRequest struct {
 	Messages    []openAIChatMessage `json:"messages"`
 	Temperature float64             `json:"temperature,omitempty"`
 	MaxTokens   int                 `json:"max_tokens,omitempty"`
+	Stream      bool                `json:"stream,omitempty"`
 }
 
 type openAIChatMessage struct {
@@ -94,6 +107,18 @@ type openAIChatResponse struct {
 		Message struct {
 			Content json.RawMessage `json:"content"`
 		} `json:"message"`
+	} `json:"choices"`
+	Error *struct {
+		Message string `json:"message"`
+		Type    string `json:"type"`
+	} `json:"error,omitempty"`
+}
+
+type openAIChatStreamResponse struct {
+	Choices []struct {
+		Delta struct {
+			Content string `json:"content"`
+		} `json:"delta"`
 	} `json:"choices"`
 	Error *struct {
 		Message string `json:"message"`
@@ -390,6 +415,127 @@ func AnalyzeUIAssistant(c *gin.Context) {
 	})
 }
 
+func ChatUIAssistant(c *gin.Context) {
+	config, err := model.GetUIAssistantConfig()
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	if !config.Enabled {
+		common.ApiErrorMsg(c, "AI 助手暂未启用")
+		return
+	}
+	if config.APIKey == "" || config.ModelName == "" {
+		common.ApiErrorMsg(c, "AI 助手尚未完成模型配置")
+		return
+	}
+	var payload uiAssistantChatPayload
+	if err = c.ShouldBindJSON(&payload); err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	payload.PagePath = strings.TrimSpace(payload.PagePath)
+	payload.Messages = normalizeAssistantChatMessages(payload.Messages)
+	if len(payload.Messages) == 0 && len(payload.Screenshots) == 0 {
+		common.ApiErrorMsg(c, "请先描述问题或上传截图")
+		return
+	}
+	if len(payload.Screenshots) > uiAssistantMaxScreenshots {
+		common.ApiErrorMsg(c, fmt.Sprintf("最多上传 %d 张截图", uiAssistantMaxScreenshots))
+		return
+	}
+	if !config.AllowScreenshot && len(payload.Screenshots) > 0 {
+		common.ApiErrorMsg(c, "当前未开启截图分析")
+		return
+	}
+	if err = validateAssistantScreenshots(payload.Screenshots, config.MaxImageBytes); err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	if config.DailyLimit > 0 {
+		total, err := model.CountUIAssistantSessions(c.GetInt("id"), common.GetTimestamp()-86400)
+		if err != nil {
+			common.ApiError(c, err)
+			return
+		}
+		if total >= int64(config.DailyLimit) {
+			common.ApiErrorMsg(c, "今日 AI 助手使用次数已达上限")
+			return
+		}
+	}
+	latestQuestion := latestAssistantUserMessage(payload.Messages)
+	knowledge := ""
+	if config.KnowledgeEnabled {
+		knowledge, err = buildAssistantKnowledge(latestQuestion)
+		if err != nil {
+			common.ApiError(c, err)
+			return
+		}
+	}
+	reqBody, err := buildAssistantStreamRequest(c, config, payload, knowledge)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	endpoint := assistantEndpoint(c, config)
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 90*time.Second)
+	defer cancel()
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewReader(reqBody))
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	httpReq.Header.Set("Content-Type", "application/json")
+	httpReq.Header.Set("Accept", "text/event-stream")
+	httpReq.Header.Set("Authorization", "Bearer "+config.APIKey)
+	client := &http.Client{Timeout: 90 * time.Second}
+	resp, err := client.Do(httpReq)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		limited := io.LimitReader(resp.Body, 2*1024*1024)
+		var chatResp openAIChatResponse
+		if decodeErr := common.DecodeJson(limited, &chatResp); decodeErr == nil && chatResp.Error != nil && chatResp.Error.Message != "" {
+			common.ApiErrorMsg(c, chatResp.Error.Message)
+			return
+		}
+		common.ApiErrorMsg(c, fmt.Sprintf("AI 助手模型请求失败：HTTP %d", resp.StatusCode))
+		return
+	}
+
+	c.Writer.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	c.Writer.Header().Set("Cache-Control", "no-cache")
+	c.Writer.Header().Set("X-Accel-Buffering", "no")
+	c.Writer.WriteHeader(http.StatusOK)
+	flusher, _ := c.Writer.(http.Flusher)
+	answer, streamErr := streamAssistantResponse(resp.Body, c.Writer, flusher)
+	if streamErr != nil {
+		_, _ = c.Writer.Write([]byte("\n\n[AI 助手连接中断，请稍后重试]"))
+		if flusher != nil {
+			flusher.Flush()
+		}
+	}
+	if config.StoreSessions {
+		session := &model.UIAssistantSession{
+			UserId:          c.GetInt("id"),
+			PagePath:        payload.PagePath,
+			Question:        latestQuestion,
+			ScreenshotCount: len(payload.Screenshots),
+			Decision:        inferAssistantDecision(answer),
+			AnswerSummary:   trimRunes(answer, 1000),
+			ProviderType:    config.ProviderType,
+			ModelName:       config.ModelName,
+		}
+		if streamErr != nil {
+			session.ErrorMessage = streamErr.Error()
+		}
+		_ = model.CreateUIAssistantSession(session)
+	}
+}
+
 func parseInt64Param(c *gin.Context, key string) (int64, error) {
 	raw := strings.TrimSpace(c.Param(key))
 	if raw == "" {
@@ -466,6 +612,167 @@ func buildAssistantKnowledge(question string) (string, error) {
 		}
 	}
 	return strings.TrimSpace(builder.String()), nil
+}
+
+func normalizeAssistantChatMessages(messages []uiAssistantChatMessagePayload) []uiAssistantChatMessagePayload {
+	normalized := make([]uiAssistantChatMessagePayload, 0, len(messages))
+	for _, message := range messages {
+		role := strings.TrimSpace(message.Role)
+		content := strings.TrimSpace(message.Content)
+		if role != "user" && role != "assistant" {
+			continue
+		}
+		if content == "" {
+			continue
+		}
+		if len([]rune(content)) > 2000 {
+			content = trimRunes(content, 2000)
+		}
+		normalized = append(normalized, uiAssistantChatMessagePayload{
+			Role:    role,
+			Content: content,
+		})
+	}
+	if len(normalized) > 8 {
+		normalized = normalized[len(normalized)-8:]
+	}
+	return normalized
+}
+
+func latestAssistantUserMessage(messages []uiAssistantChatMessagePayload) string {
+	for i := len(messages) - 1; i >= 0; i-- {
+		if messages[i].Role == "user" {
+			return messages[i].Content
+		}
+	}
+	return ""
+}
+
+func buildAssistantStreamRequest(c *gin.Context, config *model.UIAssistantConfig, payload uiAssistantChatPayload, knowledge string) ([]byte, error) {
+	messages := []openAIChatMessage{
+		{
+			Role:    "system",
+			Content: strings.TrimSpace(config.SystemPrompt + "\n\n你现在以对话形式回复用户。不要返回 JSON，不要使用代码块包裹整段回复。回答要自然、简洁、可执行；必要时用编号步骤。"),
+		},
+	}
+	for i, message := range payload.Messages {
+		isLast := i == len(payload.Messages)-1
+		if !isLast || message.Role != "user" {
+			messages = append(messages, openAIChatMessage{Role: message.Role, Content: message.Content})
+			continue
+		}
+		text := buildAssistantChatUserText(payload, message.Content, knowledge)
+		content := []any{openAITextPart{Type: "text", Text: text}}
+		for _, shot := range payload.Screenshots {
+			if strings.TrimSpace(shot.DataURL) == "" {
+				continue
+			}
+			content = append(content, openAIImagePart{
+				Type: "image_url",
+				ImageURL: openAIImageURLPart{
+					URL: shot.DataURL,
+				},
+			})
+		}
+		messages = append(messages, openAIChatMessage{Role: "user", Content: content})
+	}
+	if len(payload.Messages) == 0 && len(payload.Screenshots) > 0 {
+		content := []any{openAITextPart{Type: "text", Text: buildAssistantChatUserText(payload, "用户仅提供了截图。", knowledge)}}
+		for _, shot := range payload.Screenshots {
+			content = append(content, openAIImagePart{
+				Type: "image_url",
+				ImageURL: openAIImageURLPart{
+					URL: shot.DataURL,
+				},
+			})
+		}
+		messages = append(messages, openAIChatMessage{Role: "user", Content: content})
+	}
+	reqBody := openAIChatRequest{
+		Model:       config.ModelName,
+		Messages:    messages,
+		Temperature: 0.2,
+		MaxTokens:   1000,
+		Stream:      true,
+	}
+	return common.Marshal(reqBody)
+}
+
+func buildAssistantChatUserText(payload uiAssistantChatPayload, latestQuestion string, knowledge string) string {
+	var builder strings.Builder
+	builder.WriteString("请以 Youkies 控制台 AI 助手的身份回复用户。\n\n当前页面：")
+	if payload.PagePath == "" {
+		builder.WriteString("未知")
+	} else {
+		builder.WriteString(payload.PagePath)
+	}
+	builder.WriteString("\n用户最新问题：\n")
+	builder.WriteString(latestQuestion)
+	if knowledge != "" {
+		builder.WriteString("\n\n站点知识文档：\n")
+		builder.WriteString(knowledge)
+	}
+	builder.WriteString("\n\n请先判断是否能自助解决；如果疑似空回、扣费争议、充值不到账或余额异常，建议提交申诉或联系人工。不要承诺退款或补偿。")
+	return builder.String()
+}
+
+func streamAssistantResponse(reader io.Reader, writer io.Writer, flusher http.Flusher) (string, error) {
+	scanner := bufio.NewScanner(reader)
+	scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
+	var answer strings.Builder
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" || strings.HasPrefix(line, ":") {
+			continue
+		}
+		if !strings.HasPrefix(line, "data:") {
+			continue
+		}
+		data := strings.TrimSpace(strings.TrimPrefix(line, "data:"))
+		if data == "[DONE]" {
+			break
+		}
+		var chunk openAIChatStreamResponse
+		if err := common.Unmarshal([]byte(data), &chunk); err != nil {
+			continue
+		}
+		if chunk.Error != nil && chunk.Error.Message != "" {
+			return answer.String(), errors.New(chunk.Error.Message)
+		}
+		for _, choice := range chunk.Choices {
+			if choice.Delta.Content == "" {
+				continue
+			}
+			answer.WriteString(choice.Delta.Content)
+			if _, err := writer.Write([]byte(choice.Delta.Content)); err != nil {
+				return answer.String(), err
+			}
+			if flusher != nil {
+				flusher.Flush()
+			}
+		}
+	}
+	if err := scanner.Err(); err != nil {
+		return answer.String(), err
+	}
+	return answer.String(), nil
+}
+
+func inferAssistantDecision(answer string) string {
+	answer = strings.TrimSpace(answer)
+	if answer == "" {
+		return model.UIAssistantDecisionInsufficientInfo
+	}
+	if strings.Contains(answer, "信息不足") || strings.Contains(answer, "需要补充") {
+		return model.UIAssistantDecisionInsufficientInfo
+	}
+	if strings.Contains(answer, "申诉") || strings.Contains(answer, "空回") || strings.Contains(answer, "扣费") || strings.Contains(answer, "充值不到账") {
+		return model.UIAssistantDecisionSubmitAppeal
+	}
+	if strings.Contains(answer, "人工") || strings.Contains(answer, "管理员") {
+		return model.UIAssistantDecisionManualReview
+	}
+	return model.UIAssistantDecisionSelfSolve
 }
 
 func callAssistantModel(c *gin.Context, config *model.UIAssistantConfig, payload uiAssistantAnalyzePayload, knowledge string) (uiAssistantModelResult, string, error) {

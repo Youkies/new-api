@@ -1,5 +1,13 @@
 # 当前任务
 
+## 当前新增任务：AI 助手余额续聊分组 + 模型双选择（2026-04-29）
+### 本轮实现进度
+- 后端：新增 `GET /api/ui/assistant/models`，按当前用户可用分组返回各分组启用模型，并优先给出 `default_group=default`（若 default 有模型）；余额续聊 `POST /api/ui/assistant/chat` 新增接收 `group`，内部转发 `/pg/chat/completions` 时显式带上所选分组，避免 Pro/Super/Ultra 空模型分组导致无可用渠道。
+- 前端：AI 助手 composer 从单一“余额模型”下拉改为 clay 风格“余额分组 + 余额模型”双选择；默认选择有模型的 default 分组，空模型身份分组显示为“无模型”且不可选；继续余额对话时同时提交 group/model。
+- UI：桌面端新建对话、历史对话、关闭按钮收拢到标题栏右侧同一按钮组，移动端按钮视觉保持原有紧凑布局。
+- 调试模式：补充 `/api/ui/assistant/models` mock，覆盖 Super优 用户但模型实际落在 default 的场景。
+- 验证：`gofmt`、`git diff --check`、`go test ./controller ./model -run TestNonExistent`、前端 `esbuild.transformSync` 语法检查均通过；按偏好未跑完整前端构建。
+
 ## 当前新增任务：AI 助手历史对话、思考折叠与付费模型列表（2026-04-29）
 ### 本轮实现进度
 - 后端：新增 `ui_assistant_conversations` 与 `ui_assistant_conversation_messages`，用户侧支持会话列表、新建、读取消息、删除；聊天流成功后返回 `X-Assistant-Conversation-Id` 并落库用户/助手消息。

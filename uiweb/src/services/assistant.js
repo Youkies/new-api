@@ -33,7 +33,7 @@ export async function deleteAssistantConversation(id) {
 }
 
 export async function getAssistantModels() {
-  const res = await api.get('/api/user/models')
+  const res = await api.get('/api/ui/assistant/models')
   return res.data
 }
 

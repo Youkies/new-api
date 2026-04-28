@@ -680,6 +680,19 @@ export async function mockApiResponse(config) {
     return ok(['gpt-5.5', 'gpt-5.4', 'gpt-5.4-mini', 'claude-opus-4-6', 'claude-opus-4-7', 'gemini-2.5-pro'])
   }
 
+  if (path === '/api/ui/assistant/models' && method === 'GET') {
+    return ok({
+      user_group: 'Super优',
+      default_group: 'default',
+      groups: [
+        { name: 'default', desc: '默认分组', ratio: 1, models: ['gpt-5.5', 'gpt-5.4-mini', 'claude-opus-4-6', 'gemini-2.5-pro'] },
+        { name: 'Pro优', desc: 'Pro优', ratio: 0.95, models: [] },
+        { name: 'Super优', desc: 'Super优', ratio: 0.9, models: [] },
+        { name: 'Ultra优', desc: 'Ultra优', ratio: 0.85, models: [] },
+      ],
+    })
+  }
+
   if (path === '/api/pricing' && method === 'GET') {
     return plain({
       success: true,

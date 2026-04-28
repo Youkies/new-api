@@ -10,12 +10,14 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/model"
+	"github.com/QuantumNous/new-api/service"
 
 	"github.com/gin-gonic/gin"
 )
@@ -67,6 +69,7 @@ type uiAssistantChatMessagePayload struct {
 
 type uiAssistantChatPayload struct {
 	ConversationId int64                           `json:"conversation_id"`
+	GroupName      string                          `json:"group"`
 	ModelName      string                          `json:"model_name"`
 	Messages       []uiAssistantChatMessagePayload `json:"messages"`
 	PagePath       string                          `json:"page_path"`
@@ -245,6 +248,75 @@ func GetUIAssistantClientConfig(c *gin.Context) {
 		data["daily_limit"] = limit
 	}
 	common.ApiSuccess(c, data)
+}
+
+func GetUIAssistantUserModels(c *gin.Context) {
+	userId := c.GetInt("id")
+	userGroup, err := model.GetUserGroup(userId, false)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+
+	usableGroups := service.GetUserUsableGroups(userGroup)
+	groupNames := make([]string, 0, len(usableGroups))
+	for groupName := range usableGroups {
+		groupNames = append(groupNames, groupName)
+	}
+	sort.SliceStable(groupNames, func(i, j int) bool {
+		leftRank := assistantModelGroupRank(groupNames[i])
+		rightRank := assistantModelGroupRank(groupNames[j])
+		if leftRank != rightRank {
+			return leftRank < rightRank
+		}
+		return groupNames[i] < groupNames[j]
+	})
+
+	defaultGroup := ""
+	firstGroupWithModels := ""
+	groups := make([]gin.H, 0, len(groupNames))
+	for _, groupName := range groupNames {
+		enabledModels := model.GetGroupEnabledModels(groupName)
+		sort.Strings(enabledModels)
+		if len(enabledModels) > 0 {
+			if firstGroupWithModels == "" {
+				firstGroupWithModels = groupName
+			}
+			if groupName == "default" {
+				defaultGroup = groupName
+			}
+		}
+		groups = append(groups, gin.H{
+			"name":   groupName,
+			"desc":   usableGroups[groupName],
+			"ratio":  service.GetUserGroupRatio(userGroup, groupName),
+			"models": enabledModels,
+		})
+	}
+
+	if defaultGroup == "" {
+		defaultGroup = firstGroupWithModels
+	}
+	if defaultGroup == "" && len(groupNames) > 0 {
+		defaultGroup = groupNames[0]
+	}
+
+	common.ApiSuccess(c, gin.H{
+		"user_group":    userGroup,
+		"default_group": defaultGroup,
+		"groups":        groups,
+	})
+}
+
+func assistantModelGroupRank(groupName string) int {
+	switch groupName {
+	case "default":
+		return 0
+	case "auto":
+		return 2
+	default:
+		return 1
+	}
 }
 
 func AdminGetUIAssistantConfig(c *gin.Context) {
@@ -582,7 +654,12 @@ func ChatUIAssistant(c *gin.Context) {
 		return
 	}
 	selectedModel := config.ModelName
+	selectedGroup := ""
 	if useBalance {
+		selectedGroup = strings.TrimSpace(payload.GroupName)
+		if selectedGroup == "" {
+			selectedGroup = "default"
+		}
 		payload.ModelName = strings.TrimSpace(payload.ModelName)
 		if payload.ModelName != "" {
 			selectedModel = payload.ModelName
@@ -600,7 +677,7 @@ func ChatUIAssistant(c *gin.Context) {
 			return
 		}
 	}
-	reqBody, err := buildAssistantStreamRequest(c, config, payload, knowledge, selectedModel)
+	reqBody, err := buildAssistantStreamRequest(c, config, payload, knowledge, selectedModel, selectedGroup)
 	if err != nil {
 		common.ApiError(c, err)
 		return
@@ -835,7 +912,7 @@ func latestAssistantUserMessage(messages []uiAssistantChatMessagePayload) string
 	return ""
 }
 
-func buildAssistantStreamRequest(c *gin.Context, config *model.UIAssistantConfig, payload uiAssistantChatPayload, knowledge string, selectedModel string) ([]byte, error) {
+func buildAssistantStreamRequest(c *gin.Context, config *model.UIAssistantConfig, payload uiAssistantChatPayload, knowledge string, selectedModel string, selectedGroup string) ([]byte, error) {
 	messages := []openAIChatMessage{
 		{
 			Role:    "system",
@@ -877,6 +954,7 @@ func buildAssistantStreamRequest(c *gin.Context, config *model.UIAssistantConfig
 	}
 	reqBody := openAIChatRequest{
 		Model:       selectedModel,
+		Group:       strings.TrimSpace(selectedGroup),
 		Messages:    messages,
 		Temperature: 0.2,
 		MaxTokens:   1000,

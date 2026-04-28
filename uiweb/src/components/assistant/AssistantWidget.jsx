@@ -88,7 +88,7 @@ function formatAssistantTime(timestamp) {
   return date.toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
 }
 
-function normalizePaidModels(data) {
+function normalizeModelList(data) {
   const source = data?.data || data || []
   const names = new Set()
   if (Array.isArray(source)) {
@@ -105,6 +105,62 @@ function normalizePaidModels(data) {
     })
   }
   return [...names].sort((a, b) => a.localeCompare(b))
+}
+
+function normalizeModelGroups(data) {
+  const source = data?.data || data || {}
+  const groups = Array.isArray(source?.groups) ? source.groups : []
+  if (groups.length > 0) {
+    return groups
+      .map((group) => {
+        const name = String(group?.name || '').trim()
+        if (!name) return null
+        return {
+          name,
+          desc: String(group?.desc || name),
+          ratio: group?.ratio,
+          models: normalizeModelList(group?.models || []),
+        }
+      })
+      .filter(Boolean)
+  }
+
+  const models = normalizeModelList(source)
+  return models.length > 0 ? [{ name: 'default', desc: '默认分组', ratio: 1, models }] : []
+}
+
+function getGroupModels(groups, groupName) {
+  return groups.find((group) => group.name === groupName)?.models || []
+}
+
+function pickDefaultModelGroup(payload, groups) {
+  const preferred = payload?.default_group
+  if (preferred && getGroupModels(groups, preferred).length > 0) return preferred
+  const defaultGroup = groups.find((group) => group.name === 'default' && group.models.length > 0)
+  if (defaultGroup) return defaultGroup.name
+  return groups.find((group) => group.models.length > 0)?.name || groups[0]?.name || ''
+}
+
+function AssistantClaySelect({ label, value, onChange, options, disabled, placeholder = '暂无可选' }) {
+  return (
+    <label className="relative min-w-0 rounded-full bg-clay-bg/85 md:bg-clay-bg shadow-clay-sm border border-white/40 px-3 py-2 flex items-center gap-2">
+      <span className="text-[10px] md:text-[11px] font-black text-clay-faint shrink-0">{label}</span>
+      <select
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        disabled={disabled}
+        className="min-w-0 flex-1 appearance-none bg-transparent pr-5 text-xs font-black text-clay-ink outline-none disabled:opacity-60"
+      >
+        {options.length === 0 && <option value="">{placeholder}</option>}
+        {options.map((option) => (
+          <option key={option.value} value={option.value} disabled={option.disabled}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+      <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 w-3.5 h-3.5 -translate-y-1/2 text-clay-faint" />
+    </label>
+  )
 }
 
 function ChatBubble({ message, onUseBalance, onToggleReasoning, disabled }) {
@@ -190,7 +246,8 @@ export default function AssistantWidget() {
   const [conversations, setConversations] = useState([])
   const [historyOpen, setHistoryOpen] = useState(false)
   const [historyLoading, setHistoryLoading] = useState(false)
-  const [paidModels, setPaidModels] = useState([])
+  const [modelGroups, setModelGroups] = useState([])
+  const [selectedPaidGroup, setSelectedPaidGroup] = useState('default')
   const [selectedPaidModel, setSelectedPaidModel] = useState('')
   const [openingContent, setOpeningContent] = useState('')
   const [openingStreaming, setOpeningStreaming] = useState(false)
@@ -216,7 +273,6 @@ export default function AssistantWidget() {
         if (!mounted) return
         if (res?.success === false) return
         setConfig(res?.data || null)
-        if (res?.data?.model_name) setSelectedPaidModel(res.data.model_name)
       })
       .catch(() => {})
     return () => {
@@ -286,9 +342,17 @@ export default function AssistantWidget() {
     getAssistantModels()
       .then((res) => {
         if (!mounted) return
-        const models = normalizePaidModels(res)
-        setPaidModels(models)
-        setSelectedPaidModel((current) => current || models[0] || config?.model_name || '')
+        const payload = res?.data || res || {}
+        const groups = normalizeModelGroups(res)
+        const nextGroup = pickDefaultModelGroup(payload, groups)
+        const nextModels = getGroupModels(groups, nextGroup)
+        setModelGroups(groups)
+        setSelectedPaidGroup((current) => (
+          current && getGroupModels(groups, current).length > 0 ? current : nextGroup
+        ))
+        setSelectedPaidModel((current) => (
+          current && nextModels.includes(current) ? current : nextModels[0] || config?.model_name || ''
+        ))
       })
       .catch(() => {})
     return () => {
@@ -303,6 +367,31 @@ export default function AssistantWidget() {
   const freeLimit = Number(config?.daily_limit) || 8
   const freeUsed = Math.min(Number(config?.daily_used) || 0, freeLimit)
   const freeModelLabel = `免费 · ${config?.model_name || '后台模型'} (${freeUsed}/${freeLimit})`
+  const selectedGroupModels = useMemo(() => getGroupModels(modelGroups, selectedPaidGroup), [modelGroups, selectedPaidGroup])
+  const groupOptions = useMemo(() => modelGroups.map((group) => ({
+    value: group.name,
+    label: group.models.length > 0 ? group.name : `${group.name} · 无模型`,
+    disabled: group.models.length === 0,
+  })), [modelGroups])
+  const modelOptions = useMemo(() => selectedGroupModels.map((name) => ({
+    value: name,
+    label: name,
+  })), [selectedGroupModels])
+
+  useEffect(() => {
+    if (modelGroups.length === 0) return
+    const currentGroup = modelGroups.find((group) => group.name === selectedPaidGroup && group.models.length > 0)
+      || modelGroups.find((group) => group.models.length > 0)
+      || modelGroups[0]
+    if (!currentGroup) return
+    if (currentGroup.name !== selectedPaidGroup) {
+      setSelectedPaidGroup(currentGroup.name)
+      return
+    }
+    if (!currentGroup.models.includes(selectedPaidModel)) {
+      setSelectedPaidModel(currentGroup.models[0] || '')
+    }
+  }, [modelGroups, selectedPaidGroup, selectedPaidModel])
 
   const refreshConversations = async () => {
     try {
@@ -520,6 +609,10 @@ export default function AssistantWidget() {
       toast('请先描述问题或上传截图', 'warning')
       return
     }
+    if (useBalance && (!selectedPaidGroup || !selectedPaidModel)) {
+      toast('请先选择可用分组和模型', 'warning')
+      return
+    }
     const userMessage = pendingMessage || {
       id: makeId(),
       role: 'user',
@@ -554,6 +647,7 @@ export default function AssistantWidget() {
       const result = await streamAssistantChat(
         {
           conversation_id: conversationId || 0,
+          group: useBalance ? selectedPaidGroup : '',
           model_name: useBalance ? selectedPaidModel : '',
           page_path: window.location.pathname,
           use_balance: useBalance,
@@ -651,32 +745,34 @@ export default function AssistantWidget() {
                   <h3 className="text-lg sm:text-xl md:text-base font-black tracking-tight truncate">{assistantName}</h3>
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={startNewConversation}
-                className="w-9 h-9 rounded-full bg-clay-bg shadow-clay md:bg-white/35 flex items-center justify-center shrink-0"
-                aria-label="新建对话"
-                title="新建对话"
-              >
-                <Plus className="w-4 h-4" />
-              </button>
-              <button
-                type="button"
-                onClick={() => setHistoryOpen((value) => !value)}
-                className="w-9 h-9 rounded-full bg-clay-bg shadow-clay md:bg-white/35 flex items-center justify-center shrink-0"
-                aria-label="历史对话"
-                title="历史对话"
-              >
-                <History className="w-4 h-4" />
-              </button>
-              <button
-                type="button"
-                onClick={() => setOpen(false)}
-                className="w-9 h-9 rounded-full bg-clay-bg shadow-clay md:bg-white/35 flex items-center justify-center shrink-0"
-                aria-label="关闭"
-              >
-                <X className="w-4 h-4" />
-              </button>
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={startNewConversation}
+                  className="w-9 h-9 rounded-full bg-clay-bg shadow-clay md:bg-white/35 flex items-center justify-center shrink-0"
+                  aria-label="新建对话"
+                  title="新建对话"
+                >
+                  <Plus className="w-4 h-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setHistoryOpen((value) => !value)}
+                  className="w-9 h-9 rounded-full bg-clay-bg shadow-clay md:bg-white/35 flex items-center justify-center shrink-0"
+                  aria-label="历史对话"
+                  title="历史对话"
+                >
+                  <History className="w-4 h-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setOpen(false)}
+                  className="w-9 h-9 rounded-full bg-clay-bg shadow-clay md:bg-white/35 flex items-center justify-center shrink-0"
+                  aria-label="关闭"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
             </div>
 
             <div className="mx-4 md:mx-auto md:w-[min(920px,calc(100vw-3rem))] mb-2 md:mb-0 shrink-0 rounded-clay-pill md:rounded-clay-lg bg-clay-yellow-100 text-[#8a6a32] shadow-clay px-3.5 py-2 md:px-5 md:py-3 flex items-start gap-2.5">
@@ -810,17 +906,21 @@ export default function AssistantWidget() {
                   placeholder="输入问题，Enter 发送，Shift+Enter 换行..."
                 />
 
-                <div className="md:hidden mb-2 flex items-center gap-2">
-                  <span className="text-[11px] font-bold text-clay-faint shrink-0">余额模型</span>
-                  <select
+                <div className="mb-2 grid grid-cols-2 gap-2 md:flex md:items-center md:justify-end">
+                  <AssistantClaySelect
+                    label="余额分组"
+                    value={selectedPaidGroup}
+                    onChange={setSelectedPaidGroup}
+                    options={groupOptions}
+                    disabled={loading || groupOptions.length === 0}
+                  />
+                  <AssistantClaySelect
+                    label="余额模型"
                     value={selectedPaidModel}
-                    onChange={(event) => setSelectedPaidModel(event.target.value)}
-                    className="min-w-0 flex-1 rounded-full bg-clay-bg shadow-clay-sm px-3 py-2 text-xs font-bold text-clay-ink outline-none"
-                  >
-                    {(paidModels.length ? paidModels : [config?.model_name || '']).filter(Boolean).map((name) => (
-                      <option key={name} value={name}>{name}</option>
-                    ))}
-                  </select>
+                    onChange={setSelectedPaidModel}
+                    options={modelOptions}
+                    disabled={loading || modelOptions.length === 0}
+                  />
                 </div>
 
                 <div className="flex items-center justify-between gap-3 pt-2">
@@ -851,18 +951,6 @@ export default function AssistantWidget() {
                     <span className="truncate text-[11px] md:text-xs text-clay-faint font-bold">
                       {freeModelLabel} · 截图 {(imageTotal / 1024).toFixed(0)}KB
                     </span>
-                  </div>
-                  <div className="hidden md:flex items-center gap-2 min-w-0">
-                    <span className="text-[11px] font-bold text-clay-faint shrink-0">余额模型</span>
-                    <select
-                      value={selectedPaidModel}
-                      onChange={(event) => setSelectedPaidModel(event.target.value)}
-                      className="max-w-[220px] rounded-full bg-clay-bg shadow-clay-sm px-3 py-2 text-xs font-bold text-clay-ink outline-none"
-                    >
-                      {(paidModels.length ? paidModels : [config?.model_name || '']).filter(Boolean).map((name) => (
-                        <option key={name} value={name}>{name}</option>
-                      ))}
-                    </select>
                   </div>
                   <button
                     type="button"

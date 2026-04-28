@@ -89,6 +89,7 @@
 - AI 助手免费对话上限固定为每用户 8 次/日，由 `ai-assistant` 专用 Token/配置承担；免费次数用完后，用户侧提示是否使用余额继续，确认后走站内 `/pg/chat/completions`，按当前用户可用模型、分组和余额正常计费；付费续聊记录为 `site_balance`，不占用免费次数
 - 知识文档第一版存在 `ui_assistant_documents`，按排序取启用文档片段拼入模型上下文；历史对话不保存截图原图，只保存截图数量
 - 用户侧完整聊天历史已通过 `ui_assistant_conversations` 与 `ui_assistant_conversation_messages` 保存，支持新建对话、历史对话列表、恢复消息；助手回复中的 `<think>...</think>` 会拆成 `reasoning` 字段，前端默认折叠显示
+- AI 助手余额续聊模型选择不直接使用当前身份分组；后端 `GET /api/ui/assistant/models` 返回用户可用分组及各分组启用模型，前端以 `default` 且有模型的组合为默认，余额续聊 `POST /api/ui/assistant/chat` 会同时提交 `group` 与 `model_name`，避免 Pro优/Super优/Ultra优 身份分组未配置模型时报 “No available channel”。
 - AI 助手接口：用户侧 `GET /api/ui/assistant/config`、`GET/POST/DELETE /api/ui/assistant/conversations`、`GET /api/ui/assistant/conversations/:id/messages`、`POST /api/ui/assistant/analyze`、`POST /api/ui/assistant/chat`；管理侧 `GET/PUT /api/ui/admin/assistant/config`、`GET/POST/PUT/DELETE /api/ui/admin/assistant/documents`、`GET /api/ui/admin/assistant/sessions`
 
 ## Claude 适配注意事项

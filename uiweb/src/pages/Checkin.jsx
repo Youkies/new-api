@@ -27,6 +27,10 @@ function buildCalendar(year, month) {
 
 const DOW = ['日', '一', '二', '三', '四', '五', '六']
 
+function formatCalendarReward(quota) {
+  return quotaToDisplay(quota ?? 0).text.replace(/^[+\s¥￥$€£]+/, '')
+}
+
 function getSecondsUntilMidnight() {
   const now = new Date()
   const midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1)
@@ -235,13 +239,13 @@ export default function Checkin() {
           </div>
 
           {/* Calendar grid */}
-          <div className="grid grid-cols-7 gap-1 sm:gap-2">
+          <div className="grid grid-cols-7 gap-1.5 sm:gap-2">
             {cells.map((day, i) => {
               if (day === null) return <div key={`e${i}`} className="aspect-square" />
               const isToday = isCurrentMonth && day === today.getDate()
               const checked = checkedDates.has(day)
               const record = recordsByDay.get(day)
-              const rewardText = record ? quotaToDisplay(record.quota_awarded ?? 0).text : ''
+              const rewardText = record ? formatCalendarReward(record.quota_awarded) : ''
               return (
                 <div
                   key={day}
@@ -258,7 +262,7 @@ export default function Checkin() {
                   <span className="leading-none">{day}</span>
                   {checked ? (
                     <span className="mt-1 block max-w-full truncate text-[9px] sm:text-[10px] font-black leading-none text-[#8a4860]/80 tabular-nums">
-                      +{rewardText}
+                      {rewardText}
                     </span>
                   ) : (
                     <span className="h-3 text-[10px] leading-none">&nbsp;</span>

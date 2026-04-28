@@ -380,3 +380,57 @@ func TestRequestOpenAI2ClaudeMessage_ConvertsTextFileContentToText(t *testing.T)
 	require.NotNil(t, content[0].Text)
 	require.Equal(t, "alpha\nbeta", *content[0].Text)
 }
+
+func TestRequestOpenAI2ClaudeMessage_RemovesInvalidThinkingParameters(t *testing.T) {
+	topP := 0.8
+	topK := 40
+	temperature := 0.7
+	parallelToolCalls := true
+	request := dto.GeneralOpenAIRequest{
+		Model:            "claude-sonnet-4-20250514",
+		ReasoningEffort:  "high",
+		TopP:             &topP,
+		TopK:             &topK,
+		Temperature:      &temperature,
+		ToolChoice:       "required",
+		ParallelTooCalls: &parallelToolCalls,
+		Messages: []dto.Message{
+			{
+				Role:    "user",
+				Content: "think carefully",
+			},
+		},
+	}
+
+	claudeRequest, err := RequestOpenAI2ClaudeMessage(nil, request)
+	require.NoError(t, err)
+	require.NotNil(t, claudeRequest.Thinking)
+	require.Nil(t, claudeRequest.TopP)
+	require.Nil(t, claudeRequest.TopK)
+	require.Nil(t, claudeRequest.Temperature)
+
+	toolChoice, ok := claudeRequest.ToolChoice.(*dto.ClaudeToolChoice)
+	require.True(t, ok)
+	require.Equal(t, "auto", toolChoice.Type)
+}
+
+func TestRequestOpenAI2ClaudeMessage_PreservesValidThinkingTopP(t *testing.T) {
+	topP := 0.95
+	request := dto.GeneralOpenAIRequest{
+		Model:           "claude-sonnet-4-20250514",
+		ReasoningEffort: "medium",
+		TopP:            &topP,
+		Messages: []dto.Message{
+			{
+				Role:    "user",
+				Content: "think carefully",
+			},
+		},
+	}
+
+	claudeRequest, err := RequestOpenAI2ClaudeMessage(nil, request)
+	require.NoError(t, err)
+	require.NotNil(t, claudeRequest.Thinking)
+	require.NotNil(t, claudeRequest.TopP)
+	require.Equal(t, 0.95, *claudeRequest.TopP)
+}

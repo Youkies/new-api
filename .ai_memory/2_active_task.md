@@ -1,5 +1,13 @@
 # 当前任务
 
+## 当前新增任务：Claude thinking 参数兼容修复（2026-04-28）
+### 本轮实现进度
+- 现象：用户以 OpenAI 格式调用反代 Claude 时，上游返回 `top_p must be greater than or equal to 0.95 or unset when thinking is enabled`，以及 `Request contains an invalid argument`。
+- 根因：OpenAI 格式客户端常默认带 `temperature/top_p/top_k/tool_choice`；当模型后缀、`reasoning_effort` 或 `reasoning` 触发 Claude extended thinking 后，这些参数会与 Anthropic thinking 约束冲突。
+- 后端：新增 `claude.NormalizeThinkingRequest`，thinking 启用时移除 `temperature`、`top_k`，当 `top_p` 不在 `[0.95, 1]` 时移除，并把强制工具调用 `tool_choice=any/tool` 降级为 `auto`。
+- 覆盖路径：OpenAI→Claude 转换、原生 Claude 透传、Vertex Claude 透传均调用同一清洗逻辑。
+- 验证：新增并通过 `go test ./relay/channel/claude -run "TestRequestOpenAI2ClaudeMessage_(RemovesInvalidThinkingParameters|PreservesValidThinkingTopP)"`；`git diff --check` 通过。完整 `go test ./relay/channel/claude` 仍有既有文件内容转换测试失败，未纳入本次修复范围。
+
 ## 当前新增任务：AI 助手桌面端全屏化（2026-04-28）
 ### 本轮实现进度
 - 用户反馈桌面端继续使用居中大弹窗仍不好看，参考 LobeChat 桌面截图后决定改为桌面全屏聊天工作台。

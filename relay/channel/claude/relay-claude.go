@@ -31,6 +31,31 @@ const (
 	WebSearchMaxUsesHigh   = 10
 )
 
+// NormalizeThinkingRequest removes Anthropic parameters that are invalid when
+// extended thinking is enabled. OpenAI-compatible clients often send sampling
+// params by default, but Claude rejects them with thinking requests.
+func NormalizeThinkingRequest(request *dto.ClaudeRequest) {
+	if request == nil || !isThinkingEnabled(request.Thinking) {
+		return
+	}
+	request.Temperature = nil
+	request.TopK = nil
+	if request.TopP != nil && (*request.TopP < 0.95 || *request.TopP > 1) {
+		request.TopP = nil
+	}
+	if toolChoice, ok := request.ToolChoice.(*dto.ClaudeToolChoice); ok &&
+		(toolChoice.Type == "any" || toolChoice.Type == "tool") {
+		request.ToolChoice = &dto.ClaudeToolChoice{Type: "auto"}
+	}
+}
+
+func isThinkingEnabled(thinking *dto.Thinking) bool {
+	if thinking == nil {
+		return false
+	}
+	return thinking.Type == "enabled" || thinking.Type == "adaptive"
+}
+
 func stopReasonClaude2OpenAI(reason string) string {
 	return reasonmap.ClaudeStopReasonToOpenAIFinishReason(reason)
 }
@@ -169,7 +194,8 @@ func RequestOpenAI2ClaudeMessage(c *gin.Context, textRequest dto.GeneralOpenAIRe
 			claudeRequest.TopK = nil
 		} else {
 			claudeRequest.TopP = nil
-			claudeRequest.Temperature = common.GetPointer[float64](1.0)
+			claudeRequest.TopK = nil
+			claudeRequest.Temperature = nil
 		}
 	} else if model_setting.GetClaudeSettings().ThinkingAdapterEnabled &&
 		strings.HasSuffix(textRequest.Model, "-thinking") {
@@ -196,7 +222,8 @@ func RequestOpenAI2ClaudeMessage(c *gin.Context, textRequest dto.GeneralOpenAIRe
 			// TODO: 临时处理
 			// https://docs.anthropic.com/en/docs/build-with-claude/extended-thinking#important-considerations-when-using-extended-thinking
 			claudeRequest.TopP = nil
-			claudeRequest.Temperature = common.GetPointer[float64](1.0)
+			claudeRequest.TopK = nil
+			claudeRequest.Temperature = nil
 		}
 		if !model_setting.ShouldPreserveThinkingSuffix(textRequest.Model) {
 			claudeRequest.Model = trimmedModel
@@ -431,6 +458,7 @@ func RequestOpenAI2ClaudeMessage(c *gin.Context, textRequest dto.GeneralOpenAIRe
 
 	claudeRequest.Prompt = ""
 	claudeRequest.Messages = claudeMessages
+	NormalizeThinkingRequest(&claudeRequest)
 	return &claudeRequest, nil
 }
 

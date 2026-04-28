@@ -7,6 +7,7 @@ import { UserProvider } from './context/UserContext.jsx'
 import { ToastProvider } from './context/ToastContext.jsx'
 import { ThemeProvider } from './context/ThemeContext.jsx'
 import AnnouncementProvider from './components/announcement/AnnouncementProvider.jsx'
+import DebugModePanel from './components/debug/DebugModePanel.jsx'
 import './index.css'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
@@ -18,6 +19,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
             <ToastProvider>
               <AnnouncementProvider>
                 <App />
+                <DebugModePanel />
               </AnnouncementProvider>
             </ToastProvider>
           </UserProvider>

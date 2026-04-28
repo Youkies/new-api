@@ -2,9 +2,9 @@
 
 黏土风（Claymorphism）用户前端，与原 `web/` 并存。
 
-- 挂载路径：`/u/*`（由 `newapi` Go 后端的第二组 `//go:embed` 提供）
-- 原 `web/` 保留在 `/`，完全不改动
-- 这里只负责**普通用户页面**（访客 + 登录后的用户漏斗）；管理员页面仍走原 `web/`
+- 挂载路径：`/*`（由 `newapi` Go 后端 `//go:embed uiweb/dist` 提供）
+- 原 `web/` 保留在 `/legacy/*`
+- 这里负责新 UI 访客页、用户控制台，以及轻量运营管理端
 
 ## 开发
 
@@ -12,10 +12,26 @@
 cd uiweb
 bun install
 bun run dev
-# 打开 http://localhost:5174/u/
+# 打开 http://localhost:5174/
 ```
 
-`/api` 与 `/v1` 已代理到 `http://localhost:3000`（本机 newapi），可直接联调。
+`/api` 与 `/v1` 已代理到 `http://localhost:3001`（本机 newapi 调试实例），可直接联调。
+
+### UI 调试模式
+
+不连接后端数据库时，可以启用前端-only mock：
+
+```bash
+VITE_UI_DEBUG_MODE=true bun run dev
+```
+
+也可以在 Vite 开发环境打开任意页面时追加 `?debug=1`，例如：
+
+```text
+http://127.0.0.1:5174/dashboard?debug=1
+```
+
+启用后会自动使用 mock 管理员、mock API 数据和左下角 `UI DEBUG` 快捷面板，可直接跳转用户控制台、公告管理、申诉审核、AI 助手配置等页面。关闭方式：点击调试面板里的“关闭本地调试模式”，或访问 `?debug=0`。
 
 ## 构建
 

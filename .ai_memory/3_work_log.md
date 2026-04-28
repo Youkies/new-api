@@ -79,3 +79,5 @@
 - [2026-04-28 18:43] 完成 AI 助手第一版：管理端 `/admin/assistant` 配置页、知识文档、会话摘要、用户控制台悬浮球和后端 OpenAI-compatible 分析接口，并通过 go build 与 uiweb build。
 - [2026-04-28 19:09] 将 AI 助手用户侧改为对话式聊天窗口，新增 `/api/ui/assistant/chat` 流式接口，前端用 fetch reader 边读边渲染助手气泡；通过 uiweb build 与 go build。
 - [2026-04-28 19:24] 优化 AI 助手移动端弹窗：欢迎说明改为聊天区开场白逐字显示，压缩移动端头部、警告条、输入框和底部按钮布局；通过 uiweb build。
+- [2026-04-28 19:40] 新增新 UI 前端调试模式：`VITE_UI_DEBUG_MODE` / `?debug=1` 注入 mock 管理员、mock API、AI 助手 mock 流式回复和左下角快捷跳转面板；通过 uiweb build。
+- [2026-04-28 20:07] 按 LobeChat 移动端参考继续优化 AI 助手：移动端改为近全屏聊天视图，警告缩成胶囊，消息区直接滚动，输入/上传/发送合入底部 composer；未跑本地构建。

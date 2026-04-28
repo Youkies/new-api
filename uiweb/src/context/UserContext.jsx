@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useState } from 'react'
+import { DEBUG_USER, isDebugMode } from '../utils/debugMode.js'
 
 const UserContext = createContext({
   user: null,
@@ -7,6 +8,7 @@ const UserContext = createContext({
 })
 
 function readUser() {
+  if (isDebugMode()) return DEBUG_USER
   try {
     const raw = localStorage.getItem('user')
     return raw ? JSON.parse(raw) : null
@@ -20,7 +22,7 @@ export function UserProvider({ children }) {
 
   const setUser = useCallback((u) => {
     setUserState((prev) => {
-      let next = u
+      let next = isDebugMode() && !u ? DEBUG_USER : u
       if (u) {
         if (prev?._avatar_t && !u._avatar_t) {
           next = { ...u, _avatar_t: prev._avatar_t }
@@ -37,13 +39,14 @@ export function UserProvider({ children }) {
   }, [])
 
   const logout = useCallback(() => {
-    setUser(null)
+    setUser(isDebugMode() ? DEBUG_USER : null)
   }, [setUser])
 
   // Sync across tabs
   useEffect(() => {
     const onStorage = (e) => {
       if (e.key === 'user') setUserState(readUser())
+      if (e.key === 'uiweb.debug.mode') setUserState(readUser())
     }
     window.addEventListener('storage', onStorage)
     return () => window.removeEventListener('storage', onStorage)

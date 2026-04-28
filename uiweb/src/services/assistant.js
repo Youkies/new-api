@@ -1,4 +1,5 @@
 import api from './api.js'
+import { isDebugMode, streamDebugAssistantChat } from '../utils/debugMode.js'
 
 export async function getAssistantClientConfig() {
   const res = await api.get('/api/ui/assistant/config')
@@ -31,6 +32,9 @@ async function readErrorMessage(res) {
 }
 
 export async function streamAssistantChat(payload, onChunk) {
+  if (isDebugMode()) {
+    return streamDebugAssistantChat(payload, onChunk)
+  }
   const res = await fetch('/api/ui/assistant/chat', {
     method: 'POST',
     credentials: 'include',

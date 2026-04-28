@@ -1,7 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Bot, ImagePlus, Loader2, Send, ShieldAlert, Sparkles, Trash2, X } from 'lucide-react'
-import ClayAlert from '../clay/ClayAlert.jsx'
-import ClayButton from '../clay/ClayButton.jsx'
 import ClayCard from '../clay/ClayCard.jsx'
 import { useToast } from '../../context/ToastContext.jsx'
 import { getAssistantClientConfig, streamAssistantChat } from '../../services/assistant.js'
@@ -22,10 +20,10 @@ function ChatBubble({ message }) {
   return (
     <div className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
       <div
-        className={`max-w-[92%] md:max-w-[86%] rounded-clay-lg px-4 py-3 md:px-5 md:py-4 shadow-clay ${
+        className={`max-w-[84%] md:max-w-[86%] rounded-[22px] md:rounded-clay-lg px-4 py-3 md:px-5 md:py-4 ${
           isUser
-            ? 'bg-clay-pink-100 text-[#8a4860]'
-            : 'bg-white/45 text-clay-ink'
+            ? 'bg-clay-pink-100 text-[#8a4860] shadow-clay'
+            : 'bg-white/70 md:bg-white/45 text-clay-ink shadow-clay-sm md:shadow-clay'
         }`}
       >
         {message.screenshots?.length > 0 && (
@@ -40,7 +38,7 @@ function ChatBubble({ message }) {
             ))}
           </div>
         )}
-        <div className="whitespace-pre-wrap leading-6 md:leading-7 text-[13px] md:text-sm font-semibold">
+        <div className="whitespace-pre-wrap leading-7 text-sm md:text-sm font-semibold">
           {message.content || (message.streaming ? '正在思考…' : '')}
           {message.streaming && <span className="inline-block w-2 h-4 ml-1 align-middle bg-clay-blue-200 animate-pulse rounded-full" />}
         </div>
@@ -237,7 +235,7 @@ export default function AssistantWidget() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="fixed right-5 bottom-5 z-[9990] w-16 h-16 rounded-full bg-clay-pink-100 shadow-clay hover:shadow-clay-hover active:shadow-clay-active transition-all duration-200 ease-clay flex items-center justify-center text-[#8a4860]"
+        className="fixed right-5 bottom-[calc(env(safe-area-inset-bottom)+1.25rem)] z-[9990] w-16 h-16 rounded-full bg-clay-pink-100 shadow-clay hover:shadow-clay-hover active:shadow-clay-active transition-all duration-200 ease-clay flex items-center justify-center text-[#8a4860]"
         aria-label={assistantName}
         title={assistantName}
       >
@@ -245,9 +243,9 @@ export default function AssistantWidget() {
       </button>
 
       {open && (
-        <div className="fixed inset-0 z-[9999] bg-clay-bg/70 backdrop-blur-sm flex items-end md:items-center justify-center p-2 md:p-5">
-          <ClayCard className="relative w-full md:max-w-2xl h-[calc(100dvh-1rem)] sm:h-[88vh] md:h-[760px] !p-4 sm:!p-5 md:!p-7 flex flex-col !overflow-hidden">
-            <div className="flex items-center justify-between gap-3 mb-3 md:mb-4 shrink-0">
+        <div className="fixed inset-0 z-[9999] bg-clay-bg/90 md:bg-clay-bg/70 md:backdrop-blur-sm flex items-stretch md:items-center justify-center p-0 md:p-5">
+          <ClayCard className="relative w-full md:max-w-2xl h-[100dvh] md:h-[760px] !p-0 md:!p-7 flex flex-col !overflow-hidden max-md:!rounded-none max-md:!shadow-none max-md:!border-0 max-md:!bg-clay-bg">
+            <div className="flex items-center justify-between gap-3 px-4 pt-4 pb-3 md:p-0 md:mb-4 shrink-0">
               <div className="flex items-center gap-3 min-w-0">
                 <div className="clay-icon-box !w-10 !h-10 md:!w-12 md:!h-12 text-clay-pink-300 shrink-0">
                   <Sparkles className="w-5 h-5" />
@@ -266,15 +264,16 @@ export default function AssistantWidget() {
               </button>
             </div>
 
-            <ClayAlert tone="warning" className="!p-3 md:!p-4 mb-3 md:mb-4 shrink-0">
-              <span className="text-xs md:text-sm leading-6">
+            <div className="mx-4 md:mx-0 mb-2 md:mb-4 shrink-0 rounded-clay-pill md:rounded-clay-lg bg-clay-yellow-100 text-[#8a6a32] shadow-clay px-3.5 py-2 md:px-4 md:py-3 flex items-start gap-2.5">
+              <ShieldAlert className="w-4 h-4 md:w-5 md:h-5 mt-0.5 shrink-0" strokeWidth={2.5} />
+              <span className="text-[11px] md:text-sm leading-5 md:leading-6 font-bold">
                 AI 仅做预诊断，不承诺退款或替代审核；截图含密钥、订单号请先打码。
               </span>
-            </ClayAlert>
+            </div>
 
             <div
               ref={scrollRef}
-              className="flex-1 overflow-y-auto rounded-clay bg-white/35 shadow-clay-inset p-3 md:p-4 mb-3 md:mb-4 space-y-3 md:space-y-4"
+              className="flex-1 overflow-y-auto px-4 py-3 md:rounded-clay md:bg-white/35 md:shadow-clay-inset md:p-4 md:mb-4 space-y-3 md:space-y-4"
             >
               <ChatBubble
                 message={{
@@ -287,72 +286,85 @@ export default function AssistantWidget() {
               {messages.map((message) => <ChatBubble key={message.id} message={message} />)}
             </div>
 
-            {screenshots.length > 0 && (
-              <div className="flex flex-wrap gap-3 mb-3 shrink-0">
-                {screenshots.map((item, index) => (
-                  <div key={`${item.name}-${index}`} className="relative">
-                    <img
-                      src={item.data_url}
-                      alt="截图预览"
-                      className="w-16 h-16 md:w-20 md:h-20 rounded-clay object-cover shadow-clay"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setScreenshots((prev) => prev.filter((_, i) => i !== index))}
-                      className="absolute -right-2 -top-2 w-8 h-8 rounded-full bg-clay-bg shadow-clay flex items-center justify-center text-clay-pink-400"
-                      aria-label="删除截图"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+            <div className="shrink-0 px-4 pt-2 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] md:px-0 md:pt-0 md:pb-0">
+              {screenshots.length > 0 && (
+                <div className="flex flex-wrap gap-2 mb-2">
+                  {screenshots.map((item, index) => (
+                    <div key={`${item.name}-${index}`} className="relative">
+                      <img
+                        src={item.data_url}
+                        alt="截图预览"
+                        className="w-14 h-14 md:w-20 md:h-20 rounded-clay object-cover shadow-clay"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setScreenshots((prev) => prev.filter((_, i) => i !== index))}
+                        className="absolute -right-2 -top-2 w-7 h-7 md:w-8 md:h-8 rounded-full bg-clay-bg shadow-clay flex items-center justify-center text-clay-pink-400"
+                        aria-label="删除截图"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {error && (
+                <div className="mb-2 rounded-clay bg-clay-pink-100 text-[#8a4860] px-4 py-2 text-xs font-bold shadow-clay">
+                  {error}
+                </div>
+              )}
+
+              <div className="rounded-[26px] md:rounded-clay bg-clay-bg md:bg-white/45 shadow-clay border-2 border-white/30 p-3 md:p-4">
+                <textarea
+                  className="w-full min-h-[56px] md:min-h-[84px] max-h-[128px] bg-transparent outline-none border-0 resize-none leading-7 text-[16px] md:text-sm font-semibold placeholder:text-clay-faint/70"
+                  value={question}
+                  onChange={(e) => setQuestion(e.target.value)}
+                  onPaste={onPaste}
+                  onKeyDown={handleKeyDown}
+                  placeholder="输入问题，Enter 发送，Shift+Enter 换行..."
+                />
+
+                <div className="flex items-center justify-between gap-3 pt-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    {config?.allow_screenshot && (
+                      <>
+                        <input
+                          ref={fileRef}
+                          type="file"
+                          accept="image/png,image/jpeg,image/webp"
+                          className="hidden"
+                          onChange={(e) => {
+                            readFile(e.target.files?.[0])
+                            e.target.value = ''
+                          }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => fileRef.current?.click()}
+                          className="w-10 h-10 md:w-auto md:px-4 rounded-full bg-clay-bg shadow-clay flex items-center justify-center gap-2 text-clay-faint font-black text-sm"
+                          aria-label="上传截图"
+                        >
+                          <ImagePlus className="w-4 h-4" />
+                          <span className="hidden md:inline">上传截图</span>
+                        </button>
+                      </>
+                    )}
+                    <span className="truncate text-[11px] md:text-xs text-clay-faint font-bold">
+                      {config?.daily_limit || 10} 次/日 · {(imageTotal / 1024).toFixed(0)}KB
+                    </span>
                   </div>
-                ))}
+                  <button
+                    type="button"
+                    onClick={submit}
+                    disabled={loading}
+                    className="h-10 px-5 md:px-6 rounded-full bg-clay-blue-100 text-[#43658b] shadow-clay flex items-center justify-center gap-2 font-black disabled:opacity-60 disabled:cursor-not-allowed"
+                  >
+                    {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                    <span>{loading ? '回复中' : '发送'}</span>
+                  </button>
+                </div>
               </div>
-            )}
-
-            {error && (
-              <ClayAlert tone="error" className="mb-3 shrink-0">
-                {error}
-              </ClayAlert>
-            )}
-
-            <textarea
-              className="clay-input min-h-[72px] md:min-h-[92px] max-h-[140px] md:max-h-[160px] resize-y leading-6 md:leading-7 mb-3 shrink-0 !text-sm"
-              value={question}
-              onChange={(e) => setQuestion(e.target.value)}
-              onPaste={onPaste}
-              onKeyDown={handleKeyDown}
-              placeholder="输入问题，Enter 发送，Shift+Enter 换行..."
-            />
-
-            <div className="flex flex-col gap-2 shrink-0">
-              <div className="flex items-center justify-between gap-2">
-                {config?.allow_screenshot && (
-                  <>
-                    <input
-                      ref={fileRef}
-                      type="file"
-                      accept="image/png,image/jpeg,image/webp"
-                      className="hidden"
-                      onChange={(e) => {
-                        readFile(e.target.files?.[0])
-                        e.target.value = ''
-                      }}
-                    />
-                    <ClayButton variant="ghost" onClick={() => fileRef.current?.click()} className="!px-4 !py-2.5 md:!px-5 flex-1 sm:flex-none">
-                      <ImagePlus className="w-4 h-4" />
-                      上传截图
-                    </ClayButton>
-                  </>
-                )}
-                <ClayButton variant="primary" onClick={submit} disabled={loading} className="!px-5 !py-2.5 md:!px-8 flex-1 sm:flex-none">
-                  {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                  {loading ? '回复中' : '发送'}
-                </ClayButton>
-              </div>
-              <span className="inline-flex items-center gap-2 text-[11px] md:text-xs text-clay-faint font-bold">
-                <ShieldAlert className="w-4 h-4 shrink-0" />
-                每日最多 {config?.daily_limit || 10} 次 · 当前截图 {(imageTotal / 1024).toFixed(0)}KB
-              </span>
             </div>
           </ClayCard>
         </div>

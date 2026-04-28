@@ -29,8 +29,16 @@
 - @lobehub/icons stub：4 个 stub 模块（antd/antd-style/react-layout-kit/@lobehub/ui）通过 vite alias 屏蔽 Avatar/Combine 子组件的间接依赖
 - 裁剪库：react-easy-crop（头像上传裁剪预览）
 - 路由：react-router-dom 6，根路径（无 basename）
-- Vite `base: '/'`，dev 端口 5174，代理 `/api` `/v1` → localhost:3000
+- Vite `base: '/'`，dev 端口 5174，代理 `/api` `/v1` → localhost:3001
 - 包管理：开发机 npm/npx（bun 未装），Dockerfile 走 oven/bun:1
+
+## 新 UI 前端调试模式
+
+- 启用方式：`VITE_UI_DEBUG_MODE=true`，或 Vite 开发环境访问任意页面加 `?debug=1`；关闭本地开关可用左下角面板或 `?debug=0`
+- 安全边界：普通生产构建默认关闭；`localStorage` 开关只在 `import.meta.env.DEV` 下生效，生产若需启用必须显式构建时设置 `VITE_UI_DEBUG_MODE=true`
+- 调试能力：自动注入管理员 mock 用户，`services/api.js` 使用 axios adapter 返回 mock 状态、用户、令牌、日志、充值、公告、申诉、AI 助手、定价、模型状态等接口数据
+- AI 助手：调试模式下用户侧流式聊天走前端 mock 流，不调用真实 `/api/ui/assistant/chat`，不消耗真实 Token
+- UI 入口：左下角 `UI DEBUG` 快捷面板可跳转首页、控制台、公告、定价、状态、管理端、公告管理、申诉审核、AI 助手配置等页面
 
 ## 用户业务约束
 

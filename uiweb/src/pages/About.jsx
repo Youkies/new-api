@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Info, BookHeart, Users, MessageCircle } from 'lucide-react'
+import { Info, BookHeart, Users, MessageCircle, RotateCcw } from 'lucide-react'
 import ClayCard from '../components/clay/ClayCard.jsx'
 import ClayPageShell from '../components/layout/ClayPageShell.jsx'
 import { useStatus } from '../context/StatusContext.jsx'
@@ -44,6 +44,32 @@ export default function About() {
               </p>
             </div>
           )}
+
+          <div className="mt-10 border-t-2 border-white/35 pt-8">
+            <div className="flex items-center gap-3 mb-5">
+              <div className="clay-icon-box !w-11 !h-11 text-clay-pink-300 shrink-0">
+                <RotateCcw className="w-5 h-5" strokeWidth={2.5} />
+              </div>
+              <div>
+                <h2 className="text-2xl font-black tracking-tight text-clay-ink">退款说明</h2>
+                <p className="text-sm font-bold text-clay-faint mt-1">请通过 QQ 联系管理员提交申请。</p>
+              </div>
+            </div>
+            <div className="space-y-4 text-clay-ink leading-relaxed">
+              <p>
+                <strong>因用户原因申请退款：</strong>
+                退款金额 = 实付金额 - 已使用额度对应费用 - 手续费（不包含赠送额度）。
+              </p>
+              <p>
+                <strong>因商家原因导致服务异常：</strong>
+                核实确认后全额退款。
+              </p>
+              <p>
+                <strong>退款方式：</strong>
+                用户通过 QQ 向管理员提交退款申请，3 个工作日内处理。
+              </p>
+            </div>
+          </div>
 
           <div className="grid md:grid-cols-3 gap-4 mt-10">
             <a

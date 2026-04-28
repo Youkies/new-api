@@ -1,5 +1,17 @@
 # 当前任务
 
+## 当前新增任务：常见报错 Q&A 文档（2026-04-29）
+### 本轮完成进度
+- 新增 `docs/user-error-qa.md`，用于沉淀用户常见调用报错、原因判断、处理步骤和客服简短答复。
+- 首批写入两类问题：`assistant message prefill` 400 报错及预设/预填充解决方案；`auth_exhausted: no available account` 503 上游反代渠道冷却报错及等待/切换建议。
+
+## 当前新增任务：Docker 镜像打包并推送 GHCR（2026-04-29）
+### 本轮完成进度
+- 已使用根目录 `Dockerfile` 构建生产镜像，构建内容包含经典前端、`uiweb` 新前端与 Go 后端二进制。
+- 已推送到 GHCR：`ghcr.io/youkies/new-api:latest` 与 `ghcr.io/youkies/new-api:6c60875f`。
+- 两个 tag 对应同一 manifest digest：`sha256:f77aa29b0bd313da2361e13fe79b1be1250ec3f34a290055e01cce80dfa61784`。
+- 已通过 `docker manifest inspect ghcr.io/youkies/new-api:latest` 确认远端 manifest 存在，平台为 `linux/amd64`。
+
 ## 当前新增任务：签到页日历精简与移动端修正（2026-04-29）
 ### 本轮实现进度
 - 删除签到页“本月签到详情”列表，避免与日历重复展示。

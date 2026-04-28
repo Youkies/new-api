@@ -17,15 +17,9 @@ bun run dev
 
 `/api` 与 `/v1` 已代理到 `http://localhost:3001`（本机 newapi 调试实例），可直接联调。
 
-### 会员升级入口
+### 会员身份展示
 
-控制台会按用户 `group` 显示四档身份：普通用户、Pro优、Super优、Ultra优。升级由外部项目承接时，可在构建环境中配置：
-
-```bash
-VITE_MEMBERSHIP_UPGRADE_URL=https://your-upgrade-site.example.com
-```
-
-未配置时仅展示身份，不显示升级按钮。
+控制台会按用户 `group` 显示四档身份：普通用户、Pro优、Super优、Ultra优。分组升级由外部系统处理，前端只读取当前用户分组并展示身份，不提供升级入口。
 
 ### UI 调试模式
 

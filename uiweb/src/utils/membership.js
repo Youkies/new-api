@@ -81,19 +81,6 @@ export function getMembershipTier(group) {
   return MEMBERSHIP_TIERS[0]
 }
 
-export function getNextMembershipTier(group) {
-  const current = getMembershipTier(group)
-  return MEMBERSHIP_TIERS.find((tier) => tier.rank === current.rank + 1) || null
-}
-
-export function getMembershipUpgradeUrl() {
-  return String(
-    import.meta.env.VITE_MEMBERSHIP_UPGRADE_URL ||
-      import.meta.env.VITE_UPGRADE_URL ||
-      '',
-  ).trim()
-}
-
 export function getMembershipTiers() {
   return MEMBERSHIP_TIERS
 }

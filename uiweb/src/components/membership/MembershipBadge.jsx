@@ -1,10 +1,6 @@
-import { ArrowUpRight, Crown, Gem, ShieldCheck, Sparkles } from 'lucide-react'
+import { Crown, Gem, ShieldCheck, Sparkles } from 'lucide-react'
 import ClayAvatar from '../clay/ClayAvatar.jsx'
-import {
-  getMembershipTier,
-  getMembershipUpgradeUrl,
-  getNextMembershipTier,
-} from '../../utils/membership.js'
+import { getMembershipTier } from '../../utils/membership.js'
 
 const ICONS = {
   shield: ShieldCheck,
@@ -18,10 +14,8 @@ function TierIcon({ tier, className = 'w-4 h-4' }) {
   return <Icon className={className} strokeWidth={2.5} />
 }
 
-export function MembershipBadge({ user, compact = false, showUpgrade = false, className = '' }) {
+export function MembershipBadge({ user, compact = false, className = '' }) {
   const tier = getMembershipTier(user?.group)
-  const nextTier = getNextMembershipTier(user?.group)
-  const upgradeUrl = getMembershipUpgradeUrl()
 
   return (
     <div
@@ -32,17 +26,6 @@ export function MembershipBadge({ user, compact = false, showUpgrade = false, cl
       <span className={compact ? 'text-xs' : 'text-sm'}>{tier.label}</span>
       {!compact && (
         <span className="hidden sm:inline text-xs font-bold opacity-70">{tier.tagline}</span>
-      )}
-      {showUpgrade && nextTier && upgradeUrl && (
-        <a
-          href={upgradeUrl}
-          target="_blank"
-          rel="noreferrer"
-          className="ml-1 inline-flex items-center gap-1 rounded-clay-pill bg-white/45 px-2 py-0.5 text-xs font-black hover:bg-white/70"
-        >
-          升级
-          <ArrowUpRight className="w-3 h-3" />
-        </a>
       )}
     </div>
   )
@@ -70,8 +53,6 @@ export function MembershipAvatar({ user, name, src, size = 40, className = '' })
 
 export function MembershipCard({ user }) {
   const tier = getMembershipTier(user?.group)
-  const nextTier = getNextMembershipTier(user?.group)
-  const upgradeUrl = getMembershipUpgradeUrl()
 
   return (
     <div className={`rounded-clay border ${tier.tone.border} ${tier.tone.softBg} p-4 shadow-clay-inset`}>
@@ -86,23 +67,7 @@ export function MembershipCard({ user }) {
             系统分组：{user?.group || 'default'}
           </div>
         </div>
-        {nextTier && upgradeUrl && (
-          <a
-            href={upgradeUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="shrink-0 inline-flex items-center gap-1 rounded-clay-pill bg-clay-bg px-3 py-1.5 text-xs font-black shadow-clay hover:shadow-clay-hover"
-          >
-            升级
-            <ArrowUpRight className="w-3 h-3" />
-          </a>
-        )}
       </div>
-      {nextTier && (
-        <div className="mt-3 text-xs text-clay-faint font-bold">
-          下一阶层：<span className="text-clay-ink">{nextTier.label}</span>
-        </div>
-      )}
     </div>
   )
 }

@@ -224,7 +224,7 @@ export default function ClayConsoleShell({ title, subtitle, actions, children })
                 <p className="text-clay-faint mt-1 text-base">{subtitle}</p>
               )}
               {user && (
-                <MembershipBadge user={user} showUpgrade className="mt-3" />
+                <MembershipBadge user={user} className="mt-3" />
               )}
             </div>
             {actions && <div className="flex gap-3 items-center">{actions}</div>}

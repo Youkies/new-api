@@ -22,7 +22,7 @@ function ChatBubble({ message }) {
   return (
     <div className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
       <div
-        className={`max-w-[86%] rounded-clay-lg px-5 py-4 shadow-clay ${
+        className={`max-w-[92%] md:max-w-[86%] rounded-clay-lg px-4 py-3 md:px-5 md:py-4 shadow-clay ${
           isUser
             ? 'bg-clay-pink-100 text-[#8a4860]'
             : 'bg-white/45 text-clay-ink'
@@ -35,12 +35,12 @@ function ChatBubble({ message }) {
                 key={`${message.id}-${index}`}
                 src={item.data_url}
                 alt="截图"
-                className="w-20 h-20 rounded-clay object-cover shadow-clay-sm"
+                className="w-16 h-16 md:w-20 md:h-20 rounded-clay object-cover shadow-clay-sm"
               />
             ))}
           </div>
         )}
-        <div className="whitespace-pre-wrap leading-7 text-sm font-semibold">
+        <div className="whitespace-pre-wrap leading-6 md:leading-7 text-[13px] md:text-sm font-semibold">
           {message.content || (message.streaming ? '正在思考…' : '')}
           {message.streaming && <span className="inline-block w-2 h-4 ml-1 align-middle bg-clay-blue-200 animate-pulse rounded-full" />}
         </div>
@@ -58,8 +58,19 @@ export default function AssistantWidget() {
   const [question, setQuestion] = useState('')
   const [screenshots, setScreenshots] = useState([])
   const [messages, setMessages] = useState([])
+  const [openingContent, setOpeningContent] = useState('')
+  const [openingStreaming, setOpeningStreaming] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const openingPlayedRef = useRef('')
+
+  const enabled = Boolean(config?.enabled)
+  const maxImageBytes = config?.max_image_bytes || 800 * 1024
+  const assistantName = config?.assistant_name || 'Youkies 的 AI 分身'
+  const openingText = useMemo(() => {
+    const configured = String(config?.welcome_message || '').trim()
+    return configured || `你好，我是 ${assistantName}。把错误截图和问题发给我，我会先帮你判断是否需要人工处理。`
+  }, [assistantName, config?.welcome_message])
 
   useEffect(() => {
     let mounted = true
@@ -82,12 +93,36 @@ export default function AssistantWidget() {
         scrollRef.current.scrollTop = scrollRef.current.scrollHeight
       }
     })
-  }, [messages, open])
+  }, [messages, open, openingContent])
 
-  const enabled = Boolean(config?.enabled)
-  const maxImageBytes = config?.max_image_bytes || 800 * 1024
-  const assistantName = config?.assistant_name || 'Youkies 的 AI 分身'
-  const welcome = config?.welcome_message || '把错误截图和问题发给我，我会先帮你判断是否需要人工处理。'
+  useEffect(() => {
+    if (!open || !enabled) {
+      setOpeningStreaming(false)
+      return undefined
+    }
+
+    if (openingPlayedRef.current === openingText) {
+      setOpeningContent(openingText)
+      setOpeningStreaming(false)
+      return undefined
+    }
+
+    openingPlayedRef.current = openingText
+    let index = 1
+    setOpeningContent(openingText.slice(0, index))
+    setOpeningStreaming(true)
+
+    const timer = window.setInterval(() => {
+      index += 1
+      setOpeningContent(openingText.slice(0, index))
+      if (index >= openingText.length) {
+        window.clearInterval(timer)
+        setOpeningStreaming(false)
+      }
+    }, 22)
+
+    return () => window.clearInterval(timer)
+  }, [enabled, open, openingText])
 
   const imageTotal = useMemo(
     () => screenshots.reduce((sum, item) => sum + getDataSize(item.data_url), 0),
@@ -210,16 +245,15 @@ export default function AssistantWidget() {
       </button>
 
       {open && (
-        <div className="fixed inset-0 z-[9999] bg-clay-bg/70 backdrop-blur-sm flex items-end md:items-center justify-center p-3 md:p-5">
-          <ClayCard className="relative w-full md:max-w-2xl h-[88vh] md:h-[760px] !p-5 md:!p-7 flex flex-col !overflow-hidden">
-            <div className="flex items-start justify-between gap-4 mb-4 shrink-0">
+        <div className="fixed inset-0 z-[9999] bg-clay-bg/70 backdrop-blur-sm flex items-end md:items-center justify-center p-2 md:p-5">
+          <ClayCard className="relative w-full md:max-w-2xl h-[calc(100dvh-1rem)] sm:h-[88vh] md:h-[760px] !p-4 sm:!p-5 md:!p-7 flex flex-col !overflow-hidden">
+            <div className="flex items-center justify-between gap-3 mb-3 md:mb-4 shrink-0">
               <div className="flex items-center gap-3 min-w-0">
-                <div className="clay-icon-box !w-12 !h-12 text-clay-pink-300 shrink-0">
+                <div className="clay-icon-box !w-10 !h-10 md:!w-12 md:!h-12 text-clay-pink-300 shrink-0">
                   <Sparkles className="w-5 h-5" />
                 </div>
                 <div className="min-w-0">
-                  <h3 className="text-xl md:text-2xl font-black tracking-tight">{assistantName}</h3>
-                  <p className="text-sm text-clay-faint font-semibold leading-relaxed">{welcome}</p>
+                  <h3 className="text-lg sm:text-xl md:text-2xl font-black tracking-tight truncate">{assistantName}</h3>
                 </div>
               </div>
               <button
@@ -232,21 +266,25 @@ export default function AssistantWidget() {
               </button>
             </div>
 
-            <ClayAlert tone="warning" className="mb-4 shrink-0">
-              AI 仅做预诊断，不会承诺退款或替代管理员审核。截图中如果有密钥、订单号等敏感信息，建议先打码。
+            <ClayAlert tone="warning" className="!p-3 md:!p-4 mb-3 md:mb-4 shrink-0">
+              <span className="text-xs md:text-sm leading-6">
+                AI 仅做预诊断，不承诺退款或替代审核；截图含密钥、订单号请先打码。
+              </span>
             </ClayAlert>
 
             <div
               ref={scrollRef}
-              className="flex-1 overflow-y-auto rounded-clay bg-white/35 shadow-clay-inset p-4 mb-4 space-y-4"
+              className="flex-1 overflow-y-auto rounded-clay bg-white/35 shadow-clay-inset p-3 md:p-4 mb-3 md:mb-4 space-y-3 md:space-y-4"
             >
-              {messages.length === 0 ? (
-                <div className="h-full flex items-center justify-center text-center text-clay-faint font-bold leading-7 px-6">
-                  像聊天一样告诉我遇到了什么，也可以粘贴错误截图。我会边看边回复。
-                </div>
-              ) : (
-                messages.map((message) => <ChatBubble key={message.id} message={message} />)
-              )}
+              <ChatBubble
+                message={{
+                  id: 'opening',
+                  role: 'assistant',
+                  content: openingContent,
+                  streaming: openingStreaming,
+                }}
+              />
+              {messages.map((message) => <ChatBubble key={message.id} message={message} />)}
             </div>
 
             {screenshots.length > 0 && (
@@ -256,7 +294,7 @@ export default function AssistantWidget() {
                     <img
                       src={item.data_url}
                       alt="截图预览"
-                      className="w-20 h-20 rounded-clay object-cover shadow-clay"
+                      className="w-16 h-16 md:w-20 md:h-20 rounded-clay object-cover shadow-clay"
                     />
                     <button
                       type="button"
@@ -278,7 +316,7 @@ export default function AssistantWidget() {
             )}
 
             <textarea
-              className="clay-input min-h-[92px] max-h-[160px] resize-y leading-7 mb-3 shrink-0"
+              className="clay-input min-h-[72px] md:min-h-[92px] max-h-[140px] md:max-h-[160px] resize-y leading-6 md:leading-7 mb-3 shrink-0 !text-sm"
               value={question}
               onChange={(e) => setQuestion(e.target.value)}
               onPaste={onPaste}
@@ -286,8 +324,8 @@ export default function AssistantWidget() {
               placeholder="输入问题，Enter 发送，Shift+Enter 换行..."
             />
 
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 shrink-0">
-              <div className="flex flex-wrap items-center gap-3">
+            <div className="flex flex-col gap-2 shrink-0">
+              <div className="flex items-center justify-between gap-2">
                 {config?.allow_screenshot && (
                   <>
                     <input
@@ -300,21 +338,21 @@ export default function AssistantWidget() {
                         e.target.value = ''
                       }}
                     />
-                    <ClayButton variant="ghost" onClick={() => fileRef.current?.click()} className="!px-5">
+                    <ClayButton variant="ghost" onClick={() => fileRef.current?.click()} className="!px-4 !py-2.5 md:!px-5 flex-1 sm:flex-none">
                       <ImagePlus className="w-4 h-4" />
                       上传截图
                     </ClayButton>
                   </>
                 )}
-                <span className="inline-flex items-center gap-2 text-xs text-clay-faint font-bold">
-                  <ShieldAlert className="w-4 h-4" />
-                  每日最多 {config?.daily_limit || 10} 次 · 当前截图 {(imageTotal / 1024).toFixed(0)}KB
-                </span>
+                <ClayButton variant="primary" onClick={submit} disabled={loading} className="!px-5 !py-2.5 md:!px-8 flex-1 sm:flex-none">
+                  {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                  {loading ? '回复中' : '发送'}
+                </ClayButton>
               </div>
-              <ClayButton variant="primary" onClick={submit} disabled={loading}>
-                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                {loading ? '回复中' : '发送'}
-              </ClayButton>
+              <span className="inline-flex items-center gap-2 text-[11px] md:text-xs text-clay-faint font-bold">
+                <ShieldAlert className="w-4 h-4 shrink-0" />
+                每日最多 {config?.daily_limit || 10} 次 · 当前截图 {(imageTotal / 1024).toFixed(0)}KB
+              </span>
             </div>
           </ClayCard>
         </div>

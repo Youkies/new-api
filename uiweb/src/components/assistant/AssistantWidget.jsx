@@ -22,7 +22,7 @@ function ChatBubble({ message }) {
   return (
     <div className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
       <div
-        className={`max-w-[84%] md:max-w-[76%] lg:max-w-[72%] rounded-[22px] md:rounded-clay-lg px-4 py-3 md:px-5 md:py-4 ${
+        className={`max-w-[84%] md:max-w-[720px] lg:max-w-[760px] rounded-[22px] md:rounded-clay-lg px-4 py-3 md:px-5 md:py-4 ${
           isUser
             ? 'bg-clay-pink-100 text-[#8a4860] shadow-clay'
             : 'bg-white/70 md:bg-white/45 text-clay-ink shadow-clay-sm md:shadow-clay'
@@ -318,28 +318,28 @@ export default function AssistantWidget() {
       </button>
 
       {open && (
-        <div className="fixed inset-0 z-[9999] bg-clay-bg/90 md:bg-clay-bg/70 md:backdrop-blur-sm flex items-stretch md:items-center justify-center p-0 md:p-6 lg:p-8">
-          <ClayCard className="relative w-full md:max-w-[960px] lg:max-w-[1120px] xl:max-w-[1200px] h-[100dvh] md:h-[84vh] md:min-h-[680px] md:max-h-[920px] !p-0 md:!p-8 flex flex-col !overflow-hidden max-md:!rounded-none max-md:!shadow-none max-md:!border-0 max-md:!bg-clay-bg">
-            <div className="flex items-center justify-between gap-3 px-4 pt-4 pb-3 md:p-0 md:mb-5 shrink-0">
+        <div className="fixed inset-0 z-[9999] bg-clay-bg/95 md:bg-clay-bg flex items-stretch justify-center p-0">
+          <ClayCard className="relative w-full h-[100dvh] !p-0 flex flex-col !overflow-hidden max-md:!rounded-none max-md:!shadow-none max-md:!border-0 max-md:!bg-clay-bg md:!rounded-none md:!shadow-none md:!border-0 md:!bg-transparent">
+            <div className="flex items-center justify-between gap-3 px-4 pt-4 pb-3 md:h-16 md:px-6 md:py-0 md:mb-0 shrink-0">
               <div className="flex items-center gap-3 min-w-0">
-                <div className="clay-icon-box !w-10 !h-10 md:!w-12 md:!h-12 text-clay-pink-300 shrink-0">
+                <div className="clay-icon-box !w-10 !h-10 md:!w-9 md:!h-9 text-clay-pink-300 shrink-0">
                   <Sparkles className="w-5 h-5" />
                 </div>
                 <div className="min-w-0">
-                  <h3 className="text-lg sm:text-xl md:text-2xl font-black tracking-tight truncate">{assistantName}</h3>
+                  <h3 className="text-lg sm:text-xl md:text-base font-black tracking-tight truncate">{assistantName}</h3>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => setOpen(false)}
-                className="w-9 h-9 rounded-full bg-clay-bg shadow-clay flex items-center justify-center shrink-0"
+                className="w-9 h-9 rounded-full bg-clay-bg shadow-clay md:bg-white/35 flex items-center justify-center shrink-0"
                 aria-label="关闭"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <div className="mx-4 md:mx-0 mb-2 md:mb-5 shrink-0 rounded-clay-pill md:rounded-clay-lg bg-clay-yellow-100 text-[#8a6a32] shadow-clay px-3.5 py-2 md:px-5 md:py-3 flex items-start gap-2.5">
+            <div className="mx-4 md:mx-auto md:w-[min(920px,calc(100vw-3rem))] mb-2 md:mb-0 shrink-0 rounded-clay-pill md:rounded-clay-lg bg-clay-yellow-100 text-[#8a6a32] shadow-clay px-3.5 py-2 md:px-5 md:py-3 flex items-start gap-2.5">
               <ShieldAlert className="w-4 h-4 md:w-5 md:h-5 mt-0.5 shrink-0" strokeWidth={2.5} />
               <span className="text-[11px] md:text-sm leading-5 md:leading-6 font-bold">
                 AI 仅做预诊断，不承诺退款或替代审核；截图含密钥、订单号请先打码。
@@ -348,20 +348,22 @@ export default function AssistantWidget() {
 
             <div
               ref={scrollRef}
-              className="flex-1 overflow-y-auto px-4 py-3 md:rounded-clay md:bg-white/35 md:shadow-clay-inset md:p-6 lg:p-7 md:mb-5 space-y-3 md:space-y-5"
+              className="flex-1 overflow-y-auto px-4 py-3 md:px-6 md:pt-10 md:pb-44 md:bg-transparent md:shadow-none space-y-3 md:space-y-0"
             >
-              <ChatBubble
-                message={{
-                  id: 'opening',
-                  role: 'assistant',
-                  content: openingContent,
-                  streaming: openingStreaming,
-                }}
-              />
-              {messages.map((message) => <ChatBubble key={message.id} message={message} />)}
+              <div className="mx-auto w-full md:max-w-[920px] space-y-3 md:space-y-8">
+                <ChatBubble
+                  message={{
+                    id: 'opening',
+                    role: 'assistant',
+                    content: openingContent,
+                    streaming: openingStreaming,
+                  }}
+                />
+                {messages.map((message) => <ChatBubble key={message.id} message={message} />)}
+              </div>
             </div>
 
-            <div className="shrink-0 px-4 pt-2 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] md:px-0 md:pt-0 md:pb-0">
+            <div className="shrink-0 px-4 pt-2 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] md:absolute md:left-1/2 md:bottom-8 md:w-[min(920px,calc(100vw-3rem))] md:-translate-x-1/2 md:px-0 md:pt-0 md:pb-0">
               {screenshots.length > 0 && (
                 <div className="flex flex-wrap gap-2 mb-2">
                   {screenshots.map((item, index) => (

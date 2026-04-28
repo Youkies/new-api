@@ -84,7 +84,7 @@ function daysAgo(days, hour = 10, minute = 0) {
 }
 
 function makeUsageSeries() {
-  const models = ['claude-opus-4-6', 'claude-opus-4-7', 'gpt-5.4', 'gemini-2.5-pro']
+  const models = ['claude-opus-4-6', 'claude-opus-4-7', 'gpt-5.5', 'gemini-2.5-pro']
   const result = []
   for (let i = 0; i < 7; i += 1) {
     for (let j = 0; j < models.length; j += 1) {
@@ -176,7 +176,7 @@ function createInitialState() {
       id: 502,
       type: 2,
       created_at: daysAgo(0, 17, 20),
-      model_name: 'gpt-5.4',
+      model_name: 'gpt-5.5',
       token_name: '调试主令牌',
       group: 'default',
       request_id: 'debug-empty-502',
@@ -242,7 +242,7 @@ function createInitialState() {
           id: 1,
           appeal_id: 3001,
           log_id: 502,
-          model_name: 'gpt-5.4',
+          model_name: 'gpt-5.5',
           token_name: '调试主令牌',
           request_id: 'debug-empty-502',
           quota: 820,
@@ -282,7 +282,7 @@ function createInitialState() {
         remain_quota: 0,
         unlimited_quota: true,
         model_limits_enabled: true,
-        model_limits: JSON.stringify(['gpt-5.4', 'claude-opus-4-6']),
+        model_limits: JSON.stringify(['gpt-5.5', 'claude-opus-4-6']),
         expired_time: daysAgo(-30),
         created_time: daysAgo(5),
       },
@@ -555,17 +555,32 @@ export async function mockApiResponse(config) {
   if (path === '/api/log/self/stat' && method === 'GET') return logStatResponse(url)
 
   if (path === '/api/user/checkin' && method === 'GET') {
+    const month = url.searchParams.get('month') || new Date().toISOString().slice(0, 7)
+    const records = [1, 3, 8, 13, 21].map((day, index) => ({
+      checkin_date: `${month}-${String(day).padStart(2, '0')}`,
+      quota_awarded: 250000 + index * 25000,
+    }))
     return ok({
-      checked: false,
-      checked_in: false,
-      checkin_days: [1, 3, 8, 13, 21],
-      month: new Date().toISOString().slice(0, 7),
-      reward_quota: 500,
+      enabled: true,
+      min_quota: 250000,
+      max_quota: 400000,
       next_checkin_at: daysAgo(-1, 0),
       server_now: nowSec(),
+      stats: {
+        total_quota: records.reduce((sum, item) => sum + item.quota_awarded, 0),
+        total_checkins: records.length,
+        checkin_count: records.length,
+        checked_in_today: false,
+        records,
+      },
     })
   }
-  if (path === '/api/user/checkin' && method === 'POST') return ok({ ...DEBUG_USER, quota: DEBUG_USER.quota + 500 })
+  if (path === '/api/user/checkin' && method === 'POST') {
+    return ok({
+      quota_awarded: 300000,
+      checkin_date: new Date().toISOString().slice(0, 10),
+    })
+  }
 
   if (path === '/api/user/topup/info' && method === 'GET') {
     return ok({
@@ -592,7 +607,7 @@ export async function mockApiResponse(config) {
       success: true,
       data: [
         { model_name: 'claude-opus-4-6', vendor_id: 1, model_ratio: 12, completion_ratio: 5, cache_ratio: 0.1, model_price: 0, enable_groups: ['default', 'vip'] },
-        { model_name: 'gpt-5.4', vendor_id: 2, model_ratio: 8, completion_ratio: 4, cache_ratio: 0.2, model_price: 0, enable_groups: ['default', 'assistant'] },
+        { model_name: 'gpt-5.5', vendor_id: 2, model_ratio: 8, completion_ratio: 6, cache_ratio: 0.1, model_price: 0, enable_groups: ['default', 'assistant'] },
         { model_name: 'gemini-2.5-pro', vendor_id: 3, model_ratio: 4, completion_ratio: 3, cache_ratio: 0.15, model_price: 0, enable_groups: ['default'] },
         { model_name: 'image-preview', vendor_id: 2, model_ratio: 0, completion_ratio: 0, model_price: 0.02, enable_groups: ['assistant'] },
       ],
@@ -611,7 +626,7 @@ export async function mockApiResponse(config) {
       updated_at: nowSec(),
       models: [
         { model_name: 'claude-opus-4-6', status: 'green', success_rate: 0.99, total_requests: 2222, slots: makeSlots(24, 'green') },
-        { model_name: 'gpt-5.4', status: 'yellow', success_rate: 0.91, total_requests: 208, slots: makeSlots(24, 'yellow') },
+        { model_name: 'gpt-5.5', status: 'yellow', success_rate: 0.91, total_requests: 208, slots: makeSlots(24, 'yellow') },
         { model_name: 'gemini-2.5-pro', status: 'green', success_rate: 0.97, total_requests: 411, slots: makeSlots(24, 'green') },
       ],
     })

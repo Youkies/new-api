@@ -145,6 +145,15 @@ export default function Checkin() {
       return Number(parts[2])
     })
   )
+  const recordsByDay = new Map(
+    (stats?.records ?? []).map((record) => {
+      const parts = String(record.checkin_date || '').split('-')
+      return [Number(parts[2]), record]
+    })
+  )
+  const monthlyRecords = [...(stats?.records ?? [])].sort((a, b) => (
+    String(a.checkin_date || '').localeCompare(String(b.checkin_date || ''))
+  ))
 
   const onCheckin = async () => {
     setChecking(true)
@@ -210,7 +219,7 @@ export default function Checkin() {
         />
       </div>
 
-      <div className="max-w-md mx-auto">
+      <div className="max-w-xl mx-auto">
         <ClayCard>
           {/* Month header */}
           <div className="flex items-center justify-between mb-4">
@@ -234,11 +243,13 @@ export default function Checkin() {
               if (day === null) return <div key={`e${i}`} />
               const isToday = isCurrentMonth && day === today.getDate()
               const checked = checkedDates.has(day)
+              const record = recordsByDay.get(day)
+              const rewardText = record ? quotaToDisplay(record.quota_awarded ?? 0).text : ''
               return (
                 <div
                   key={day}
                   className={`
-                    aspect-square flex items-center justify-center rounded-clay-sm text-sm font-bold transition-all
+                    h-14 sm:h-16 flex flex-col items-center justify-center gap-1 rounded-clay-sm text-sm font-bold transition-all
                     ${checked
                       ? 'bg-clay-pink-200 text-[#8a4860] shadow-clay-sm'
                       : isToday
@@ -247,10 +258,49 @@ export default function Checkin() {
                     }
                   `}
                 >
-                  {checked ? <CalendarCheck2 className="w-4 h-4" /> : day}
+                  <span className="leading-none">{day}</span>
+                  {checked ? (
+                    <span className="inline-flex items-center gap-0.5 rounded-clay-pill bg-white/50 px-1.5 py-0.5 text-[10px] font-black leading-none shadow-clay-sm">
+                      <CalendarCheck2 className="w-3 h-3" />
+                      <span className="max-w-[44px] sm:max-w-[54px] truncate tabular-nums">{rewardText}</span>
+                    </span>
+                  ) : (
+                    <span className="h-3 text-[10px] leading-none">&nbsp;</span>
+                  )}
                 </div>
               )
             })}
+          </div>
+
+          <div className="mt-5 rounded-clay bg-white/35 p-4 shadow-clay-inset">
+            <div className="flex items-center justify-between gap-3 mb-3">
+              <div>
+                <div className="text-sm font-black text-clay-ink">本月签到详情</div>
+                <div className="text-xs font-bold text-clay-faint">每一天领取的额度会同步写入日历</div>
+              </div>
+              <div className="text-xs font-black text-clay-faint tabular-nums">
+                {monthlyRecords.length} 天
+              </div>
+            </div>
+            {monthlyRecords.length === 0 ? (
+              <div className="rounded-clay-sm bg-clay-bg/60 px-3 py-3 text-sm font-bold text-clay-faint text-center">
+                本月还没有签到记录
+              </div>
+            ) : (
+              <div className="grid gap-2 max-h-44 overflow-auto pr-1">
+                {monthlyRecords.map((record) => (
+                  <div
+                    key={record.checkin_date}
+                    className="flex items-center justify-between gap-3 rounded-clay-sm bg-clay-bg/70 px-3 py-2 shadow-clay-sm"
+                  >
+                    <span className="font-mono text-xs font-black text-clay-ink">{record.checkin_date}</span>
+                    <span className="text-sm font-black text-[#8a4860] tabular-nums">
+                      +{quotaToDisplay(record.quota_awarded ?? 0).text}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Checkin button */}

@@ -88,12 +88,17 @@
 - 模型来源第一版支持 OpenAI-compatible 接口；推荐“站内助手账号”：手动创建 `ai-assistant` 用户，分配独立分组/额度/专用 Token，再在配置页填入 Token 和模型名；也保留外部自定义 Base URL/API Key
 - AI 助手免费对话上限固定为每用户 8 次/日，由 `ai-assistant` 专用 Token/配置承担；免费次数用完后，用户侧提示是否使用余额继续，确认后走站内 `/pg/chat/completions`，按当前用户可用模型、分组和余额正常计费；付费续聊记录为 `site_balance`，不占用免费次数
 - 知识文档第一版存在 `ui_assistant_documents`，按排序取启用文档片段拼入模型上下文；会话只保存摘要、判断、页面路径、用户问题和截图数量，不保存截图原图
+- 用户侧完整聊天历史暂未实现；当前只有管理端最近会话摘要列表，若要做可恢复历史，需要新增保存完整消息列表/会话轮次的用户侧接口与 UI
 - AI 助手接口：用户侧 `GET /api/ui/assistant/config`、`POST /api/ui/assistant/analyze`；管理侧 `GET/PUT /api/ui/admin/assistant/config`、`GET/POST/PUT/DELETE /api/ui/admin/assistant/documents`、`GET /api/ui/admin/assistant/sessions`
 
 ## Claude 适配注意事项
 
 - OpenAI 格式转 Claude extended thinking 时必须清洗不兼容参数：`temperature`、`top_k` 需移除，`top_p` 仅允许 `0.95-1` 否则移除，强制工具调用 `tool_choice=required/tool` 需降级为 `auto`，否则 Anthropic 会返回 400。
 - 新表：`ui_assistant_configs`、`ui_assistant_documents`、`ui_assistant_sessions`；生产 `NODE_TYPE=slave` 不会 AutoMigrate，需要手动建表
+
+## 模型匹配
+
+- `gpt-5.5` 已加入 OpenAI/Codex 基础模型列表、默认 `ModelRatio` 与 `CacheRatio`；后台仍可通过系统设置里的模型倍率覆盖实际定价
 
 ## 空回补偿申诉方向
 

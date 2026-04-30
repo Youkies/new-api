@@ -80,7 +80,6 @@ import {
   Package,
   Server,
   CalendarClock,
-  Linkedin,
 } from 'lucide-react';
 import {
   SiAtlassian,
@@ -95,6 +94,7 @@ import {
   SiGitlab,
   SiGoogle,
   SiKeycloak,
+  SiLinkedin,
   SiNextcloud,
   SiNotion,
   SiOkta,
@@ -509,7 +509,7 @@ const oauthProviderIconMap = {
   google: SiGoogle,
   discord: SiDiscord,
   facebook: SiFacebook,
-  linkedin: Linkedin,
+  linkedin: SiLinkedin,
   x: SiX,
   twitter: SiX,
   slack: SiSlack,

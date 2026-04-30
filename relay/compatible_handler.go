@@ -19,6 +19,7 @@ import (
 	"github.com/QuantumNous/new-api/setting/ratio_setting"
 	"github.com/QuantumNous/new-api/types"
 	"github.com/samber/lo"
+	"github.com/tidwall/sjson"
 
 	"github.com/gin-gonic/gin"
 )
@@ -46,7 +47,7 @@ func TextHelper(c *gin.Context, info *relaycommon.RelayInfo) (newAPIError *types
 	}
 
 	passThroughGlobal := model_setting.GetGlobalSettings().PassThroughRequestEnabled
-	if shouldForceUpstreamStreamForNonStream(info, request, passThroughGlobal) {
+	if shouldForceUpstreamStreamForNonStream(info, request) {
 		stream := true
 		request.Stream = &stream
 		info.UpstreamForceStream = true
@@ -116,6 +117,18 @@ func TextHelper(c *gin.Context, info *relaycommon.RelayInfo) (newAPIError *types
 			}
 		}
 		requestBody = common.ReaderOnly(storage)
+		if info.UpstreamForceStream {
+			jsonData, err := storage.Bytes()
+			if err != nil {
+				return types.NewErrorWithStatusCode(err, types.ErrorCodeReadRequestBodyFailed, http.StatusBadRequest, types.ErrOptionWithSkipRetry())
+			}
+			jsonData, err = forceUpstreamStreamRequestBody(jsonData, info)
+			if err != nil {
+				return types.NewError(err, types.ErrorCodeConvertRequestFailed, types.ErrOptionWithSkipRetry())
+			}
+			logger.LogDebug(c, fmt.Sprintf("forced upstream stream request body: %s", string(jsonData)))
+			requestBody = bytes.NewBuffer(jsonData)
+		}
 	} else {
 		convertedRequest, err := adaptor.ConvertOpenAIRequest(c, info, request)
 		if err != nil {
@@ -246,14 +259,11 @@ func convertSystemMessagesToUser(request *dto.GeneralOpenAIRequest) {
 	}
 }
 
-func shouldForceUpstreamStreamForNonStream(info *relaycommon.RelayInfo, request *dto.GeneralOpenAIRequest, passThroughGlobal bool) bool {
+func shouldForceUpstreamStreamForNonStream(info *relaycommon.RelayInfo, request *dto.GeneralOpenAIRequest) bool {
 	if info == nil || request == nil {
 		return false
 	}
 	if !info.ChannelSetting.NonStreamToStreamEnabled {
-		return false
-	}
-	if passThroughGlobal || info.ChannelSetting.PassThroughBodyEnabled {
 		return false
 	}
 	if info.RelayMode != relayconstant.RelayModeChatCompletions || info.RelayFormat != types.RelayFormatOpenAI {
@@ -269,4 +279,18 @@ func shouldForceUpstreamStreamForNonStream(info *relaycommon.RelayInfo, request 
 	default:
 		return false
 	}
+}
+
+func forceUpstreamStreamRequestBody(jsonData []byte, info *relaycommon.RelayInfo) ([]byte, error) {
+	result, err := sjson.SetBytes(jsonData, "stream", true)
+	if err != nil {
+		return nil, err
+	}
+	if info != nil && info.SupportStreamOptions && constant.ForceStreamOption {
+		result, err = sjson.SetBytes(result, "stream_options.include_usage", true)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return result, nil
 }

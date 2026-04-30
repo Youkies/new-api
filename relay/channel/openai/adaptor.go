@@ -73,7 +73,7 @@ func (a *Adaptor) ConvertClaudeRequest(c *gin.Context, info *relaycommon.RelayIn
 	//		println(fmt.Sprintf("failed to save request body to file: %v", err))
 	//	}
 	//}
-	if info.SupportStreamOptions && info.IsStream {
+	if info.SupportStreamOptions && info.IsUpstreamStream() {
 		aiRequest.StreamOptions = &dto.StreamOptions{
 			IncludeUsage: true,
 		}
@@ -625,7 +625,9 @@ func (a *Adaptor) DoResponse(c *gin.Context, resp *http.Response, info *relaycom
 	case relayconstant.RelayModeResponsesCompact:
 		usage, err = OaiResponsesCompactionHandler(c, resp)
 	default:
-		if info.IsStream {
+		if info.UpstreamForceStream && !info.IsStream && resp != nil && strings.HasPrefix(resp.Header.Get("Content-Type"), "text/event-stream") {
+			usage, err = OaiStreamToNonStreamHandler(c, info, resp)
+		} else if info.IsStream {
 			usage, err = OaiStreamHandler(c, info, resp)
 		} else {
 			usage, err = OpenaiHandler(c, info, resp)

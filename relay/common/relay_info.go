@@ -97,6 +97,7 @@ type RelayInfo struct {
 	isFirstResponse   bool
 	//SendLastReasoningResponse bool
 	IsStream               bool
+	UpstreamForceStream    bool
 	IsGeminiBatchEmbedding bool
 	IsPlayground           bool
 	UsePrice               bool
@@ -244,6 +245,7 @@ func (info *RelayInfo) ToString() string {
 	fmt.Fprintf(b, "RelayFormat: %s, ", info.RelayFormat)
 	fmt.Fprintf(b, "RelayMode: %d, ", info.RelayMode)
 	fmt.Fprintf(b, "IsStream: %t, ", info.IsStream)
+	fmt.Fprintf(b, "UpstreamForceStream: %t, ", info.UpstreamForceStream)
 	fmt.Fprintf(b, "IsPlayground: %t, ", info.IsPlayground)
 	fmt.Fprintf(b, "RequestURLPath: %q, ", info.RequestURLPath)
 	fmt.Fprintf(b, "OriginModelName: %q, ", info.OriginModelName)
@@ -306,6 +308,13 @@ func (info *RelayInfo) ToString() string {
 
 	fmt.Fprintf(b, "}")
 	return b.String()
+}
+
+func (info *RelayInfo) IsUpstreamStream() bool {
+	if info == nil {
+		return false
+	}
+	return info.IsStream || info.UpstreamForceStream
 }
 
 // 定义支持流式选项的通道类型

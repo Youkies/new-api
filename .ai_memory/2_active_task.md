@@ -269,3 +269,12 @@
 ## 下一步
 - 需要真实管理员账号进入 `/admin/announcements` 新建一条强制公告，线上验证弹窗确认链路
 - 后续可继续做空回申诉审核、页面文案配置与管理端操作审计
+## 当前新增任务：非流请求转上游流式开关（2026-04-30）
+
+### 本轮实现进度
+- 目标：解决用户软件只能发非流请求，但上游经过 Cloudflare 非流响应会在 100s 左右超时的问题；用户侧仍返回非流 JSON，本服务内部改用上游流式请求并聚合结果。
+- 后端：新增渠道设置 `non_stream_to_stream_enabled`；新增 `RelayInfo.UpstreamForceStream` 与 `IsUpstreamStream()`，拆分“用户侧是否流式”和“上游是否流式”语义。
+- Relay：仅在 OpenAI-compatible chat completions、用户非流、非透传请求体、OpenAI/OpenRouter/Xinference API 类型下启用；启用后给上游请求体设置 `stream:true`，并跳过 chat completions via responses 转换，避免下游被误改成 SSE。
+- OpenAI 聚合：新增 `OaiStreamToNonStreamHandler`，读取上游 SSE，聚合 `content`、`reasoning_content`、`tool_calls`、`finish_reason` 和 `usage`，最后返回标准 `chat.completion` JSON，不向用户侧写 `text/event-stream`。
+- 前端：渠道编辑高级设置新增“非流请求转上游流式”开关，保存/回显/重置流程均写入 `setting` JSON。
+- 验证：`go test ./relay/channel/openai ./relay -count=1` 通过；`git diff --check` 通过；`node + esbuild.transformSync` 检查修改的 JSX 通过；`npm run build` 被既有依赖解析问题阻断：`@douyinfe/semi-ui/dist/css/semi.css` 缺少 package export，未进入业务代码编译。

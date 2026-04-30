@@ -98,3 +98,4 @@
 - [2026-04-29 04:22] 签到日历金额进一步收敛为纯数字显示，并略微拉开移动端日历格子间距。
 - [2026-04-29 04:34] 使用根目录 Dockerfile 构建生产镜像，并推送 `ghcr.io/youkies/new-api:latest` 与 `ghcr.io/youkies/new-api:6c60875f` 到 GHCR。
 - [2026-04-29 04:45] 新增常见报错 Q&A 文档，首批记录 assistant message prefill 400 与 auth_exhausted 503 的原因和处理建议。
+- [2026-04-30 18:34] 新增渠道级“非流请求转上游流式”开关，后端聚合上游 SSE 为非流 OpenAI JSON，并完成 Go 定向测试。

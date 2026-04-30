@@ -45,6 +45,13 @@ func TextHelper(c *gin.Context, info *relaycommon.RelayInfo) (newAPIError *types
 		return types.NewError(err, types.ErrorCodeChannelModelMappedError, types.ErrOptionWithSkipRetry())
 	}
 
+	passThroughGlobal := model_setting.GetGlobalSettings().PassThroughRequestEnabled
+	if shouldForceUpstreamStreamForNonStream(info, request, passThroughGlobal) {
+		stream := true
+		request.Stream = &stream
+		info.UpstreamForceStream = true
+	}
+
 	includeUsage := true
 	// 判断用户是否需要返回使用情况
 	if request.StreamOptions != nil {
@@ -71,10 +78,10 @@ func TextHelper(c *gin.Context, info *relaycommon.RelayInfo) (newAPIError *types
 	}
 	adaptor.Init(info)
 
-	passThroughGlobal := model_setting.GetGlobalSettings().PassThroughRequestEnabled
 	if info.RelayMode == relayconstant.RelayModeChatCompletions &&
 		!passThroughGlobal &&
 		!info.ChannelSetting.PassThroughBodyEnabled &&
+		!info.UpstreamForceStream &&
 		service.ShouldChatCompletionsUseResponsesGlobal(info.ChannelId, info.ChannelType, info.OriginModelName) {
 		applySystemPromptIfNeeded(c, info, request)
 		if info.ChannelSetting.SystemPromptToUserPrompt {
@@ -201,7 +208,9 @@ func TextHelper(c *gin.Context, info *relaycommon.RelayInfo) (newAPIError *types
 
 	if resp != nil {
 		httpResp = resp.(*http.Response)
-		info.IsStream = info.IsStream || strings.HasPrefix(httpResp.Header.Get("Content-Type"), "text/event-stream")
+		if strings.HasPrefix(httpResp.Header.Get("Content-Type"), "text/event-stream") && !info.UpstreamForceStream {
+			info.IsStream = true
+		}
 		if httpResp.StatusCode != http.StatusOK {
 			newApiErr := service.RelayErrorHandler(c.Request.Context(), httpResp, false)
 			// reset status code 重置状态码
@@ -234,5 +243,30 @@ func convertSystemMessagesToUser(request *dto.GeneralOpenAIRequest) {
 		if message.Role == systemRole {
 			request.Messages[i].Role = "user"
 		}
+	}
+}
+
+func shouldForceUpstreamStreamForNonStream(info *relaycommon.RelayInfo, request *dto.GeneralOpenAIRequest, passThroughGlobal bool) bool {
+	if info == nil || request == nil {
+		return false
+	}
+	if !info.ChannelSetting.NonStreamToStreamEnabled {
+		return false
+	}
+	if passThroughGlobal || info.ChannelSetting.PassThroughBodyEnabled {
+		return false
+	}
+	if info.RelayMode != relayconstant.RelayModeChatCompletions || info.RelayFormat != types.RelayFormatOpenAI {
+		return false
+	}
+	if lo.FromPtrOr(request.Stream, false) {
+		return false
+	}
+
+	switch info.ApiType {
+	case constant.APITypeOpenAI, constant.APITypeOpenRouter, constant.APITypeXinference:
+		return true
+	default:
+		return false
 	}
 }

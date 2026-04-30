@@ -193,6 +193,7 @@ const EditChannelModal = (props) => {
     thinking_to_content: false,
     proxy: '',
     pass_through_body_enabled: false,
+    non_stream_to_stream_enabled: false,
     system_prompt: '',
     system_prompt_override: false,
     system_prompt_to_user_prompt: false,
@@ -499,6 +500,7 @@ const EditChannelModal = (props) => {
     thinking_to_content: false,
     proxy: '',
     pass_through_body_enabled: false,
+    non_stream_to_stream_enabled: false,
     system_prompt: '',
   });
   const showApiConfigCard = true; // 控制是否显示 API 配置卡片
@@ -850,6 +852,8 @@ const EditChannelModal = (props) => {
           data.proxy = parsedSettings.proxy || '';
           data.pass_through_body_enabled =
             parsedSettings.pass_through_body_enabled || false;
+          data.non_stream_to_stream_enabled =
+            parsedSettings.non_stream_to_stream_enabled || false;
           data.system_prompt = parsedSettings.system_prompt || '';
           data.system_prompt_override =
             parsedSettings.system_prompt_override || false;
@@ -861,6 +865,7 @@ const EditChannelModal = (props) => {
           data.thinking_to_content = false;
           data.proxy = '';
           data.pass_through_body_enabled = false;
+          data.non_stream_to_stream_enabled = false;
           data.system_prompt = '';
           data.system_prompt_override = false;
           data.system_prompt_to_user_prompt = false;
@@ -870,6 +875,7 @@ const EditChannelModal = (props) => {
         data.thinking_to_content = false;
         data.proxy = '';
         data.pass_through_body_enabled = false;
+        data.non_stream_to_stream_enabled = false;
         data.system_prompt = '';
         data.system_prompt_override = false;
         data.system_prompt_to_user_prompt = false;
@@ -980,6 +986,8 @@ const EditChannelModal = (props) => {
         thinking_to_content: data.thinking_to_content,
         proxy: data.proxy,
         pass_through_body_enabled: data.pass_through_body_enabled,
+        non_stream_to_stream_enabled:
+          data.non_stream_to_stream_enabled || false,
         system_prompt: data.system_prompt,
         system_prompt_override: data.system_prompt_override || false,
         system_prompt_to_user_prompt: data.system_prompt_to_user_prompt || false,
@@ -1023,6 +1031,7 @@ const EditChannelModal = (props) => {
         (data.system_prompt && data.system_prompt.trim()) ||
         data.thinking_to_content ||
         data.pass_through_body_enabled ||
+        data.non_stream_to_stream_enabled ||
         data.force_format ||
         data.claude_beta_query ||
         data.system_prompt_override ||
@@ -1371,6 +1380,7 @@ const EditChannelModal = (props) => {
       thinking_to_content: false,
       proxy: '',
       pass_through_body_enabled: false,
+      non_stream_to_stream_enabled: false,
       system_prompt: '',
       system_prompt_override: false,
       system_prompt_to_user_prompt: false,
@@ -1742,6 +1752,8 @@ const EditChannelModal = (props) => {
       thinking_to_content: localInputs.thinking_to_content || false,
       proxy: localInputs.proxy || '',
       pass_through_body_enabled: localInputs.pass_through_body_enabled || false,
+      non_stream_to_stream_enabled:
+        localInputs.non_stream_to_stream_enabled || false,
       system_prompt: localInputs.system_prompt || '',
       system_prompt_override: localInputs.system_prompt_override || false,
       system_prompt_to_user_prompt: localInputs.system_prompt_to_user_prompt || false,
@@ -1824,6 +1836,7 @@ const EditChannelModal = (props) => {
     delete localInputs.thinking_to_content;
     delete localInputs.proxy;
     delete localInputs.pass_through_body_enabled;
+    delete localInputs.non_stream_to_stream_enabled;
     delete localInputs.system_prompt;
     delete localInputs.system_prompt_override;
     delete localInputs.system_prompt_to_user_prompt;
@@ -2517,6 +2530,7 @@ const EditChannelModal = (props) => {
 
                   <Form.Switch field='thinking_to_content' label={t('思考内容转换')} checkedText={t('开')} uncheckedText={t('关')} onChange={(value) => handleChannelSettingsChange('thinking_to_content', value)} extraText={t('将 reasoning_content 转换为 <think> 标签拼接到内容中')} />
                   <Form.Switch field='pass_through_body_enabled' label={t('透传请求体')} checkedText={t('开')} uncheckedText={t('关')} onChange={(value) => handleChannelSettingsChange('pass_through_body_enabled', value)} extraText={t('启用请求体透传功能')} />
+                  <Form.Switch field='non_stream_to_stream_enabled' label={t('非流请求转上游流式')} checkedText={t('开')} uncheckedText={t('关')} onChange={(value) => handleChannelSettingsChange('non_stream_to_stream_enabled', value)} extraText={t('用户侧仍返回非流 JSON，但上游以流式请求并在本服务内聚合，适用于上游非流接口被 100 秒超时截断的 OpenAI 兼容聊天场景')} />
 
                   <Form.Input field='proxy' label={t('代理地址')} placeholder={t('例如: socks5://user:pass@host:port')} onChange={(value) => handleChannelSettingsChange('proxy', value)} showClear extraText={t('用于配置网络代理，支持 socks5 协议')} />
 

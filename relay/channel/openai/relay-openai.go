@@ -1,10 +1,13 @@
 package openai
 
 import (
+	"bufio"
+	"context"
 	"fmt"
 	"io"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/constant"
@@ -190,6 +193,347 @@ func OaiStreamHandler(c *gin.Context, info *relaycommon.RelayInfo, resp *http.Re
 	HandleFinalResponse(c, info, lastStreamData, responseId, createAt, model, systemFingerprint, usage, containStreamUsage)
 
 	return usage, nil
+}
+
+type openAIStreamScanEvent struct {
+	data string
+	err  error
+	done bool
+}
+
+type chatChoiceStreamAccumulator struct {
+	role         string
+	content      strings.Builder
+	reasoning    strings.Builder
+	toolCalls    map[int]*dto.ToolCallResponse
+	toolCallKeys []int
+	finishReason string
+}
+
+func OaiStreamToNonStreamHandler(c *gin.Context, info *relaycommon.RelayInfo, resp *http.Response) (*dto.Usage, *types.NewAPIError) {
+	if info == nil {
+		logger.LogError(c, "invalid relay info")
+		return nil, types.NewOpenAIError(fmt.Errorf("invalid relay info"), types.ErrorCodeBadResponse, http.StatusInternalServerError)
+	}
+	if resp == nil || resp.Body == nil {
+		logger.LogError(c, "invalid response or response body")
+		return nil, types.NewOpenAIError(fmt.Errorf("invalid response"), types.ErrorCodeBadResponse, http.StatusInternalServerError)
+	}
+
+	defer service.CloseResponseBodyGracefully(resp)
+
+	streamItems, streamErr := collectOpenAIStreamDataNoWrite(c, info, resp)
+	if streamErr != nil {
+		return nil, streamErr
+	}
+	if len(streamItems) == 0 {
+		return nil, types.NewOpenAIError(fmt.Errorf("empty upstream stream response"), types.ErrorCodeBadResponse, http.StatusInternalServerError)
+	}
+
+	response, usage, responseErr := buildOpenAITextResponseFromStream(c, info, streamItems)
+	if responseErr != nil {
+		return nil, responseErr
+	}
+
+	responseBody, err := common.Marshal(response)
+	if err != nil {
+		return nil, types.NewError(err, types.ErrorCodeBadResponseBody)
+	}
+
+	downstreamResp := *resp
+	downstreamResp.Header = resp.Header.Clone()
+	downstreamResp.Header.Set("Content-Type", "application/json")
+	downstreamResp.Header.Del("Cache-Control")
+	downstreamResp.Header.Del("Content-Encoding")
+	downstreamResp.Header.Del("Transfer-Encoding")
+	downstreamResp.ContentLength = int64(len(responseBody))
+	service.IOCopyBytesGracefully(c, &downstreamResp, responseBody)
+
+	return usage, nil
+}
+
+func collectOpenAIStreamDataNoWrite(c *gin.Context, info *relaycommon.RelayInfo, resp *http.Response) ([]string, *types.NewAPIError) {
+	scanner := bufio.NewScanner(resp.Body)
+	scanner.Buffer(make([]byte, 1024), openAIStreamScannerBufferSize())
+
+	requestCtx := c.Request.Context()
+	scanCtx, cancel := context.WithCancel(requestCtx)
+	defer cancel()
+
+	events := make(chan openAIStreamScanEvent, 16)
+	go func() {
+		defer close(events)
+
+		send := func(event openAIStreamScanEvent) bool {
+			select {
+			case events <- event:
+				return true
+			case <-scanCtx.Done():
+				return false
+			}
+		}
+
+		for scanner.Scan() {
+			line := scanner.Text()
+			if common.DebugEnabled {
+				println(line)
+			}
+			if !strings.HasPrefix(line, "data:") {
+				continue
+			}
+			data := strings.TrimSpace(strings.TrimPrefix(line, "data:"))
+			if data == "" {
+				continue
+			}
+			if strings.HasPrefix(data, "[DONE]") {
+				_ = send(openAIStreamScanEvent{done: true})
+				return
+			}
+			if !send(openAIStreamScanEvent{data: data}) {
+				return
+			}
+		}
+
+		if err := scanner.Err(); err != nil && err != io.EOF {
+			_ = send(openAIStreamScanEvent{err: err})
+			return
+		}
+		_ = send(openAIStreamScanEvent{done: true})
+	}()
+
+	streamingTimeout := time.Duration(constant.StreamingTimeout) * time.Second
+	if streamingTimeout <= 0 {
+		streamingTimeout = 300 * time.Second
+	}
+	timer := time.NewTimer(streamingTimeout)
+	defer timer.Stop()
+
+	streamItems := make([]string, 0)
+	for {
+		select {
+		case event, ok := <-events:
+			if !ok {
+				return streamItems, nil
+			}
+			if event.err != nil {
+				return nil, types.NewOpenAIError(event.err, types.ErrorCodeBadResponse, http.StatusInternalServerError)
+			}
+			if event.done {
+				return streamItems, nil
+			}
+			if event.data == "" {
+				continue
+			}
+			if info != nil {
+				info.SetFirstResponseTime()
+				info.ReceivedResponseCount++
+			}
+			streamItems = append(streamItems, event.data)
+			resetOpenAIStreamTimer(timer, streamingTimeout)
+		case <-timer.C:
+			cancel()
+			return nil, types.NewOpenAIError(fmt.Errorf("upstream stream timeout"), types.ErrorCodeBadResponse, http.StatusGatewayTimeout)
+		case <-requestCtx.Done():
+			cancel()
+			return nil, types.NewOpenAIError(requestCtx.Err(), types.ErrorCodeBadResponse, http.StatusInternalServerError)
+		}
+	}
+}
+
+func openAIStreamScannerBufferSize() int {
+	if constant.StreamScannerMaxBufferMB > 0 {
+		return constant.StreamScannerMaxBufferMB << 20
+	}
+	return 128 << 20
+}
+
+func resetOpenAIStreamTimer(timer *time.Timer, timeout time.Duration) {
+	if !timer.Stop() {
+		select {
+		case <-timer.C:
+		default:
+		}
+	}
+	timer.Reset(timeout)
+}
+
+func buildOpenAITextResponseFromStream(c *gin.Context, info *relaycommon.RelayInfo, streamItems []string) (*dto.OpenAITextResponse, *dto.Usage, *types.NewAPIError) {
+	choiceMap := make(map[int]*chatChoiceStreamAccumulator)
+	choiceOrder := make([]int, 0)
+	usage := &dto.Usage{}
+	containStreamUsage := false
+	var responseId string
+	var created int64
+	model := info.UpstreamModelName
+	var lastStreamData string
+
+	for _, data := range streamItems {
+		lastStreamData = data
+
+		var errorResponse dto.OpenAITextResponse
+		if err := common.UnmarshalJsonStr(data, &errorResponse); err == nil {
+			if oaiError := errorResponse.GetOpenAIError(); oaiError != nil && oaiError.Type != "" {
+				return nil, nil, types.WithOpenAIError(*oaiError, http.StatusInternalServerError)
+			}
+		}
+
+		var streamResponse dto.ChatCompletionsStreamResponse
+		if err := common.UnmarshalJsonStr(data, &streamResponse); err != nil {
+			return nil, nil, types.NewOpenAIError(err, types.ErrorCodeBadResponseBody, http.StatusInternalServerError)
+		}
+
+		if responseId == "" {
+			responseId = streamResponse.Id
+		}
+		if created == 0 {
+			created = streamResponse.Created
+		}
+		if streamResponse.Model != "" {
+			model = streamResponse.Model
+		}
+		if service.ValidUsage(streamResponse.Usage) {
+			usage = streamResponse.Usage
+			containStreamUsage = true
+		}
+
+		for _, choice := range streamResponse.Choices {
+			accumulator, ok := choiceMap[choice.Index]
+			if !ok {
+				accumulator = &chatChoiceStreamAccumulator{}
+				choiceMap[choice.Index] = accumulator
+				choiceOrder = append(choiceOrder, choice.Index)
+			}
+			accumulator.append(choice)
+		}
+	}
+
+	if len(choiceOrder) == 0 {
+		return nil, nil, types.NewOpenAIError(fmt.Errorf("stream response has no choices"), types.ErrorCodeBadResponseBody, http.StatusInternalServerError)
+	}
+
+	if !containStreamUsage {
+		var responseTextBuilder strings.Builder
+		var toolCount int
+		if err := processTokens(info.RelayMode, streamItems, &responseTextBuilder, &toolCount); err != nil {
+			logger.LogError(c, "error processing forced upstream stream tokens: "+err.Error())
+		}
+		usage = service.ResponseText2Usage(c, responseTextBuilder.String(), info.UpstreamModelName, info.GetEstimatePromptTokens())
+		usage.CompletionTokens += toolCount * 7
+	}
+
+	applyUsagePostProcessing(info, usage, common.StringToByteSlice(lastStreamData))
+
+	if responseId == "" {
+		responseId = "chatcmpl-" + common.GetRandomString(24)
+	}
+	if created == 0 {
+		created = time.Now().Unix()
+	}
+	if model == "" {
+		model = info.UpstreamModelName
+	}
+
+	choices := make([]dto.OpenAITextResponseChoice, 0, len(choiceOrder))
+	for _, index := range choiceOrder {
+		choices = append(choices, choiceMap[index].toTextResponseChoice(index))
+	}
+
+	response := &dto.OpenAITextResponse{
+		Id:      responseId,
+		Model:   model,
+		Object:  "chat.completion",
+		Created: created,
+		Choices: choices,
+		Usage:   *usage,
+	}
+	return response, usage, nil
+}
+
+func (accumulator *chatChoiceStreamAccumulator) append(choice dto.ChatCompletionsStreamResponseChoice) {
+	if choice.Delta.Role != "" {
+		accumulator.role = choice.Delta.Role
+	}
+	accumulator.content.WriteString(choice.Delta.GetContentString())
+	accumulator.reasoning.WriteString(choice.Delta.GetReasoningContent())
+	if choice.FinishReason != nil && *choice.FinishReason != "" {
+		accumulator.finishReason = *choice.FinishReason
+	}
+	for _, toolCall := range choice.Delta.ToolCalls {
+		accumulator.appendToolCall(toolCall)
+	}
+}
+
+func (accumulator *chatChoiceStreamAccumulator) appendToolCall(toolCall dto.ToolCallResponse) {
+	index := len(accumulator.toolCallKeys)
+	if toolCall.Index != nil {
+		index = *toolCall.Index
+	}
+	if accumulator.toolCalls == nil {
+		accumulator.toolCalls = make(map[int]*dto.ToolCallResponse)
+	}
+	existing, ok := accumulator.toolCalls[index]
+	if !ok {
+		existing = &dto.ToolCallResponse{}
+		accumulator.toolCalls[index] = existing
+		accumulator.toolCallKeys = append(accumulator.toolCallKeys, index)
+	}
+	if toolCall.ID != "" {
+		existing.ID = toolCall.ID
+	}
+	if toolCall.Type != nil {
+		existing.Type = toolCall.Type
+	}
+	if toolCall.Function.Name != "" {
+		existing.Function.Name = toolCall.Function.Name
+	}
+	existing.Function.Arguments += toolCall.Function.Arguments
+}
+
+func (accumulator *chatChoiceStreamAccumulator) toTextResponseChoice(index int) dto.OpenAITextResponseChoice {
+	role := accumulator.role
+	if role == "" {
+		role = "assistant"
+	}
+	finishReason := accumulator.finishReason
+	if finishReason == "" {
+		finishReason = constant.FinishReasonStop
+	}
+
+	content := accumulator.content.String()
+	message := dto.Message{
+		Role:             role,
+		Content:          content,
+		ReasoningContent: accumulator.reasoning.String(),
+	}
+	toolCalls := accumulator.finalToolCalls()
+	if len(toolCalls) > 0 {
+		if content == "" {
+			message.Content = nil
+		}
+		message.SetToolCalls(toolCalls)
+	}
+
+	return dto.OpenAITextResponseChoice{
+		Index:        index,
+		Message:      message,
+		FinishReason: finishReason,
+	}
+}
+
+func (accumulator *chatChoiceStreamAccumulator) finalToolCalls() []dto.ToolCallResponse {
+	if len(accumulator.toolCallKeys) == 0 {
+		return nil
+	}
+	toolCalls := make([]dto.ToolCallResponse, 0, len(accumulator.toolCallKeys))
+	for _, index := range accumulator.toolCallKeys {
+		toolCall := *accumulator.toolCalls[index]
+		toolCall.Index = nil
+		if toolCall.Type == nil {
+			toolCall.Type = "function"
+		}
+		toolCalls = append(toolCalls, toolCall)
+	}
+	return toolCalls
 }
 
 func OpenaiHandler(c *gin.Context, info *relaycommon.RelayInfo, resp *http.Response) (*dto.Usage, *types.NewAPIError) {

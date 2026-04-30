@@ -24,12 +24,18 @@ import path from 'path';
 import { codeInspectorPlugin } from 'code-inspector-plugin';
 const { vitePluginSemi } = pkg;
 
+const stubs = (name) => path.resolve(__dirname, `src/stubs/${name}.js`);
+
 // https://vitejs.dev/config/
 export default defineConfig({
   base: '/legacy/',
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
+      'antd-style': stubs('antd-style'),
+      antd: stubs('antd'),
+      'react-layout-kit': stubs('react-layout-kit'),
+      '@lobehub/ui': stubs('lobehub-ui'),
     },
   },
   plugins: [

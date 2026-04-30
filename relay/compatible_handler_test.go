@@ -1,6 +1,7 @@
 package relay
 
 import (
+	"net/http"
 	"testing"
 
 	"github.com/QuantumNous/new-api/constant"
@@ -30,6 +31,35 @@ func TestShouldForceUpstreamStreamForNonStreamAllowsPassThrough(t *testing.T) {
 	}
 
 	require.True(t, shouldForceUpstreamStreamForNonStream(info, request))
+}
+
+func TestShouldForceUpstreamStreamForNonStreamAllowsAnthropicChannel(t *testing.T) {
+	info := &relaycommon.RelayInfo{
+		RelayMode:   relayconstant.RelayModeChatCompletions,
+		RelayFormat: types.RelayFormatOpenAI,
+		ChannelMeta: &relaycommon.ChannelMeta{
+			ApiType: constant.APITypeAnthropic,
+			ChannelSetting: dto.ChannelSettings{
+				NonStreamToStreamEnabled: true,
+			},
+		},
+	}
+
+	require.True(t, shouldForceUpstreamStreamForNonStream(info, &dto.GeneralOpenAIRequest{}))
+}
+
+func TestShouldHandleForcedStreamToNonStreamResponse(t *testing.T) {
+	info := &relaycommon.RelayInfo{
+		RelayFormat:         types.RelayFormatOpenAI,
+		UpstreamForceStream: true,
+	}
+	resp := &http.Response{
+		Header: http.Header{
+			"Content-Type": []string{"text/event-stream; charset=utf-8"},
+		},
+	}
+
+	require.True(t, shouldHandleForcedStreamToNonStreamResponse(info, resp))
 }
 
 func TestForceUpstreamStreamRequestBody(t *testing.T) {

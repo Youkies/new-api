@@ -230,7 +230,7 @@ func OaiStreamToNonStreamHandler(c *gin.Context, info *relaycommon.RelayInfo, re
 		return nil, types.NewOpenAIError(fmt.Errorf("empty upstream stream response"), types.ErrorCodeBadResponse, http.StatusInternalServerError)
 	}
 
-	response, usage, responseErr := buildOpenAITextResponseFromStream(c, info, streamItems)
+	response, usage, responseErr := BuildOpenAITextResponseFromStream(c, info, streamItems)
 	if responseErr != nil {
 		return nil, responseErr
 	}
@@ -357,7 +357,7 @@ func resetOpenAIStreamTimer(timer *time.Timer, timeout time.Duration) {
 	timer.Reset(timeout)
 }
 
-func buildOpenAITextResponseFromStream(c *gin.Context, info *relaycommon.RelayInfo, streamItems []string) (*dto.OpenAITextResponse, *dto.Usage, *types.NewAPIError) {
+func BuildOpenAITextResponseFromStream(c *gin.Context, info *relaycommon.RelayInfo, streamItems []string) (*dto.OpenAITextResponse, *dto.Usage, *types.NewAPIError) {
 	choiceMap := make(map[int]*chatChoiceStreamAccumulator)
 	choiceOrder := make([]int, 0)
 	usage := &dto.Usage{}

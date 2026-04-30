@@ -11,6 +11,8 @@ import (
 	"github.com/QuantumNous/new-api/constant"
 	"github.com/QuantumNous/new-api/dto"
 	"github.com/QuantumNous/new-api/logger"
+	"github.com/QuantumNous/new-api/relay/channel/claude"
+	"github.com/QuantumNous/new-api/relay/channel/openai"
 	relaycommon "github.com/QuantumNous/new-api/relay/common"
 	relayconstant "github.com/QuantumNous/new-api/relay/constant"
 	"github.com/QuantumNous/new-api/relay/helper"
@@ -232,7 +234,13 @@ func TextHelper(c *gin.Context, info *relaycommon.RelayInfo) (newAPIError *types
 		}
 	}
 
-	usage, newApiErr := adaptor.DoResponse(c, httpResp, info)
+	var usage any
+	var newApiErr *types.NewAPIError
+	if shouldHandleForcedStreamToNonStreamResponse(info, httpResp) {
+		usage, newApiErr = handleForcedStreamToNonStreamResponse(c, info, httpResp)
+	} else {
+		usage, newApiErr = adaptor.DoResponse(c, httpResp, info)
+	}
 	if newApiErr != nil {
 		// reset status code 重置状态码
 		service.ResetStatusCode(newApiErr, statusCodeMappingStr)
@@ -248,6 +256,23 @@ func TextHelper(c *gin.Context, info *relaycommon.RelayInfo) (newAPIError *types
 		service.PostTextConsumeQuota(c, info, usage.(*dto.Usage), nil)
 	}
 	return nil
+}
+
+func shouldHandleForcedStreamToNonStreamResponse(info *relaycommon.RelayInfo, resp *http.Response) bool {
+	if info == nil || resp == nil {
+		return false
+	}
+	return info.UpstreamForceStream &&
+		!info.IsStream &&
+		info.RelayFormat == types.RelayFormatOpenAI &&
+		strings.HasPrefix(resp.Header.Get("Content-Type"), "text/event-stream")
+}
+
+func handleForcedStreamToNonStreamResponse(c *gin.Context, info *relaycommon.RelayInfo, resp *http.Response) (any, *types.NewAPIError) {
+	if info.ApiType == constant.APITypeAnthropic {
+		return claude.ClaudeStreamToNonStreamHandler(c, resp, info)
+	}
+	return openai.OaiStreamToNonStreamHandler(c, info, resp)
 }
 
 func convertSystemMessagesToUser(request *dto.GeneralOpenAIRequest) {
@@ -274,7 +299,10 @@ func shouldForceUpstreamStreamForNonStream(info *relaycommon.RelayInfo, request 
 	}
 
 	switch info.ApiType {
-	case constant.APITypeOpenAI, constant.APITypeOpenRouter, constant.APITypeXinference:
+	case constant.APITypeOpenAI,
+		constant.APITypeOpenRouter,
+		constant.APITypeXinference,
+		constant.APITypeAnthropic:
 		return true
 	default:
 		return false

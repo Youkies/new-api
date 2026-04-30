@@ -1,16 +1,20 @@
 package claude
 
 import (
+	"bufio"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/constant"
 	"github.com/QuantumNous/new-api/dto"
 	"github.com/QuantumNous/new-api/logger"
+	"github.com/QuantumNous/new-api/relay/channel/openai"
 	"github.com/QuantumNous/new-api/relay/channel/openrouter"
 	relaycommon "github.com/QuantumNous/new-api/relay/common"
 	"github.com/QuantumNous/new-api/relay/helper"
@@ -856,7 +860,7 @@ func HandleStreamResponseData(c *gin.Context, info *relaycommon.RelayInfo, claud
 	return nil
 }
 
-func HandleStreamFinalResponse(c *gin.Context, info *relaycommon.RelayInfo, claudeInfo *ClaudeResponseInfo) {
+func finalizeClaudeStreamUsage(c *gin.Context, info *relaycommon.RelayInfo, claudeInfo *ClaudeResponseInfo) {
 	if claudeInfo.Usage.PromptTokens == 0 {
 		//上游出错
 	}
@@ -878,7 +882,10 @@ func HandleStreamFinalResponse(c *gin.Context, info *relaycommon.RelayInfo, clau
 	if claudeInfo.Usage != nil {
 		claudeInfo.Usage.UsageSemantic = "anthropic"
 	}
+}
 
+func HandleStreamFinalResponse(c *gin.Context, info *relaycommon.RelayInfo, claudeInfo *ClaudeResponseInfo) {
+	finalizeClaudeStreamUsage(c, info, claudeInfo)
 	if info.RelayFormat == types.RelayFormatClaude {
 		//
 	} else if info.RelayFormat == types.RelayFormatOpenAI {
@@ -915,6 +922,219 @@ func ClaudeStreamHandler(c *gin.Context, resp *http.Response, info *relaycommon.
 
 	HandleStreamFinalResponse(c, info, claudeInfo)
 	return claudeInfo.Usage, nil
+}
+
+type claudeStreamScanEvent struct {
+	data string
+	done bool
+	err  error
+}
+
+func ClaudeStreamToNonStreamHandler(c *gin.Context, resp *http.Response, info *relaycommon.RelayInfo) (*dto.Usage, *types.NewAPIError) {
+	if info == nil {
+		logger.LogError(c, "invalid relay info")
+		return nil, types.NewOpenAIError(fmt.Errorf("invalid relay info"), types.ErrorCodeBadResponse, http.StatusInternalServerError)
+	}
+	if resp == nil || resp.Body == nil {
+		logger.LogError(c, "invalid response or response body")
+		return nil, types.NewOpenAIError(fmt.Errorf("invalid response"), types.ErrorCodeBadResponse, http.StatusInternalServerError)
+	}
+
+	defer service.CloseResponseBodyGracefully(resp)
+
+	claudeInfo := &ClaudeResponseInfo{
+		ResponseId:   helper.GetResponseID(c),
+		Created:      common.GetTimestamp(),
+		Model:        info.UpstreamModelName,
+		ResponseText: strings.Builder{},
+		Usage:        &dto.Usage{},
+	}
+	streamItems, streamErr := collectClaudeStreamOpenAIDataNoWrite(c, info, resp, claudeInfo)
+	if streamErr != nil {
+		return nil, streamErr
+	}
+	if len(streamItems) == 0 {
+		return nil, types.NewOpenAIError(fmt.Errorf("empty upstream stream response"), types.ErrorCodeBadResponse, http.StatusInternalServerError)
+	}
+
+	finalizeClaudeStreamUsage(c, info, claudeInfo)
+	if claudeInfo.Model != "" {
+		info.UpstreamModelName = claudeInfo.Model
+	}
+	openAIUsage := buildOpenAIStyleUsageFromClaudeUsage(claudeInfo.Usage)
+	usageChunk := dto.ChatCompletionsStreamResponse{
+		Id:      claudeInfo.ResponseId,
+		Object:  "chat.completion.chunk",
+		Created: claudeInfo.Created,
+		Model:   info.UpstreamModelName,
+		Choices: []dto.ChatCompletionsStreamResponseChoice{},
+		Usage:   &openAIUsage,
+	}
+	usageChunkData, err := common.Marshal(usageChunk)
+	if err != nil {
+		return nil, types.NewError(err, types.ErrorCodeBadResponseBody)
+	}
+	streamItems = append(streamItems, string(usageChunkData))
+
+	response, usage, responseErr := openai.BuildOpenAITextResponseFromStream(c, info, streamItems)
+	if responseErr != nil {
+		return nil, responseErr
+	}
+
+	responseBody, err := common.Marshal(response)
+	if err != nil {
+		return nil, types.NewError(err, types.ErrorCodeBadResponseBody)
+	}
+
+	downstreamResp := *resp
+	downstreamResp.Header = resp.Header.Clone()
+	downstreamResp.Header.Set("Content-Type", "application/json")
+	downstreamResp.Header.Del("Cache-Control")
+	downstreamResp.Header.Del("Content-Encoding")
+	downstreamResp.Header.Del("Transfer-Encoding")
+	downstreamResp.ContentLength = int64(len(responseBody))
+	service.IOCopyBytesGracefully(c, &downstreamResp, responseBody)
+
+	return usage, nil
+}
+
+func collectClaudeStreamOpenAIDataNoWrite(c *gin.Context, info *relaycommon.RelayInfo, resp *http.Response, claudeInfo *ClaudeResponseInfo) ([]string, *types.NewAPIError) {
+	scanner := bufio.NewScanner(resp.Body)
+	scanner.Buffer(make([]byte, 1024), claudeStreamScannerBufferSize())
+
+	requestCtx := c.Request.Context()
+	scanCtx, cancel := context.WithCancel(requestCtx)
+	defer cancel()
+
+	events := make(chan claudeStreamScanEvent, 16)
+	go func() {
+		defer close(events)
+
+		send := func(event claudeStreamScanEvent) bool {
+			select {
+			case events <- event:
+				return true
+			case <-scanCtx.Done():
+				return false
+			}
+		}
+
+		for scanner.Scan() {
+			line := scanner.Text()
+			if common.DebugEnabled {
+				println(line)
+			}
+			if !strings.HasPrefix(line, "data:") {
+				continue
+			}
+			data := strings.TrimSpace(strings.TrimPrefix(line, "data:"))
+			if data == "" {
+				continue
+			}
+			if strings.HasPrefix(data, "[DONE]") {
+				_ = send(claudeStreamScanEvent{done: true})
+				return
+			}
+			if !send(claudeStreamScanEvent{data: data}) {
+				return
+			}
+		}
+
+		if err := scanner.Err(); err != nil && err != io.EOF {
+			_ = send(claudeStreamScanEvent{err: err})
+			return
+		}
+		_ = send(claudeStreamScanEvent{done: true})
+	}()
+
+	streamingTimeout := time.Duration(constant.StreamingTimeout) * time.Second
+	if streamingTimeout <= 0 {
+		streamingTimeout = 300 * time.Second
+	}
+	timer := time.NewTimer(streamingTimeout)
+	defer timer.Stop()
+
+	streamItems := make([]string, 0)
+	for {
+		select {
+		case event, ok := <-events:
+			if !ok {
+				return streamItems, nil
+			}
+			if event.err != nil {
+				return nil, types.NewOpenAIError(event.err, types.ErrorCodeBadResponse, http.StatusInternalServerError)
+			}
+			if event.done {
+				return streamItems, nil
+			}
+			if event.data == "" {
+				continue
+			}
+			info.SetFirstResponseTime()
+			info.ReceivedResponseCount++
+
+			openAIResponse, processErr := convertClaudeStreamDataToOpenAIStreamData(c, info, claudeInfo, event.data)
+			if processErr != nil {
+				return nil, processErr
+			}
+			if openAIResponse == nil {
+				resetClaudeStreamTimer(timer, streamingTimeout)
+				continue
+			}
+			chunkData, err := common.Marshal(openAIResponse)
+			if err != nil {
+				return nil, types.NewOpenAIError(err, types.ErrorCodeBadResponseBody, http.StatusInternalServerError)
+			}
+			streamItems = append(streamItems, string(chunkData))
+			resetClaudeStreamTimer(timer, streamingTimeout)
+		case <-timer.C:
+			cancel()
+			return nil, types.NewOpenAIError(fmt.Errorf("upstream stream timeout"), types.ErrorCodeBadResponse, http.StatusGatewayTimeout)
+		case <-requestCtx.Done():
+			cancel()
+			return nil, types.NewOpenAIError(requestCtx.Err(), types.ErrorCodeBadResponse, http.StatusInternalServerError)
+		}
+	}
+}
+
+func convertClaudeStreamDataToOpenAIStreamData(c *gin.Context, info *relaycommon.RelayInfo, claudeInfo *ClaudeResponseInfo, data string) (*dto.ChatCompletionsStreamResponse, *types.NewAPIError) {
+	var claudeResponse dto.ClaudeResponse
+	if err := common.UnmarshalJsonStr(data, &claudeResponse); err != nil {
+		common.SysLog("error unmarshalling stream response: " + err.Error())
+		return nil, types.NewError(err, types.ErrorCodeBadResponseBody)
+	}
+	if claudeError := claudeResponse.GetClaudeError(); claudeError != nil && claudeError.Type != "" {
+		return nil, types.WithClaudeError(*claudeError, http.StatusInternalServerError)
+	}
+	if claudeResponse.StopReason != "" {
+		maybeMarkClaudeRefusal(c, claudeResponse.StopReason)
+	}
+	if claudeResponse.Delta != nil && claudeResponse.Delta.StopReason != nil {
+		maybeMarkClaudeRefusal(c, *claudeResponse.Delta.StopReason)
+	}
+
+	openAIResponse := StreamResponseClaude2OpenAI(&claudeResponse)
+	if !FormatClaudeResponseInfo(&claudeResponse, openAIResponse, claudeInfo) {
+		return nil, nil
+	}
+	return openAIResponse, nil
+}
+
+func claudeStreamScannerBufferSize() int {
+	if constant.StreamScannerMaxBufferMB > 0 {
+		return constant.StreamScannerMaxBufferMB << 20
+	}
+	return 128 << 20
+}
+
+func resetClaudeStreamTimer(timer *time.Timer, timeout time.Duration) {
+	if !timer.Stop() {
+		select {
+		case <-timer.C:
+		default:
+		}
+	}
+	timer.Reset(timeout)
 }
 
 func HandleClaudeResponseData(c *gin.Context, info *relaycommon.RelayInfo, claudeInfo *ClaudeResponseInfo, httpResp *http.Response, data []byte) *types.NewAPIError {

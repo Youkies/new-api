@@ -224,7 +224,7 @@ func (a *Adaptor) GetRequestURL(info *relaycommon.RelayInfo) (string, error) {
 			}
 		}
 
-		if info.IsStream {
+		if info.IsUpstreamStream() {
 			suffix = "streamGenerateContent?alt=sse"
 		} else {
 			suffix = "generateContent"
@@ -235,7 +235,7 @@ func (a *Adaptor) GetRequestURL(info *relaycommon.RelayInfo) (string, error) {
 		}
 		return a.getRequestUrl(info, info.UpstreamModelName, suffix)
 	} else if a.RequestMode == RequestModeClaude {
-		if info.IsStream {
+		if info.IsUpstreamStream() {
 			suffix = "streamRawPredict?alt=sse"
 		} else {
 			suffix = "rawPredict"

@@ -114,6 +114,16 @@ func TestStreamStatus_RecordError_Concurrent(t *testing.T) {
 	assert.LessOrEqual(t, len(s.Errors), maxStreamErrorEntries)
 }
 
+func TestStreamStatus_IsClientGone(t *testing.T) {
+	t.Parallel()
+
+	s := NewStreamStatus()
+	assert.False(t, s.IsClientGone())
+
+	s.SetEndReason(StreamEndReasonClientGone, fmt.Errorf("context canceled"))
+	assert.True(t, s.IsClientGone())
+}
+
 func TestStreamStatus_HasErrors_Empty(t *testing.T) {
 	t.Parallel()
 	s := NewStreamStatus()

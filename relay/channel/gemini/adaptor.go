@@ -161,7 +161,7 @@ func (a *Adaptor) GetRequestURL(info *relaycommon.RelayInfo) (string, error) {
 	}
 
 	action := "generateContent"
-	if info.IsStream {
+	if info.IsUpstreamStream() {
 		action = "streamGenerateContent?alt=sse"
 		if info.RelayMode == constant.RelayModeGemini {
 			info.DisablePing = true

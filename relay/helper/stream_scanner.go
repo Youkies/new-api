@@ -291,6 +291,10 @@ func StreamScannerHandler(c *gin.Context, resp *http.Response, info *relaycommon
 		info.StreamStatus.SetEndReason(relaycommon.StreamEndReasonClientGone, c.Request.Context().Err())
 	}
 
+	if info.ReceivedResponseCount == 0 {
+		LogEmptyStreamDiagnostic(c, info, resp, "stream_scanner")
+	}
+
 	if info.StreamStatus.IsNormalEnd() && !info.StreamStatus.HasErrors() {
 		logger.LogInfo(c, fmt.Sprintf("stream ended: %s", info.StreamStatus.Summary()))
 	} else {

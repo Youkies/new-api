@@ -1416,6 +1416,73 @@ func GeminiChatStreamHandler(c *gin.Context, info *relaycommon.RelayInfo, resp *
 	return usage, nil
 }
 
+func GeminiChatStreamToNonStreamHandler(c *gin.Context, info *relaycommon.RelayInfo, resp *http.Response) (*dto.Usage, *types.NewAPIError) {
+	id := helper.GetResponseID(c)
+	createAt := common.GetTimestamp()
+	streamItems := make([]string, 0)
+
+	usage, err := geminiStreamHandler(c, info, resp, func(_ string, geminiResponse *dto.GeminiChatResponse) bool {
+		response, isStop := streamResponseGeminiChat2OpenAI(geminiResponse)
+		response.Id = id
+		response.Created = createAt
+		response.Model = info.UpstreamModelName
+
+		if len(response.Choices) > 0 || response.Usage != nil {
+			streamData, marshalErr := common.Marshal(response)
+			if marshalErr != nil {
+				logger.LogError(c, "failed to marshal gemini stream chunk: "+marshalErr.Error())
+				return false
+			}
+			streamItems = append(streamItems, string(streamData))
+		}
+
+		if isStop {
+			stopResponse := helper.GenerateStopResponse(id, createAt, info.UpstreamModelName, constant.FinishReasonStop)
+			streamData, marshalErr := common.Marshal(stopResponse)
+			if marshalErr != nil {
+				logger.LogError(c, "failed to marshal gemini stop chunk: "+marshalErr.Error())
+				return false
+			}
+			streamItems = append(streamItems, string(streamData))
+		}
+		return true
+	})
+	if err != nil {
+		return usage, err
+	}
+	if len(streamItems) == 0 {
+		if info.ReceivedResponseCount > 0 {
+			helper.LogEmptyStreamDiagnostic(c, info, resp, "gemini_stream_to_nonstream_no_output")
+		}
+		return nil, types.NewOpenAIError(fmt.Errorf("empty upstream stream response"), types.ErrorCodeBadResponse, http.StatusInternalServerError)
+	}
+
+	response, aggregatedUsage, responseErr := openai.BuildOpenAITextResponseFromStream(c, info, streamItems)
+	if responseErr != nil {
+		return nil, responseErr
+	}
+	if service.ValidUsage(usage) {
+		aggregatedUsage = usage
+		response.Usage = *usage
+	}
+
+	responseBody, marshalErr := common.Marshal(response)
+	if marshalErr != nil {
+		return nil, types.NewError(marshalErr, types.ErrorCodeBadResponseBody)
+	}
+
+	downstreamResp := *resp
+	downstreamResp.Header = resp.Header.Clone()
+	downstreamResp.Header.Set("Content-Type", "application/json")
+	downstreamResp.Header.Del("Cache-Control")
+	downstreamResp.Header.Del("Content-Encoding")
+	downstreamResp.Header.Del("Transfer-Encoding")
+	downstreamResp.ContentLength = int64(len(responseBody))
+	service.IOCopyBytesGracefully(c, &downstreamResp, responseBody)
+
+	return aggregatedUsage, nil
+}
+
 func GeminiChatHandler(c *gin.Context, info *relaycommon.RelayInfo, resp *http.Response) (*dto.Usage, *types.NewAPIError) {
 	responseBody, err := io.ReadAll(resp.Body)
 	if err != nil {

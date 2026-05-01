@@ -12,6 +12,7 @@ import (
 	"github.com/QuantumNous/new-api/dto"
 	"github.com/QuantumNous/new-api/logger"
 	"github.com/QuantumNous/new-api/relay/channel/claude"
+	"github.com/QuantumNous/new-api/relay/channel/gemini"
 	"github.com/QuantumNous/new-api/relay/channel/openai"
 	relaycommon "github.com/QuantumNous/new-api/relay/common"
 	relayconstant "github.com/QuantumNous/new-api/relay/constant"
@@ -272,6 +273,10 @@ func handleForcedStreamToNonStreamResponse(c *gin.Context, info *relaycommon.Rel
 	if info.ApiType == constant.APITypeAnthropic {
 		return claude.ClaudeStreamToNonStreamHandler(c, resp, info)
 	}
+	if info.ApiType == constant.APITypeGemini ||
+		(info.ApiType == constant.APITypeVertexAi && isVertexGeminiUpstream(info.UpstreamModelName)) {
+		return gemini.GeminiChatStreamToNonStreamHandler(c, info, resp)
+	}
 	return openai.OaiStreamToNonStreamHandler(c, info, resp)
 }
 
@@ -302,11 +307,21 @@ func shouldForceUpstreamStreamForNonStream(info *relaycommon.RelayInfo, request 
 	case constant.APITypeOpenAI,
 		constant.APITypeOpenRouter,
 		constant.APITypeXinference,
-		constant.APITypeAnthropic:
+		constant.APITypeAnthropic,
+		constant.APITypeGemini:
 		return true
+	case constant.APITypeVertexAi:
+		return isVertexGeminiUpstream(info.UpstreamModelName)
 	default:
 		return false
 	}
+}
+
+func isVertexGeminiUpstream(modelName string) bool {
+	return modelName != "" &&
+		!strings.HasPrefix(modelName, "claude") &&
+		!strings.Contains(modelName, "llama") &&
+		!strings.Contains(modelName, "-maas")
 }
 
 func forceUpstreamStreamRequestBody(jsonData []byte, info *relaycommon.RelayInfo) ([]byte, error) {

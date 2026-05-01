@@ -48,6 +48,53 @@ func TestShouldForceUpstreamStreamForNonStreamAllowsAnthropicChannel(t *testing.
 	require.True(t, shouldForceUpstreamStreamForNonStream(info, &dto.GeneralOpenAIRequest{}))
 }
 
+func TestShouldForceUpstreamStreamForNonStreamAllowsGeminiChannel(t *testing.T) {
+	info := &relaycommon.RelayInfo{
+		RelayMode:   relayconstant.RelayModeChatCompletions,
+		RelayFormat: types.RelayFormatOpenAI,
+		ChannelMeta: &relaycommon.ChannelMeta{
+			ApiType: constant.APITypeGemini,
+			ChannelSetting: dto.ChannelSettings{
+				NonStreamToStreamEnabled: true,
+			},
+		},
+	}
+
+	require.True(t, shouldForceUpstreamStreamForNonStream(info, &dto.GeneralOpenAIRequest{}))
+}
+
+func TestShouldForceUpstreamStreamForNonStreamAllowsVertexGeminiModel(t *testing.T) {
+	info := &relaycommon.RelayInfo{
+		RelayMode:   relayconstant.RelayModeChatCompletions,
+		RelayFormat: types.RelayFormatOpenAI,
+		ChannelMeta: &relaycommon.ChannelMeta{
+			ApiType:           constant.APITypeVertexAi,
+			UpstreamModelName: "gemini-2.5-flash",
+			ChannelSetting: dto.ChannelSettings{
+				NonStreamToStreamEnabled: true,
+			},
+		},
+	}
+
+	require.True(t, shouldForceUpstreamStreamForNonStream(info, &dto.GeneralOpenAIRequest{}))
+}
+
+func TestShouldForceUpstreamStreamForNonStreamSkipsVertexClaudeModel(t *testing.T) {
+	info := &relaycommon.RelayInfo{
+		RelayMode:   relayconstant.RelayModeChatCompletions,
+		RelayFormat: types.RelayFormatOpenAI,
+		ChannelMeta: &relaycommon.ChannelMeta{
+			ApiType:           constant.APITypeVertexAi,
+			UpstreamModelName: "claude-sonnet-4",
+			ChannelSetting: dto.ChannelSettings{
+				NonStreamToStreamEnabled: true,
+			},
+		},
+	}
+
+	require.False(t, shouldForceUpstreamStreamForNonStream(info, &dto.GeneralOpenAIRequest{}))
+}
+
 func TestShouldHandleForcedStreamToNonStreamResponse(t *testing.T) {
 	info := &relaycommon.RelayInfo{
 		RelayFormat:         types.RelayFormatOpenAI,

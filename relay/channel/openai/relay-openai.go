@@ -146,6 +146,7 @@ func OaiStreamHandler(c *gin.Context, info *relaycommon.RelayInfo, resp *http.Re
 			streamItems = append(streamItems, data)
 		}
 	})
+	clientGone := info.StreamStatus != nil && info.StreamStatus.IsClientGone()
 
 	// 对音频模型，从倒数第二个stream data中提取usage信息
 	if isAudioModel && secondLastStreamData != "" {
@@ -172,7 +173,7 @@ func OaiStreamHandler(c *gin.Context, info *relaycommon.RelayInfo, resp *http.Re
 		logger.LogError(c, fmt.Sprintf("error handling last response: %s, lastStreamData: [%s]", err.Error(), lastStreamData))
 	}
 
-	if info.RelayFormat == types.RelayFormatOpenAI {
+	if info.RelayFormat == types.RelayFormatOpenAI && !clientGone {
 		if shouldSendLastResp {
 			_ = sendStreamData(c, info, lastStreamData, info.ChannelSetting.ForceFormat, info.ChannelSetting.ThinkingToContent)
 		}
@@ -190,7 +191,9 @@ func OaiStreamHandler(c *gin.Context, info *relaycommon.RelayInfo, resp *http.Re
 
 	applyUsagePostProcessing(info, usage, common.StringToByteSlice(lastStreamData))
 
-	HandleFinalResponse(c, info, lastStreamData, responseId, createAt, model, systemFingerprint, usage, containStreamUsage)
+	if !clientGone {
+		HandleFinalResponse(c, info, lastStreamData, responseId, createAt, model, systemFingerprint, usage, containStreamUsage)
+	}
 
 	return usage, nil
 }
@@ -227,6 +230,7 @@ func OaiStreamToNonStreamHandler(c *gin.Context, info *relaycommon.RelayInfo, re
 		return nil, streamErr
 	}
 	if len(streamItems) == 0 {
+		helper.LogEmptyStreamDiagnostic(c, info, resp, "openai_stream_to_nonstream")
 		return nil, types.NewOpenAIError(fmt.Errorf("empty upstream stream response"), types.ErrorCodeBadResponse, http.StatusInternalServerError)
 	}
 

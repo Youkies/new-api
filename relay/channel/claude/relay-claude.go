@@ -920,6 +920,11 @@ func ClaudeStreamHandler(c *gin.Context, resp *http.Response, info *relaycommon.
 		return nil, err
 	}
 
+	if info.StreamStatus != nil && info.StreamStatus.IsClientGone() {
+		finalizeClaudeStreamUsage(c, info, claudeInfo)
+		return claudeInfo.Usage, nil
+	}
+
 	HandleStreamFinalResponse(c, info, claudeInfo)
 	return claudeInfo.Usage, nil
 }
@@ -954,6 +959,7 @@ func ClaudeStreamToNonStreamHandler(c *gin.Context, resp *http.Response, info *r
 		return nil, streamErr
 	}
 	if len(streamItems) == 0 {
+		helper.LogEmptyStreamDiagnostic(c, info, resp, "claude_stream_to_nonstream")
 		return nil, types.NewOpenAIError(fmt.Errorf("empty upstream stream response"), types.ErrorCodeBadResponse, http.StatusInternalServerError)
 	}
 

@@ -1,101 +1,18 @@
 # 工作日志
 
-- [2026-04-20 16:06] 初始化记忆库，记录部署架构分析（4C4G/650 用户/MySQL 同机部署足够）
-- [2026-04-20 16:06] 记录前端美化方案：推荐 CSS 变量换皮 + 覆盖层策略，保持可跟随上游更新
-- [2026-04-20 16:06] 清空并重新 clone 了 newapi 仓库（git clean state）
-- [2026-04-23 23:07] 排查 new_api_tools 模型状态监控，确认其直接依赖 logs 表，且与 newapi 的 LOG_SQL_DSN/消费日志开关存在兼容风险
-- [2026-04-23 23:18] 用真实 MySQL 数据复现 new_api_tools 模型状态 SQL 报错，确认别名 `empty` 在 MySQL 上触发语法错误，并已在本地修复
-- [2026-04-24 00:12] 复核 newapi 前端接入与认证模型，确认当前仅内嵌 `web/dist`，后台以前端 session + `New-API-User` 为主，独立 `uiweb` 更适合同源或同站反代
-- [2026-04-24 00:18] 确认 newapi 的迁移与后台任务受 `NODE_TYPE` 控制，可通过"旧实例 master + 新实例 slave + 共享 MySQL"完成低风险并行验证
-- [2026-04-24 02:20] 切换 origin 到 Youkies/new-api 并 fast-forward 到 65b16547（39 commits，主要涉及 tiered billing / token 迁移 / passkey）；复核记忆库，修正 i18n 语言数 6→7
-- [2026-04-24 02:50] 敲定黏土风 uiweb 技术选型（Vite + React + Tailwind + 自研 clay 组件，/u/* 前缀，原 web 不动）；完成 Stage 0 骨架：package.json / vite 配置 / tailwind clay 主题 / Home demo 页 / NotFound；npm install + build 通过
-- [2026-04-24 03:05] Go 端接入：main.go 加 uiweb embed，新建 router/uiweb-router.go（SPA fallback + 资产 404 分流），Dockerfile 加 uiweb-builder 并行 stage，.dockerignore 更新；go build 通过
-- [2026-04-24 03:25] Stage 1 完成：12 个访客页面 + 9 个 clay 组件 + 4 个 layout 组件 + 3 个 Context + auth/pricing services；dev server 全部 12 路由 HTTP 200，构建 256KB JS + 29KB CSS
-- [2026-04-24 03:50] Stage 2 完成：新增 Dashboard/TopUp/PersonalSetting/Chat2Link 4 个登录后页面；补 6 个组件；ClayConsoleShell + ProtectedRoute；4 个 services + utils/quota；构建 301KB JS + 35KB CSS
-- [2026-04-24 04:20] 修复余额显示 bug：StatusContext.jsx 添加 persistStatusFields(s) 调用，使 quotaToDisplay 能正确读取 localStorage 中的 quota_per_unit 等字段
-- [2026-04-24 04:30] 确认用户业务约束：仅 QQ 邮箱注册、仅兑换码充值、仅中文界面；不需要 i18n/2FA/Passkey/Turnstile/OAuth/在线支付
-- [2026-04-24 04:55] Stage 2+ 完成：新增 TokenManage（令牌 CRUD）、LogList（调用日志表格）、Checkin（签到日历）3 个页面；补 tokens/logs/checkin 3 个 service；导航从 3→6 项，LEGACY 仅剩 Playground；修复签到 API 路径 404（/api/user/self/checkin → /api/user/checkin）；构建 319KB JS + 37KB CSS
-- [2026-04-24 05:30] Stage 2++ 页面打磨：Pricing 增加分组展示、Token 增加详细列、Log 合并用量列+着色、TopUp 增加购买链接卡片
-- [2026-04-24 06:00] 新增模型状态监控功能：controller/model_status.go + /api/model-status 路由 + ModelStatus.jsx 公开页面 + ClayNav 导航；修复 LogSqlType 默认 SQLite 导致 MySQL FLOOR 语法错误；修复旧 newapi.exe 占端口导致新二进制启动失败；API 返回 33 个模型状态数据
-- [2026-04-24 14:10] ModelStatus 页从 3 列改为 2 列网格（用户反馈密度太高）
-- [2026-04-24 14:20] TopUp 页兑换码+购买卡片改为并排等高布局，与上方统计卡片宽度对齐
-- [2026-04-24 14:25] 总结并归档部署链教训（vite build → go build → 杀进程 → PowerShell 启动），写入 feedback_build_deploy.md
-- [2026-04-24 14:40] 同步上游 QuantumNous/new-api 3 个 PR（image N 计费 / gpt-5.5 ratio / 定价显示修正），fast-forward 无冲突
-- [2026-04-24 14:42] 提交并推送至 Youkies/new-api：uiweb 全部代码 + model_status + .ai_memory + 参考html（80 files, +10235 lines, b5145226）
-- [2026-04-24 17:00] LogList 增强：Token 用量列增加缓存读写 token 显示（绿色 Database 图标读 / 琥珀 PenLine 图标写）；耗时列改为"用时/首字"含流/非流标签；详情列移除改为行点击弹出 ClayModal 弹窗
-- [2026-04-24 17:10] 修复 use_time 单位（秒非毫秒）、frt 负值过滤、parseOther 空值保护
-- [2026-04-24 17:20] 筛选面板对齐（ClaySelect 加 label 包裹）、时间范围默认今天 00:00 到当前
-- [2026-04-25 19:00] LogList 视觉重构：从独立 grid 卡片改为 table 布局（与令牌管理页一致），ClayCard 容器包裹，行高增加 py-5，列自然对齐
-- [2026-04-25 19:10] LogList 移动端适配：新增 useIsMobile hook（matchMedia 767px），LogCard 卡片组件（类型+模型+时间/Token用量面板/额度+用时），<767px 自动切换
-- [2026-04-25 19:20] Token 用量图标改为文字标签：入/出/缓读/缓写，移除 MessageSquare/ArrowDownUp/Database/PenLine 图标依赖
-- [2026-04-25 19:50] TokenManage 移动端适配：新增 TokenCard 组件（图标+名称+状态/密钥凹槽/额度/分组+时间+操作），useIsMobile hook，双渲染模式
-- [2026-04-25 20:05] TokenManage 弹窗增强：新增分组选择（ClaySelect + getUserGroups API），默认无限额度，余额输入改为展示金额（displayToQuota 反转换）
-- [2026-04-25 21:00] Dashboard 用量趋势重构：修复时间范围（今日从0点开始）、今日按小时分组、预填所有时间槽、柱状图改像素高度修复 flex 百分比 bug、clay 内凹托盘+渐变柱+浮动提示+移动端滚动
-- [2026-04-25 23:30] Pricing 页重做：引入 @lobehub/icons v2 供应商图标（vendorIcon.jsx + 4 stub 模块），修正价格公式和 API 数据解析，从表格改为卡片网格布局，增加分组/供应商/搜索筛选，AiMass 未知图标 fallback
-- [2026-04-26 01:00] 品牌化 "New API" → "Youkies API"（12 文件）；uiweb 升级为根路由前端（vite base / + 去 basename）；经典 web 挂载 /legacy/*；/u/* 301 重定向
-- [2026-04-26 01:30] 从手动 Docker 改为 Zeabur Git 部署（GitHub push 自动构建）
-- [2026-04-26 02:00] 同步上游 QuantumNous/new-api 6 个新 commit（merge 无冲突）
-- [2026-04-26 02:20] Dashboard/Chat2Link 令牌链接修复（/console/token → /tokens）；提交推送
-- [2026-04-26 02:40] 用户头像功能：model/user.go Avatar 字段 + controller/avatar.go + API 路由 + GetSelf/setupLogin has_avatar
-- [2026-04-26 02:50] 头像前端：react-easy-crop 圆形裁剪弹窗 + canvas 压缩 + PersonalSetting 上传/移除 UI + ClayConsoleShell 头像显示
-- [2026-04-26 03:00] 头像 cache-bust：上传后 _avatar_t 时间戳刷新所有头像 URL；首页 ClayNav 登录后显示头像
-- [2026-04-26 03:10] 移动端头像优化：控制台导航只显示头像圆形，首页登录只显示头像（隐藏"进入控制台"按钮）
-- [2026-04-26 03:15] 部署修复：Zeabur NODE_TYPE=slave 需手动 ALTER TABLE 加 avatar/avatar_type 列
-- [2026-04-26 03:30] 移动端头像放大：ClayConsoleShell 头像 34px → 40px
-- [2026-04-26 03:30] 修复头像 cache-bust 跨页丢失：UserContext setUser 自动保留旧 _avatar_t（Dashboard/TopUp 等重新拉取用户数据不再丢失时间戳）
-- [2026-04-26 03:30] 修复 /legacy 404：新增显式 GET /legacy → 301 /legacy/（Gin wildcard 不匹配无斜杠路径）
-- [2026-04-26 03:30] 修复经典控制台链接：/console → /legacy、/console/playground → /legacy/playground
-- [2026-04-26 03:30] 提交推送 268bc41a
-- [2026-04-26 03:40] 自定义 favicon：参考html PNG → uiweb/public/favicon.png，index.html 改 PNG 引用
-- [2026-04-26 03:45] 全站 logo 替换：ClayNav/ClayConsoleShell/ClayAuthShell 的 Box 图标 → favicon.png
-- [2026-04-26 03:45] 经典控制台白屏修复：web/vite.config.js 加 base:'/legacy/'，web/src/index.jsx 加 basename="/legacy"
-- [2026-04-26 03:50] 头像服务端缓存修复：ETag 从 id-len 改为 id-crc32(data)，Cache-Control 从 max-age=86400 改为 no-cache
-- [2026-04-26 03:55] 头像重新登录缓存修复：setUser 发现 has_avatar 但无 _avatar_t 时自动生成 Date.now()
-- [2026-04-26 04:00] 签到页倒计时：CountdownTimer 组件，今日已签到时显示到午夜 HH:MM:SS 倒计时
-- [2026-04-26 04:00] 提交推送 fbe686cd
-- [2026-04-26] feat: system_prompt_to_user_prompt 渠道设置，解决上游覆盖系统提示词问题（121339fe）
-- [2026-04-26] 国内中转配置：腾讯云 Nginx 反代 newapi.youkies.cn → newapi.youkies.space，SSL + SSE 流式 + 1000s 超时
-- [2026-04-27 03:30] 新增 API URL 子界面 (/api-urls)：双卡片复制 + ClayModal 弹窗提示 /v1 + "不再提示"
-- [2026-04-27 03:50] 修复 ClayCheckbox 点击小框无反应：移除 `<span>` 冗余 onClick 与 label/input 冲突
-- [2026-04-27 04:00] 日志页新增"今日消耗"渐变卡片（自当日 0:00），独立调 /api/log/self/stat
-- [2026-04-27 04:15] 日志列表 UI 紧凑化：桌面表格 px/py 减少 + uppercase 表头；移动卡片 4 行重排，额度右上突出
-- [2026-04-27 04:30] 签到时区修复（用户反馈凌晨刷新时间错误）：根因 Docker 容器默认 UTC；修复三层（CHECKIN_TIMEZONE env / Dockerfile TZ=Asia/Shanghai / 前端 server_now 时钟漂移补偿）
-- [2026-04-27 05:00] Pricing 页视觉重做：卡片三段式带渐变着色头部 + 输入/输出双栏（蓝粉色 + 方向箭头）+ 缓存独立行
-- [2026-04-27 05:30] ModelStatus 页四大优化：OverviewBanner 加权 SLA / ModelCard hover / Uptime 柱条 hover scale + 时间轴 / StatusLegend 阈值说明
-- [2026-04-27 05:45] 修复 tooltip 跟随柱条 + 解除 .clay-card overflow-hidden 截断（!overflow-visible）
-- [2026-04-28 02:09] 移除 TopUp 页“购买额度/前往购买”卡片；LogList 改自绘 clay 时间选择器、非消费日志显示详情、移动端详情不截断，并拆分 draft/applied 筛选以减少无效刷新请求
-- [2026-04-28 02:17] 完成本地构建与 slave+远程 MySQL 启动验证：uiweb build、Go build、公开页面/API/静态资源均通过，测试进程已停止
-- [2026-04-28 02:48] 确认新 UI 管理端第一阶段路线：先做公告管理、强制公告确认弹窗和主页历史公告页，不改原版 new-api 管理设置
-- [2026-04-28 02:51] 记录公告系统新表设计：`ui_announcements` / `ui_announcement_acks`，并整理第一阶段开发路线与验证步骤
-- [2026-04-28 02:54] 用户确认生产 MySQL 公告表已手动创建成功，开始实现公告系统与轻量管理端第一阶段
-- [2026-04-28 03:10] 完成公告系统第一版：后端 `/api/ui` 公告 API、强制弹窗队列、历史公告页、轻量管理端公告 CRUD，并通过 uiweb build、Go build、slave+MySQL 只读验证
-- [2026-04-28 03:42] 完成空回补偿申诉第一版：48 小时疑似空回批量提交、管理端人工审核、通过后事务补余额并写管理日志；通过 uiweb build、Go build、临时 SQLite 启动验证
-- [2026-04-28 04:00] 修复新 UI 日志页默认结束时间冻结导致刷新后仍看不到最新日志，刷新动作改为回到第一页并同步刷新今日消耗与空回候选。
-- [2026-04-28 04:06] 新增用户端空回申诉记录弹窗，展示申诉状态、补偿额度、审核时间和审核说明，并复用现有用户自查接口。
-- [2026-04-28 04:19] 完成新 UI Moon Clay 深色模式第一版：ThemeProvider、CSS 变量色板/阴影、导航/控制台/设置页主题入口，并通过 uiweb build 与本地 dev server 访问验证。
-- [2026-04-28 18:16] 移动端首页 Hero 操作区新增“站点公告”快捷入口，补齐 `/announcements` 在手机端的可发现性，并通过 uiweb build 验证。
-- [2026-04-28 18:20] 评估用户控制台 AI 助手悬浮球需求，建议先做受控预诊断 MVP：挂载 ClayConsoleShell、支持截图/问题描述、后端认证代理、限流与隐私提示。
-- [2026-04-28 18:20] 明确 AI 助手还需要新 UI 管理端配置页，后续应按配置驱动用户侧悬浮球、模型来源、知识文档、限流与提示词边界。
-- [2026-04-28 18:43] 完成 AI 助手第一版：管理端 `/admin/assistant` 配置页、知识文档、会话摘要、用户控制台悬浮球和后端 OpenAI-compatible 分析接口，并通过 go build 与 uiweb build。
-- [2026-04-28 19:09] 将 AI 助手用户侧改为对话式聊天窗口，新增 `/api/ui/assistant/chat` 流式接口，前端用 fetch reader 边读边渲染助手气泡；通过 uiweb build 与 go build。
-- [2026-04-28 19:24] 优化 AI 助手移动端弹窗：欢迎说明改为聊天区开场白逐字显示，压缩移动端头部、警告条、输入框和底部按钮布局；通过 uiweb build。
-- [2026-04-28 19:40] 新增新 UI 前端调试模式：`VITE_UI_DEBUG_MODE` / `?debug=1` 注入 mock 管理员、mock API、AI 助手 mock 流式回复和左下角快捷跳转面板；通过 uiweb build。
-- [2026-04-28 20:07] 按 LobeChat 移动端参考继续优化 AI 助手：移动端改为近全屏聊天视图，警告缩成胶囊，消息区直接滚动，输入/上传/发送合入底部 composer；未跑本地构建。
-- [2026-04-28 20:23] 优化重新部署后登录态失效体验：401 统一清理本地用户并跳登录页，登录页显示过期提示并回到原页面；记录生产需固定 `SESSION_SECRET`。
-- [2026-04-28 21:28] 优化 AI 助手桌面端弹窗空间与回复流式体验：桌面弹窗放大为工作区，真实 AI chunk 先进入前端缓冲队列再按 typewriter 节奏显示。
-- [2026-04-28 22:00] 将 AI 助手桌面端从居中弹窗改为全屏聊天工作台：顶部轻量栏、居中消息列、底部居中 composer，并记录历史对话应作为后续正式用户侧会话功能。
-- [2026-04-28 22:33] 修复 OpenAI 格式转 Claude thinking 时的参数兼容：移除不兼容采样参数、非法 top_p 和强制 tool_choice，避免 Anthropic 400。
-- [2026-04-28 23:50] 新增会员身份展示：四档分层、头像身份环、标题区身份胶囊、用户菜单身份卡与外部升级入口配置。
-- [2026-04-28 23:57] 调整会员展示边界：升级由外部项目自动移组，newapi 只读取用户分组显示身份，移除前端升级入口配置与按钮。
-- [2026-04-29 00:26] 优化 AI 助手免费次数与余额续聊：免费上限固定为 8 次/日，超出后提示用户可用余额继续，并走 `/pg/chat/completions` 复用用户计费链路。
-- [2026-04-29 00:40] 补充 gpt-5.5 基础模型匹配，并优化签到页：日历格子展示每日奖励额度，新增本月签到详情列表。
-- [2026-04-29 01:35] 完成 AI 助手用户侧历史对话、新建对话、思考过程折叠、余额模型列表与免费模型标签；同步后端消息表和调试模式 mock。
-- [2026-04-29 02:08] 优化 AI 助手余额续聊：新增分组+模型双选择，默认使用 default 可用模型，并将所选 group/model 一并提交到站内计费聊天链路。
-- [2026-04-29 02:33] 继续优化 AI 助手：余额分组/模型选择器改为自定义 clay 弹层，余额确认后本次打开不再重复提示，并在发送前预创建带短标题的历史会话。
-- [2026-04-29 02:48] 修复 AI 助手滚动和移动端下拉细节：桌面 composer 不再遮挡回复，消息区去掉大空白 padding 并短对话底部对齐，模型下拉加宽并显示完整 ID，发送按钮禁止换行。
-- [2026-04-29 02:56] 关于页新增退款说明：区分用户原因退款与商家原因服务异常退款，并说明 QQ 申请与 3 个工作日处理。
-- [2026-04-29 04:16] 精简签到页：移除本月签到详情列表，日历格子改为自适应正方形，签到金额改成格子内轻量小字以修复移动端错位。
-- [2026-04-29 04:22] 签到日历金额进一步收敛为纯数字显示，并略微拉开移动端日历格子间距。
-- [2026-04-29 04:34] 使用根目录 Dockerfile 构建生产镜像，并推送 `ghcr.io/youkies/new-api:latest` 与 `ghcr.io/youkies/new-api:6c60875f` 到 GHCR。
-- [2026-04-29 04:45] 新增常见报错 Q&A 文档，首批记录 assistant message prefill 400 与 auth_exhausted 503 的原因和处理建议。
-- [2026-04-30 18:34] 新增渠道级“非流请求转上游流式”开关，后端聚合上游 SSE 为非流 OpenAI JSON，并完成 Go 定向测试。
+> 2026-05-01 已压缩：2026-04-20~2026-04-29 的详细流水已折叠进 `0_archive_context.md` 与 `1_project_context.md`。这里之后只记录高信号节点。
+
+- [2026-04-20] 初始化记忆库，确认项目是 Go AI API 网关/代理，前端美化采用独立 `uiweb`。
+- [2026-04-24] 完成 `uiweb` 基础骨架、访客页、登录后页面、Go embed 与 SPA fallback。
+- [2026-04-25] 重做 Pricing 与日志/令牌/仪表盘移动端体验，引入供应商图标和 Clay 卡片体系。
+- [2026-04-26] 完成根路由新 UI、`/legacy` 经典前端挂载、Zeabur Git 部署、头像功能、国内中转与 `system_prompt_to_user_prompt`。
+- [2026-04-27] 完成 API URL 页面、签到时区修复、今日消耗卡片、模型状态页与定价页视觉优化。
+- [2026-04-28] 完成公告系统、空回补偿申诉、Moon Clay 深色模式、新 UI 调试模式与 AI 助手第一版。
+- [2026-04-29] 完成 AI 助手历史对话、余额续聊分组/模型双选择、会员身份展示、Claude thinking 参数清洗、签到页精简、退款说明与常见报错 Q&A。
+- [2026-04-30 18:34] 新增渠道级“非流请求转上游流式”开关，服务端聚合上游 SSE 为非流 OpenAI JSON；`go test ./relay/channel/openai ./relay -count=1` 通过。
+- [2026-04-30 22:38] 使用提交 `20ce0426` 构建 Docker 生产镜像，并推送 `ghcr.io/youkies/new-api:latest` 与 `ghcr.io/youkies/new-api:20ce0426` 到 GHCR。
+- [2026-05-01 12:44] 压缩整理 `.ai_memory`：活动任务改为当前状态，项目上下文改为稳定知识，归档和工作日志改为主题索引。
+- [2026-05-01 21:00] 扩展 `non_stream_to_stream_enabled` 到 OpenAI 转 Gemini/Gemini-on-Vertex 上游，新增 Gemini SSE 聚合为 OpenAI 非流 JSON；`go test ./relay ./relay/channel/gemini ./relay/channel/openai ./relay/channel/vertex -count=1` 通过。
+- [2026-05-01 22:25] 新增 `empty_stream_diagnostic` 空流诊断日志，用户正常访问即可抓取首包前空关闭的渠道/模型/流状态/上游响应元信息；`go test ./relay ./relay/channel/openai ./relay/channel/gemini -count=1` 通过。
+- [2026-05-03 21:03] 完成新 UI 页面配置页、API 地址自定义、令牌复制兼容 fallback、移动端模型名换行与 Vite `/api-urls` 代理冲突修复；`go test ./model ./controller ./router` 和 `uiweb npm run build` 通过。
+- [2026-05-03 21:10] 复核并纳入 relay/error 客户端断开归一化改动，修复 channel affinity 测试唯一键碰撞；排除 `.tmp_mysql_migration/` 临时目录；`git diff --check`、相关 Go 测试和 `uiweb npm run build` 通过。

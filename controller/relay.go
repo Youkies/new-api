@@ -87,6 +87,10 @@ func Relay(c *gin.Context, relayFormat types.RelayFormat) {
 
 	defer func() {
 		if newAPIError != nil {
+			if service.IsRequestContextCanceled(c.Request.Context()) {
+				logger.LogInfo(c, fmt.Sprintf("relay request canceled by client: %s", newAPIError.Error()))
+				return
+			}
 			logger.LogError(c, fmt.Sprintf("relay error: %s", newAPIError.Error()))
 			newAPIError.SetMessage(common.MessageWithRequestId(newAPIError.Error(), requestId))
 			switch relayFormat {
@@ -170,6 +174,7 @@ func Relay(c *gin.Context, relayFormat types.RelayFormat) {
 		// Only return quota if downstream failed and quota was actually pre-consumed
 		if newAPIError != nil {
 			newAPIError = service.NormalizeViolationFeeError(newAPIError)
+			newAPIError = service.NormalizeClientCanceledError(c.Request.Context(), newAPIError)
 			if relayInfo.Billing != nil {
 				relayInfo.Billing.Refund(c)
 			}
@@ -225,7 +230,12 @@ func Relay(c *gin.Context, relayFormat types.RelayFormat) {
 		}
 
 		newAPIError = service.NormalizeViolationFeeError(newAPIError)
+		newAPIError = service.NormalizeClientCanceledError(c.Request.Context(), newAPIError)
 		relayInfo.LastError = newAPIError
+
+		if service.IsClientCanceledError(c.Request.Context(), newAPIError) {
+			break
+		}
 
 		processChannelError(c, *types.NewChannelError(channel.Id, channel.Type, channel.Name, channel.ChannelInfo.IsMultiKey, common.GetContextKeyString(c, constant.ContextKeyChannelKey), channel.GetAutoBan()), newAPIError)
 

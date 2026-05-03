@@ -17,6 +17,8 @@ import (
 	"github.com/QuantumNous/new-api/types"
 )
 
+const StatusClientClosedRequest = 499
+
 func MidjourneyErrorWrapper(code int, desc string) *dto.MidjourneyResponse {
 	return &dto.MidjourneyResponse{
 		Code:        code,
@@ -126,6 +128,36 @@ func RelayErrorHandler(ctx context.Context, resp *http.Response, showBodyWhenFai
 		newApiErr.Err = buildErrWithBody(newApiErr.Error())
 	}
 	return
+}
+
+func IsRequestContextCanceled(ctx context.Context) bool {
+	if ctx == nil {
+		return false
+	}
+	err := ctx.Err()
+	return errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded)
+}
+
+func IsClientCanceledError(ctx context.Context, err error) bool {
+	// Only the downstream request context can prove this is a client-side cancel.
+	// Upstream transports can also surface context.Canceled for provider-side failures.
+	_ = err
+	if IsRequestContextCanceled(ctx) {
+		return true
+	}
+	return false
+}
+
+func NormalizeClientCanceledError(ctx context.Context, newApiErr *types.NewAPIError) *types.NewAPIError {
+	if newApiErr == nil || !IsClientCanceledError(ctx, newApiErr) {
+		return newApiErr
+	}
+	types.ErrOptionWithSkipRetry()(newApiErr)
+	types.ErrOptionWithNoRecordErrorLog()(newApiErr)
+	if newApiErr.StatusCode == http.StatusInternalServerError || newApiErr.StatusCode == 0 {
+		newApiErr.StatusCode = StatusClientClosedRequest
+	}
+	return newApiErr
 }
 
 func ResetStatusCode(newApiErr *types.NewAPIError, statusCodeMappingStr string) {

@@ -17,6 +17,7 @@ import {
   listTokens, addToken, updateToken, updateTokenStatus,
   deleteToken, getTokenKey, getUserGroups,
 } from '../services/tokens.js'
+import { copyTextToClipboard } from '../utils/clipboard.js'
 
 const mobileQuery = typeof window !== 'undefined' ? window.matchMedia('(max-width: 767px)') : null
 function useIsMobile() {
@@ -304,8 +305,12 @@ export default function TokenManage() {
       } catch (_) {}
     }
     if (key) {
-      await navigator.clipboard.writeText(key)
-      toast('已复制到剪贴板')
+      try {
+        await copyTextToClipboard(key)
+        toast('已复制到剪贴板')
+      } catch (e) {
+        toast('复制失败，请手动复制', 'error')
+      }
     } else {
       toast('获取密钥失败', 'error')
     }

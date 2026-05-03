@@ -36,11 +36,11 @@ export default defineConfig({
     // Proxy target is the local test instance (3001), not production (3000).
     // Keeps dev traffic isolated from any real running newapi on port 3000.
     proxy: {
-      '/api': {
+      '^/api(/|$)': {
         target: 'http://localhost:3001',
         changeOrigin: true,
       },
-      '/v1': {
+      '^/v1(/|$)': {
         target: 'http://localhost:3001',
         changeOrigin: true,
       },

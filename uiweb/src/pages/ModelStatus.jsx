@@ -460,9 +460,9 @@ function ModelCard({ model, window: win }) {
   return (
     <ClayCard className="!p-5 flex flex-col gap-3.5 hover:-translate-y-0.5 hover:shadow-clay-hover transition-all !overflow-visible">
       {/* Header: dot + name + badge */}
-      <div className="flex items-center gap-2.5 min-w-0">
-        <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${statusDotCls(status)}`} />
-        <span className="font-mono font-extrabold text-sm truncate flex-1 text-clay-ink" title={model_name}>
+      <div className="flex items-start gap-2.5 min-w-0">
+        <span className={`w-2.5 h-2.5 rounded-full shrink-0 mt-1 ${statusDotCls(status)}`} />
+        <span className="font-mono font-extrabold text-sm leading-snug min-w-0 flex-1 text-clay-ink break-all whitespace-normal md:truncate md:break-normal md:whitespace-nowrap" title={model_name}>
           {model_name}
         </span>
         <span

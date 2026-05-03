@@ -1,6 +1,9 @@
 package service
 
 import (
+	"context"
+	"errors"
+	"net/http"
 	"testing"
 
 	"github.com/QuantumNous/new-api/types"
@@ -54,4 +57,29 @@ func TestResetStatusCode(t *testing.T) {
 			require.Equal(t, tc.expectedCode, newAPIError.StatusCode)
 		})
 	}
+}
+
+func TestNormalizeClientCanceledErrorMarksAsClientClosed(t *testing.T) {
+	t.Parallel()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	newAPIError := types.NewOpenAIError(context.Canceled, types.ErrorCodeBadResponse, http.StatusInternalServerError)
+	normalized := NormalizeClientCanceledError(ctx, newAPIError)
+
+	require.Equal(t, StatusClientClosedRequest, normalized.StatusCode)
+	require.True(t, types.IsSkipRetryError(normalized))
+	require.False(t, types.IsRecordErrorLog(normalized))
+}
+
+func TestNormalizeClientCanceledErrorLeavesUpstreamErrorAlone(t *testing.T) {
+	t.Parallel()
+
+	newAPIError := types.NewOpenAIError(errors.New("upstream exploded"), types.ErrorCodeBadResponse, http.StatusInternalServerError)
+	normalized := NormalizeClientCanceledError(context.Background(), newAPIError)
+
+	require.Equal(t, http.StatusInternalServerError, normalized.StatusCode)
+	require.False(t, types.IsSkipRetryError(normalized))
+	require.True(t, types.IsRecordErrorLog(normalized))
 }

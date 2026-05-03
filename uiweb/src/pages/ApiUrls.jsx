@@ -1,72 +1,118 @@
-import { useState } from 'react'
-import { Link2, Copy, Check, Globe2, Zap, AlertTriangle } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { Link2, Copy, Check, Globe2, Zap, AlertTriangle, Loader2 } from 'lucide-react'
+import ClayAlert from '../components/clay/ClayAlert.jsx'
 import ClayCard from '../components/clay/ClayCard.jsx'
 import ClayButton from '../components/clay/ClayButton.jsx'
 import ClayModal from '../components/clay/ClayModal.jsx'
 import ClayCheckbox from '../components/clay/ClayCheckbox.jsx'
 import ClayConsoleShell from '../components/layout/ClayConsoleShell.jsx'
 import { useToast } from '../context/ToastContext.jsx'
+import { getPageConfig } from '../services/pageConfig.js'
+import { copyTextToClipboard } from '../utils/clipboard.js'
 
 const SUPPRESS_KEY = 'uiweb.apiUrls.suppressV1Notice'
 
-const URLS = [
+const DEFAULT_URLS = [
   {
     url: 'https://newapi.youkies.space',
     label: '通用地址',
     desc: '直连服务器，全球可访问',
-    icon: Globe2,
+    icon: 'globe',
     tone: 'pink',
+    enabled: true,
   },
   {
     url: 'https://newapi.youkies.cn',
     label: '国内优化',
     desc: '国内中转加速，已备案',
-    icon: Zap,
+    icon: 'zap',
     tone: 'blue',
+    enabled: true,
   },
 ]
+
+const ICON_MAP = {
+  globe: Globe2,
+  zap: Zap,
+  link: Link2,
+}
 
 const TONE_CARD = {
   pink: 'bg-gradient-to-br from-clay-pink-50 to-clay-pink-100',
   blue: 'bg-gradient-to-br from-clay-blue-50 to-clay-blue-100',
+  green: 'bg-gradient-to-br from-clay-green-50 to-clay-green-100',
+  yellow: 'bg-gradient-to-br from-clay-yellow-50 to-clay-yellow-100',
 }
 
 const TONE_ICON = {
   pink: 'bg-clay-pink-200 text-white',
   blue: 'bg-clay-blue-200 text-white',
+  green: 'bg-clay-green-200 text-[#3d6b4f]',
+  yellow: 'bg-clay-yellow-200 text-[#8a6a32]',
+}
+
+function normalizeUrls(items) {
+  const list = Array.isArray(items) && items.length > 0 ? items : DEFAULT_URLS
+  return list
+    .filter((item) => item?.url)
+    .map((item, index) => ({
+      url: String(item.url || '').trim(),
+      label: String(item.label || `地址 ${index + 1}`).trim(),
+      desc: String(item.desc || '').trim(),
+      icon: ICON_MAP[item.icon] ? item.icon : 'link',
+      tone: TONE_CARD[item.tone] ? item.tone : 'blue',
+    }))
 }
 
 export default function ApiUrls() {
   const toast = useToast()
+  const [urls, setUrls] = useState(DEFAULT_URLS)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
   const [copiedUrl, setCopiedUrl] = useState('')
   const [modalOpen, setModalOpen] = useState(false)
   const [pendingUrl, setPendingUrl] = useState('')
   const [dontShow, setDontShow] = useState(false)
 
+  useEffect(() => {
+    let alive = true
+    async function loadConfig() {
+      setLoading(true)
+      setError('')
+      try {
+        const res = await getPageConfig()
+        if (res?.success === false) throw new Error(res.message || '地址配置加载失败')
+        const nextUrls = normalizeUrls(res?.data?.api_urls)
+        if (alive) setUrls(nextUrls.length > 0 ? nextUrls : DEFAULT_URLS)
+      } catch (err) {
+        if (alive) {
+          setError(err?.response?.data?.message || err.message || '地址配置加载失败，已显示默认地址')
+          setUrls(DEFAULT_URLS)
+        }
+      } finally {
+        if (alive) setLoading(false)
+      }
+    }
+    loadConfig()
+    return () => { alive = false }
+  }, [])
+
   const writeClipboard = async (url) => {
     try {
-      if (navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(url)
-      } else {
-        const ta = document.createElement('textarea')
-        ta.value = url
-        ta.style.position = 'fixed'
-        ta.style.opacity = '0'
-        document.body.appendChild(ta)
-        ta.select()
-        document.execCommand('copy')
-        document.body.removeChild(ta)
-      }
+      await copyTextToClipboard(url)
       setCopiedUrl(url)
       setTimeout(() => setCopiedUrl((v) => (v === url ? '' : v)), 2000)
       toast('已复制到剪贴板', 'success')
+      return true
     } catch (e) {
       toast('复制失败，请手动复制', 'error')
+      return false
     }
   }
 
   const onCopy = async (url) => {
-    await writeClipboard(url)
+    const copied = await writeClipboard(url)
+    if (!copied) return
     const suppressed = localStorage.getItem(SUPPRESS_KEY) === '1'
     if (!suppressed) {
       setPendingUrl(url)
@@ -84,52 +130,69 @@ export default function ApiUrls() {
 
   return (
     <ClayConsoleShell title="API 地址" subtitle="选择一个地址作为请求 BaseURL，点击即可复制">
-      <div className="grid gap-5 md:grid-cols-2 max-w-4xl">
-        {URLS.map((item) => {
-          const Icon = item.icon
-          const copied = copiedUrl === item.url
-          return (
-            <ClayCard
-              key={item.url}
-              className={`!p-7 ${TONE_CARD[item.tone]}`}
-            >
-              <div className="flex items-start gap-4 mb-5">
-                <div
-                  className={`w-14 h-14 rounded-full flex items-center justify-center shadow-clay shrink-0 ${TONE_ICON[item.tone]}`}
-                >
-                  <Icon className="w-6 h-6" strokeWidth={2.5} />
-                </div>
-                <div className="min-w-0">
-                  <h3 className="text-xl font-black tracking-tight">{item.label}</h3>
-                  <p className="text-sm text-clay-faint font-semibold mt-0.5">{item.desc}</p>
-                </div>
-              </div>
+      {error && (
+        <ClayAlert tone="warning" className="max-w-4xl mb-5">
+          {error}
+        </ClayAlert>
+      )}
 
-              <div className="rounded-clay px-4 py-3.5 mb-4 bg-clay-bg shadow-clay-inset font-mono text-sm md:text-base font-bold text-clay-ink break-all select-all">
-                {item.url}
-              </div>
-
-              <ClayButton
-                variant="primary"
-                className="w-full"
-                onClick={() => onCopy(item.url)}
+      {loading ? (
+        <ClayCard className="max-w-4xl !py-14 text-center">
+          <div className="flex flex-col items-center gap-3 text-clay-faint">
+            <Loader2 className="w-8 h-8 animate-spin" />
+            <span className="font-bold">加载地址配置中…</span>
+          </div>
+        </ClayCard>
+      ) : (
+        <div className="grid gap-5 md:grid-cols-2 max-w-4xl">
+          {urls.map((item) => {
+            const Icon = ICON_MAP[item.icon] || Link2
+            const copied = copiedUrl === item.url
+            return (
+              <ClayCard
+                key={item.url}
+                className={`!p-7 ${TONE_CARD[item.tone] || TONE_CARD.blue}`}
               >
-                {copied ? (
-                  <span className="inline-flex items-center gap-2">
-                    <Check className="w-4 h-4" strokeWidth={3} />
-                    已复制
-                  </span>
-                ) : (
-                  <span className="inline-flex items-center gap-2">
-                    <Copy className="w-4 h-4" strokeWidth={2.5} />
-                    一键复制
-                  </span>
-                )}
-              </ClayButton>
-            </ClayCard>
-          )
-        })}
-      </div>
+                <div className="flex items-start gap-4 mb-5">
+                  <div
+                    className={`w-14 h-14 rounded-full flex items-center justify-center shadow-clay shrink-0 ${TONE_ICON[item.tone] || TONE_ICON.blue}`}
+                  >
+                    <Icon className="w-6 h-6" strokeWidth={2.5} />
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className="text-xl font-black tracking-tight break-words">{item.label}</h3>
+                    {item.desc && (
+                      <p className="text-sm text-clay-faint font-semibold mt-0.5 break-words">{item.desc}</p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="rounded-clay px-4 py-3.5 mb-4 bg-clay-bg shadow-clay-inset font-mono text-sm md:text-base font-bold text-clay-ink break-all select-all">
+                  {item.url}
+                </div>
+
+                <ClayButton
+                  variant="primary"
+                  className="w-full"
+                  onClick={() => onCopy(item.url)}
+                >
+                  {copied ? (
+                    <span className="inline-flex items-center gap-2">
+                      <Check className="w-4 h-4" strokeWidth={3} />
+                      已复制
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-2">
+                      <Copy className="w-4 h-4" strokeWidth={2.5} />
+                      一键复制
+                    </span>
+                  )}
+                </ClayButton>
+              </ClayCard>
+            )
+          })}
+        </div>
+      )}
 
       <ClayCard className="mt-8 max-w-4xl !p-6 bg-gradient-to-br from-clay-yellow-50 to-clay-yellow-100">
         <div className="flex items-start gap-3">
@@ -139,8 +202,7 @@ export default function ApiUrls() {
           <div className="text-sm leading-relaxed">
             <div className="font-extrabold text-base mb-1">使用提示</div>
             <p className="text-clay-ink/80">
-              复制的地址<strong className="font-black">不带 <code className="px-1.5 py-0.5 rounded bg-white/70 font-mono">/v1</code></strong>。
-              在某些客户端（如部分 OpenAI 兼容工具）中需要自行在末尾添加 <code className="px-1.5 py-0.5 rounded bg-white/70 font-mono">/v1</code> 后再使用。
+              上方地址会原样复制。部分 OpenAI 兼容客户端需要使用以 <code className="px-1.5 py-0.5 rounded bg-white/70 font-mono">/v1</code> 结尾的 BaseURL，请按客户端要求填写。
             </p>
           </div>
         </div>
@@ -165,8 +227,7 @@ export default function ApiUrls() {
             {pendingUrl}
           </div>
           <p className="text-clay-ink leading-relaxed">
-            该地址 <strong className="font-black">不带 <code className="px-1.5 py-0.5 rounded bg-white/70 font-mono">/v1</code></strong>。
-            在某些软件中需要在末尾自行添加 <code className="px-1.5 py-0.5 rounded bg-white/70 font-mono">/v1</code>。
+            部分软件需要在 BaseURL 末尾使用 <code className="px-1.5 py-0.5 rounded bg-white/70 font-mono">/v1</code>，请按客户端要求确认。
           </p>
           <div className="pt-1">
             <ClayCheckbox

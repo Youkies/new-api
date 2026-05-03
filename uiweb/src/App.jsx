@@ -29,6 +29,7 @@ import AdminHome from './pages/admin/AdminHome.jsx'
 import AdminAnnouncements from './pages/admin/AdminAnnouncements.jsx'
 import AdminRefundAppeals from './pages/admin/AdminRefundAppeals.jsx'
 import AdminAssistant from './pages/admin/AdminAssistant.jsx'
+import AdminPageConfig from './pages/admin/AdminPageConfig.jsx'
 
 export default function App() {
   return (
@@ -147,6 +148,16 @@ export default function App() {
           <ProtectedRoute>
             <AdminRoute>
               <AdminRefundAppeals />
+            </AdminRoute>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/page-config"
+        element={
+          <ProtectedRoute>
+            <AdminRoute>
+              <AdminPageConfig />
             </AdminRoute>
           </ProtectedRoute>
         }

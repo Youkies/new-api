@@ -290,6 +290,27 @@ function createInitialState() {
     logs,
     refundAppeals,
     announcements,
+    pageConfig: {
+      api_urls: [
+        {
+          url: 'https://newapi.youkies.space',
+          label: '通用地址',
+          desc: '直连服务器，全球可访问',
+          icon: 'globe',
+          tone: 'pink',
+          enabled: true,
+        },
+        {
+          url: 'https://newapi.youkies.cn',
+          label: '国内优化',
+          desc: '国内中转加速，已备案',
+          icon: 'zap',
+          tone: 'blue',
+          enabled: true,
+        },
+      ],
+      updated_at: nowSec(),
+    },
     assistantConfig: {
       id: 1,
       enabled: true,
@@ -721,6 +742,22 @@ export async function mockApiResponse(config) {
         { model_name: 'gemini-2.5-pro', status: 'green', success_rate: 0.97, total_requests: 411, slots: makeSlots(24, 'green') },
       ],
     })
+  }
+
+  if (path === '/api/ui/page-config' && method === 'GET') {
+    return ok({
+      api_urls: debugState.pageConfig.api_urls.filter((item) => item.enabled),
+      updated_at: debugState.pageConfig.updated_at,
+    })
+  }
+  if (path === '/api/ui/admin/page-config' && method === 'GET') return ok(debugState.pageConfig)
+  if (path === '/api/ui/admin/page-config' && method === 'PUT') {
+    debugState.pageConfig = {
+      ...debugState.pageConfig,
+      api_urls: Array.isArray(body.api_urls) ? body.api_urls : [],
+      updated_at: nowSec(),
+    }
+    return ok(debugState.pageConfig)
   }
 
   if (path === '/api/ui/announcements' && method === 'GET') return page(paginate(activeAnnouncements(), url), activeAnnouncements().length)

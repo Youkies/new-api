@@ -49,9 +49,16 @@ export default function AdminHome() {
             <Sparkles className="w-5 h-5" strokeWidth={2.5} />
           </div>
           <h2 className="text-xl font-black mb-2">页面配置</h2>
-          <p className="text-sm text-clay-faint font-semibold leading-relaxed">
-            预留给首页文案、提示语和运营位配置，避免频繁改动经典后台。
+          <p className="text-sm text-clay-faint font-semibold leading-relaxed mb-5">
+            管理 API 地址页等新 UI 高频运营配置，避免为小改动重新发版。
           </p>
+          <Link
+            to="/admin/page-config"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-clay-pill bg-clay-bg shadow-clay text-sm font-extrabold text-clay-ink"
+          >
+            配置页面
+            <ArrowRight className="w-4 h-4" />
+          </Link>
         </ClayCard>
       </div>
     </ClayAdminShell>

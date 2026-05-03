@@ -36,6 +36,7 @@ func SetApiRouter(router *gin.Engine) {
 		{
 			uiRoute.GET("/announcements", controller.GetPublicUIAnnouncements)
 			uiRoute.GET("/announcements/active", middleware.TryUserAuth(), controller.GetActiveUIAnnouncements)
+			uiRoute.GET("/page-config", controller.GetUIPageConfig)
 			uiRoute.POST("/announcement_acks/:id", middleware.UserAuth(), controller.AckUIAnnouncement)
 			uiRoute.GET("/refund-appeals/candidates", middleware.UserAuth(), controller.GetUIRefundCandidates)
 			uiRoute.GET("/refund-appeals/self", middleware.UserAuth(), controller.GetUserUIRefundAppeals)
@@ -58,6 +59,8 @@ func SetApiRouter(router *gin.Engine) {
 				uiAdminRoute.PUT("/announcements/:id", controller.AdminUpdateUIAnnouncement)
 				uiAdminRoute.PATCH("/announcements/:id", controller.AdminPatchUIAnnouncement)
 				uiAdminRoute.DELETE("/announcements/:id", controller.AdminDeleteUIAnnouncement)
+				uiAdminRoute.GET("/page-config", controller.AdminGetUIPageConfig)
+				uiAdminRoute.PUT("/page-config", controller.AdminSaveUIPageConfig)
 				uiAdminRoute.GET("/refund-appeals", controller.AdminListUIRefundAppeals)
 				uiAdminRoute.GET("/refund-appeals/:id", controller.AdminGetUIRefundAppeal)
 				uiAdminRoute.POST("/refund-appeals/:id/approve", controller.AdminApproveUIRefundAppeal)

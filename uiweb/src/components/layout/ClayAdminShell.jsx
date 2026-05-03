@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, NavLink, useNavigate } from 'react-router-dom'
-import { Bot, Home, LayoutDashboard, LogOut, Megaphone, Menu, Settings2, ShieldCheck } from 'lucide-react'
+import { Bell, Bot, Home, LayoutDashboard, LogOut, Megaphone, Menu, Settings2, ShieldCheck } from 'lucide-react'
 import ClayAvatar from '../clay/ClayAvatar.jsx'
 import ClayCard from '../clay/ClayCard.jsx'
 import ClayFooter from './ClayFooter.jsx'
 import ThemeToggle from './ThemeToggle.jsx'
+import { useNotifications } from '../../context/NotificationContext.jsx'
 import { useToast } from '../../context/ToastContext.jsx'
 import { useUser } from '../../context/UserContext.jsx'
 import { logout as apiLogout } from '../../services/auth.js'
@@ -13,6 +14,7 @@ import { getFaviconSrc } from '../../utils/favicon.js'
 const NAV = [
   { to: '/admin', label: '概览', icon: LayoutDashboard },
   { to: '/admin/announcements', label: '公告', icon: Megaphone },
+  { to: '/admin/notifications', label: '通知', icon: Bell },
   { to: '/admin/refund-appeals', label: '申诉', icon: ShieldCheck },
   { to: '/admin/page-config', label: '页面', icon: Settings2 },
   { to: '/admin/assistant', label: 'AI 助手', icon: Bot },
@@ -20,6 +22,7 @@ const NAV = [
 
 export default function ClayAdminShell({ title, subtitle, actions, children }) {
   const { user, logout } = useUser()
+  const { unreadCount, refreshUnread } = useNotifications()
   const navigate = useNavigate()
   const toast = useToast()
   const [menuOpen, setMenuOpen] = useState(false)
@@ -92,14 +95,22 @@ export default function ClayAdminShell({ title, subtitle, actions, children }) {
             <div className="relative" ref={userRef}>
               <button
                 type="button"
-                onClick={() => setUserOpen((v) => !v)}
+                onClick={() => {
+                  setUserOpen((v) => !v)
+                  refreshUnread()
+                }}
                 className="flex items-center gap-2 sm:pr-4 sm:pl-2 sm:py-1.5 rounded-full sm:rounded-clay-pill sm:bg-clay-bg sm:shadow-clay sm:hover:shadow-clay-hover transition-shadow"
               >
-                <ClayAvatar
-                  name={displayName}
-                  src={user?.has_avatar ? `/api/user/avatar/${user.id}?t=${user._avatar_t || ''}` : undefined}
-                  size={40}
-                />
+                <span className="relative inline-flex">
+                  <ClayAvatar
+                    name={displayName}
+                    src={user?.has_avatar ? `/api/user/avatar/${user.id}?t=${user._avatar_t || ''}` : undefined}
+                    size={40}
+                  />
+                  {unreadCount > 0 && (
+                    <span className="absolute -right-1 -top-1 w-3 h-3 rounded-full border-2 border-clay-bg bg-clay-pink-400 shadow-clay-sm" />
+                  )}
+                </span>
                 <span className="font-bold text-sm hidden sm:inline">{displayName}</span>
               </button>
 
@@ -111,6 +122,20 @@ export default function ClayAdminShell({ title, subtitle, actions, children }) {
                   >
                     <Home className="w-4 h-4" />
                     返回首页
+                  </Link>
+                  <Link
+                    to="/notifications"
+                    className="flex items-center justify-between gap-2 px-4 py-2.5 rounded-clay-sm text-sm font-bold hover:bg-white/40"
+                  >
+                    <span className="flex items-center gap-2">
+                      <Bell className="w-4 h-4" />
+                      通知中心
+                    </span>
+                    {unreadCount > 0 && (
+                      <span className="min-w-6 h-6 px-2 rounded-clay-pill bg-clay-pink-100 text-[#8a4860] text-xs font-black flex items-center justify-center">
+                        {unreadCount > 99 ? '99+' : unreadCount}
+                      </span>
+                    )}
                   </Link>
                   <button
                     type="button"

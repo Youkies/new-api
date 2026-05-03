@@ -24,6 +24,9 @@ type UIAnnouncement struct {
 	ContentFormat string `json:"content_format" gorm:"type:varchar(32);default:'markdown'"`
 	Type          string `json:"type" gorm:"type:varchar(32);default:'normal'"`
 	Scope         string `json:"scope" gorm:"type:varchar(32);default:'all'"`
+	NotifyEnabled bool   `json:"notify_enabled" gorm:"default:true;index"`
+	NotifyLevel   string `json:"notify_level" gorm:"type:varchar(32);default:'info'"`
+	RequireAck    bool   `json:"require_ack" gorm:"default:false;index"`
 	ForcePopup    bool   `json:"force_popup" gorm:"default:false;index:idx_ui_announcements_enabled_force_deleted,priority:2"`
 	Pinned        bool   `json:"pinned" gorm:"default:false;index:idx_ui_announcements_enabled_pinned_priority_created,priority:2"`
 	Enabled       bool   `json:"enabled" gorm:"default:true;index:idx_ui_announcements_enabled_force_deleted,priority:1;index:idx_ui_announcements_enabled_pinned_priority_created,priority:1"`
@@ -73,6 +76,10 @@ func NormalizeUIAnnouncement(a *UIAnnouncement) {
 	if a.Scope == "" {
 		a.Scope = UIAnnouncementScopeAll
 	}
+	a.NotifyLevel = strings.TrimSpace(a.NotifyLevel)
+	if a.NotifyLevel == "" {
+		a.NotifyLevel = UINotificationLevelInfo
+	}
 	if a.Version <= 0 {
 		a.Version = 1
 	}
@@ -97,6 +104,11 @@ func ValidateUIAnnouncement(a *UIAnnouncement) error {
 	}
 	if a.StartsAt != 0 && a.EndsAt != 0 && a.StartsAt > a.EndsAt {
 		return errors.New("公告开始时间不能晚于结束时间")
+	}
+	switch a.NotifyLevel {
+	case UINotificationLevelInfo, UINotificationLevelSuccess, UINotificationLevelWarning, UINotificationLevelError:
+	default:
+		return errors.New("公告通知级别无效")
 	}
 	return nil
 }
@@ -184,6 +196,9 @@ func UpdateUIAnnouncement(announcement *UIAnnouncement) error {
 			"content_format": announcement.ContentFormat,
 			"type":           announcement.Type,
 			"scope":          announcement.Scope,
+			"notify_enabled": announcement.NotifyEnabled,
+			"notify_level":   announcement.NotifyLevel,
+			"require_ack":    announcement.RequireAck,
 			"force_popup":    announcement.ForcePopup,
 			"pinned":         announcement.Pinned,
 			"enabled":        announcement.Enabled,

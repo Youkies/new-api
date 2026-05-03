@@ -125,6 +125,9 @@ function createInitialState() {
       content_format: 'markdown',
       type: 'normal',
       scope: 'all',
+      notify_enabled: true,
+      notify_level: 'warning',
+      require_ack: true,
       force_popup: true,
       pinned: true,
       enabled: true,
@@ -143,6 +146,9 @@ function createInitialState() {
       content_format: 'markdown',
       type: 'normal',
       scope: 'all',
+      notify_enabled: true,
+      notify_level: 'info',
+      require_ack: false,
       force_popup: false,
       pinned: false,
       enabled: true,
@@ -256,6 +262,99 @@ function createInitialState() {
     },
   ]
 
+  const notifications = [
+    {
+      id: 7001,
+      title: announcements[0].title,
+      summary: announcements[0].summary,
+      content: announcements[0].content,
+      content_format: 'markdown',
+      category: 'announcement',
+      level: 'warning',
+      source_type: 'announcement',
+      source_key: 'announcement:1:v1',
+      source_id: 1,
+      source_version: 1,
+      target_type: 'all',
+      target_user_id: 0,
+      target_group: '',
+      action_url: '/announcements',
+      popup: true,
+      require_ack: true,
+      pinned: true,
+      enabled: true,
+      priority: 10,
+      starts_at: 0,
+      ends_at: 0,
+      created_at: daysAgo(1),
+      updated_at: nowSec(),
+      read_at: 0,
+      acknowledged_at: 0,
+      unread: true,
+      acknowledged: false,
+    },
+    {
+      id: 7002,
+      title: '兑换码充值成功',
+      summary: '已为账户增加 ¥10.000000 额度。',
+      content: '这是一条调试充值通知，用于测试 billing 时间轴。',
+      content_format: 'plain',
+      category: 'billing',
+      level: 'success',
+      source_type: 'redemption',
+      source_key: 'redemption:debug',
+      source_id: 503,
+      source_version: 1,
+      target_type: 'user',
+      target_user_id: DEBUG_USER.id,
+      target_group: '',
+      action_url: '/topup',
+      popup: false,
+      require_ack: false,
+      pinned: false,
+      enabled: true,
+      priority: 0,
+      starts_at: 0,
+      ends_at: 0,
+      created_at: daysAgo(1, 12),
+      updated_at: daysAgo(1, 12),
+      read_at: daysAgo(1, 13),
+      acknowledged_at: 0,
+      unread: false,
+      acknowledged: false,
+    },
+    {
+      id: 7003,
+      title: '空回补偿申诉已提交',
+      summary: '申诉单 #3001 已进入人工审核，共 1 条记录。',
+      content: '申诉单 #3001 已进入人工审核，共 1 条记录。',
+      content_format: 'plain',
+      category: 'appeal',
+      level: 'info',
+      source_type: 'refund_appeal',
+      source_key: 'appeal:3001:pending',
+      source_id: 3001,
+      source_version: 1,
+      target_type: 'user',
+      target_user_id: DEBUG_USER.id,
+      target_group: '',
+      action_url: '/logs',
+      popup: false,
+      require_ack: false,
+      pinned: false,
+      enabled: true,
+      priority: 0,
+      starts_at: 0,
+      ends_at: 0,
+      created_at: daysAgo(0, 18, 30),
+      updated_at: daysAgo(0, 18, 30),
+      read_at: 0,
+      acknowledged_at: 0,
+      unread: true,
+      acknowledged: false,
+    },
+  ]
+
   return {
     tokens: [
       {
@@ -290,6 +389,7 @@ function createInitialState() {
     logs,
     refundAppeals,
     announcements,
+    notifications,
     pageConfig: {
       api_urls: [
         {
@@ -489,9 +589,78 @@ function activeAnnouncements() {
     .sort((a, b) => Number(b.pinned) - Number(a.pinned) || b.priority - a.priority || b.created_at - a.created_at)
 }
 
+function syncAnnouncementNotification(announcement) {
+  if (!announcement?.id) return
+  debugState.notifications = debugState.notifications.filter(
+    (item) => !(item.source_type === 'announcement' && Number(item.source_id) === Number(announcement.id)),
+  )
+  if (!announcement.enabled || announcement.notify_enabled === false) return
+  debugState.notifications.unshift({
+    id: nextId(debugState.notifications, 7000),
+    title: announcement.title,
+    summary: announcement.summary,
+    content: announcement.content,
+    content_format: 'markdown',
+    category: 'announcement',
+    level: announcement.notify_level || 'info',
+    source_type: 'announcement',
+    source_key: `announcement:${announcement.id}:v${announcement.version || 1}`,
+    source_id: announcement.id,
+    source_version: announcement.version || 1,
+    target_type: 'all',
+    target_user_id: 0,
+    target_group: '',
+    action_url: '/announcements',
+    popup: Boolean(announcement.force_popup),
+    require_ack: Boolean(announcement.require_ack || announcement.force_popup),
+    pinned: Boolean(announcement.pinned),
+    enabled: true,
+    priority: announcement.priority || 0,
+    starts_at: announcement.starts_at || 0,
+    ends_at: announcement.ends_at || 0,
+    created_at: nowSec(),
+    updated_at: nowSec(),
+    read_at: 0,
+    acknowledged_at: 0,
+    unread: true,
+    acknowledged: false,
+  })
+}
+
 function adminAnnouncementResponse(url) {
   let items = filterKeyword(debugState.announcements, url, ['title', 'summary', 'content'])
   const enabled = url.searchParams.get('enabled')
+  if (enabled === 'true') items = items.filter((item) => item.enabled)
+  if (enabled === 'false') items = items.filter((item) => !item.enabled)
+  items = [...items].sort((a, b) => Number(b.pinned) - Number(a.pinned) || b.priority - a.priority || b.created_at - a.created_at)
+  return page(paginate(items, url), items.length)
+}
+
+function activeNotifications() {
+  const now = nowSec()
+  return debugState.notifications
+    .filter((item) => item.enabled)
+    .filter((item) => !item.starts_at || item.starts_at <= now)
+    .filter((item) => !item.ends_at || item.ends_at >= now)
+    .filter((item) => item.target_type === 'all' || item.target_user_id === DEBUG_USER.id || item.target_type === 'admin')
+    .sort((a, b) => Number(b.pinned) - Number(a.pinned) || b.priority - a.priority || b.created_at - a.created_at)
+}
+
+function notificationResponse(url) {
+  let items = activeNotifications()
+  const category = url.searchParams.get('category')
+  if (category) items = items.filter((item) => item.category === category)
+  if (url.searchParams.get('unread') === 'true') items = items.filter((item) => item.unread)
+  return page(paginate(items, url), items.length)
+}
+
+function adminNotificationResponse(url) {
+  let items = filterKeyword(debugState.notifications, url, ['title', 'summary', 'source_key'])
+  const category = url.searchParams.get('category')
+  const targetType = url.searchParams.get('target_type')
+  const enabled = url.searchParams.get('enabled')
+  if (category) items = items.filter((item) => item.category === category)
+  if (targetType) items = items.filter((item) => item.target_type === targetType)
   if (enabled === 'true') items = items.filter((item) => item.enabled)
   if (enabled === 'false') items = items.filter((item) => !item.enabled)
   items = [...items].sort((a, b) => Number(b.pinned) - Number(a.pinned) || b.priority - a.priority || b.created_at - a.created_at)
@@ -691,7 +860,28 @@ export async function mockApiResponse(config) {
   }
   if (path === '/api/user/amount' && method === 'POST') return plain({ message: 'success', data: String((Number(body.amount) || 0).toFixed(2)) })
   if (path === '/api/user/pay' && method === 'POST') return plain({ message: 'success', url: '#debug-pay', data: { amount: body.amount || 0, payment_method: body.payment_method || 'alipay' } })
-  if (path === '/api/user/topup' && method === 'POST') return plain({ success: true, message: '¥10.00', data: { ...DEBUG_USER, quota: DEBUG_USER.quota + 50000 } })
+  if (path === '/api/user/topup' && method === 'POST') {
+    debugState.notifications.unshift({
+      id: nextId(debugState.notifications, 7000),
+      title: '兑换码充值成功',
+      summary: '已为账户增加调试额度。',
+      content: '调试模式兑换码充值成功，通知红点会同步出现。',
+      category: 'billing',
+      level: 'success',
+      source_type: 'redemption',
+      source_key: `redemption:debug:${Date.now()}`,
+      source_id: 0,
+      source_version: 1,
+      target_type: 'user',
+      target_user_id: DEBUG_USER.id,
+      action_url: '/topup',
+      enabled: true,
+      created_at: nowSec(),
+      updated_at: nowSec(),
+      unread: true,
+    })
+    return plain({ success: true, message: '¥10.00', data: { ...DEBUG_USER, quota: DEBUG_USER.quota + 50000 } })
+  }
   if (path === '/api/user/aff' && method === 'GET') return ok({ enabled: false })
   if (path === '/api/user/aff_transfer' && method === 'POST') return ok(null)
   if (path === '/api/subscription/plans' && method === 'GET') return ok([])
@@ -762,11 +952,24 @@ export async function mockApiResponse(config) {
 
   if (path === '/api/ui/announcements' && method === 'GET') return page(paginate(activeAnnouncements(), url), activeAnnouncements().length)
   if (path === '/api/ui/announcements/active' && method === 'GET') return page(activeAnnouncements().filter((item) => item.force_popup))
-  if (path.match(/^\/api\/ui\/announcement_acks\/\d+$/) && method === 'POST') return ok(null)
+  if (path.match(/^\/api\/ui\/announcement_acks\/\d+$/) && method === 'POST') {
+    const id = Number(path.match(/^\/api\/ui\/announcement_acks\/(\d+)$/)?.[1])
+    const announcement = debugState.announcements.find((item) => Number(item.id) === id)
+    if (announcement) {
+      const sourceKey = `announcement:${announcement.id}:v${announcement.version || 1}`
+      debugState.notifications = debugState.notifications.map((item) => (
+        item.source_key === sourceKey
+          ? { ...item, unread: false, acknowledged: true, read_at: nowSec(), acknowledged_at: nowSec() }
+          : item
+      ))
+    }
+    return ok(null)
+  }
   if (path === '/api/ui/admin/announcements' && method === 'GET') return adminAnnouncementResponse(url)
   if (path === '/api/ui/admin/announcements' && method === 'POST') {
     const item = { id: nextId(debugState.announcements), version: 1, created_at: nowSec(), updated_at: nowSec(), ...body }
     debugState.announcements.unshift(item)
+    syncAnnouncementNotification(item)
     return ok(item)
   }
   const announcementMatch = path.match(/^\/api\/ui\/admin\/announcements\/(\d+)$/)
@@ -780,12 +983,70 @@ export async function mockApiResponse(config) {
         version: method === 'PUT' ? (debugState.announcements[index].version || 1) + 1 : debugState.announcements[index].version,
         updated_at: nowSec(),
       }
+      syncAnnouncementNotification(debugState.announcements[index])
       return ok(debugState.announcements[index])
     }
     return ok(null)
   }
   if (announcementMatch && method === 'DELETE') {
     debugState.announcements = debugState.announcements.filter((item) => Number(item.id) !== Number(announcementMatch[1]))
+    debugState.notifications = debugState.notifications.filter(
+      (item) => !(item.source_type === 'announcement' && Number(item.source_id) === Number(announcementMatch[1])),
+    )
+    return ok(null)
+  }
+
+  if (path === '/api/ui/notifications' && method === 'GET') return notificationResponse(url)
+  if (path === '/api/ui/notifications/unread-count' && method === 'GET') {
+    return ok({ unread: activeNotifications().filter((item) => item.unread).length })
+  }
+  if (path === '/api/ui/notifications/read-all' && method === 'POST') {
+    let count = 0
+    debugState.notifications = debugState.notifications.map((item) => {
+      if (!item.unread || item.require_ack) return item
+      count += 1
+      return { ...item, unread: false, read_at: nowSec() }
+    })
+    return ok({ read: count })
+  }
+  const notificationMatch = path.match(/^\/api\/ui\/notifications\/(\d+)\/(read|ack)$/)
+  if (notificationMatch && method === 'POST') {
+    const id = Number(notificationMatch[1])
+    const ack = notificationMatch[2] === 'ack'
+    debugState.notifications = debugState.notifications.map((item) => (
+      Number(item.id) === id
+        ? { ...item, unread: false, acknowledged: ack || item.acknowledged, read_at: nowSec(), acknowledged_at: ack ? nowSec() : item.acknowledged_at }
+        : item
+    ))
+    return ok(debugState.notifications.find((item) => Number(item.id) === id) || null)
+  }
+  if (path === '/api/ui/admin/notifications' && method === 'GET') return adminNotificationResponse(url)
+  if (path === '/api/ui/admin/notifications' && method === 'POST') {
+    const item = {
+      id: nextId(debugState.notifications, 7000),
+      created_at: nowSec(),
+      updated_at: nowSec(),
+      read_at: 0,
+      acknowledged_at: 0,
+      unread: true,
+      acknowledged: false,
+      ...body,
+    }
+    debugState.notifications.unshift(item)
+    return ok(item)
+  }
+  const adminNotificationMatch = path.match(/^\/api\/ui\/admin\/notifications\/(\d+)$/)
+  if (adminNotificationMatch && (method === 'PUT' || method === 'PATCH')) {
+    const id = Number(adminNotificationMatch[1])
+    const index = debugState.notifications.findIndex((item) => Number(item.id) === id)
+    if (index >= 0) {
+      debugState.notifications[index] = { ...debugState.notifications[index], ...body, updated_at: nowSec() }
+      return ok(debugState.notifications[index])
+    }
+    return ok(null)
+  }
+  if (adminNotificationMatch && method === 'DELETE') {
+    debugState.notifications = debugState.notifications.filter((item) => Number(item.id) !== Number(adminNotificationMatch[1]))
     return ok(null)
   }
 
@@ -804,6 +1065,35 @@ export async function mockApiResponse(config) {
   if (path === '/api/ui/refund-appeals' && method === 'POST') return ok({ appeal: debugState.refundAppeals[0] })
   if (path === '/api/ui/refund-appeals/self' && method === 'GET') return page(paginate(debugState.refundAppeals, url), debugState.refundAppeals.length)
   if (path === '/api/ui/admin/refund-appeals' && method === 'GET') return refundAppealResponse(url)
+  if (path === '/api/ui/admin/refund-appeals/approve-all' && method === 'POST') {
+    const pending = debugState.refundAppeals.filter((appeal) => appeal.status === 'pending')
+    for (const item of pending) {
+      item.status = 'approved'
+      item.review_note = body.review_note || '批量审核通过'
+      item.reviewed_at = nowSec()
+      item.updated_at = nowSec()
+      debugState.notifications.unshift({
+        id: nextId(debugState.notifications, 7000),
+        title: '空回补偿申诉已通过',
+        summary: `申诉单 #${item.id} 已通过。`,
+        content: `申诉单 #${item.id} 已通过，补偿额度已到账。`,
+        category: 'appeal',
+        level: 'success',
+        source_type: 'refund_appeal',
+        source_key: `appeal:${item.id}:approved`,
+        source_id: item.id,
+        source_version: 1,
+        target_type: 'user',
+        target_user_id: item.user_id,
+        action_url: '/logs',
+        enabled: true,
+        created_at: nowSec(),
+        updated_at: nowSec(),
+        unread: true,
+      })
+    }
+    return ok({ total: pending.length, approved: pending.length, failed: 0, refund_quota: pending.reduce((sum, item) => sum + (item.refund_quota || 0), 0), appeals: pending, errors: [] })
+  }
   const refundMatch = path.match(/^\/api\/ui\/admin\/refund-appeals\/(\d+)(?:\/(approve|reject))?$/)
   if (refundMatch && method === 'GET') {
     const item = debugState.refundAppeals.find((appeal) => Number(appeal.id) === Number(refundMatch[1]))
@@ -816,6 +1106,25 @@ export async function mockApiResponse(config) {
       item.review_note = body.review_note || body.note || '调试审核说明'
       item.reviewed_at = nowSec()
       item.updated_at = nowSec()
+      debugState.notifications.unshift({
+        id: nextId(debugState.notifications, 7000),
+        title: item.status === 'approved' ? '空回补偿申诉已通过' : '空回补偿申诉已驳回',
+        summary: `申诉单 #${item.id} 已${item.status === 'approved' ? '通过' : '驳回'}。`,
+        content: item.review_note,
+        category: 'appeal',
+        level: item.status === 'approved' ? 'success' : 'warning',
+        source_type: 'refund_appeal',
+        source_key: `appeal:${item.id}:${item.status}`,
+        source_id: item.id,
+        source_version: 1,
+        target_type: 'user',
+        target_user_id: item.user_id,
+        action_url: '/logs',
+        enabled: true,
+        created_at: nowSec(),
+        updated_at: nowSec(),
+        unread: true,
+      })
     }
     return ok(item || null)
   }

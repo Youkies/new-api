@@ -47,6 +47,9 @@ func CreateUIRefundAppeal(c *gin.Context) {
 		"appeal": appeal,
 		"items":  items,
 	})
+	if err := model.NotifyUIRefundAppealStatus(appeal); err != nil {
+		common.SysLog("failed to create refund appeal notification: " + err.Error())
+	}
 }
 
 func GetUserUIRefundAppeals(c *gin.Context) {
@@ -108,7 +111,29 @@ func AdminApproveUIRefundAppeal(c *gin.Context) {
 		common.ApiError(c, err)
 		return
 	}
+	if err := model.NotifyUIRefundAppealStatus(appeal); err != nil {
+		common.SysLog("failed to create refund appeal notification: " + err.Error())
+	}
 	common.ApiSuccess(c, appeal)
+}
+
+func AdminApproveAllUIRefundAppeals(c *gin.Context) {
+	var payload uiRefundReviewPayload
+	if err := c.ShouldBindJSON(&payload); err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	result, err := model.ApproveAllPendingUIRefundAppeals(c.GetInt("id"), payload.ReviewNote)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	for _, appeal := range result.Appeals {
+		if err := model.NotifyUIRefundAppealStatus(appeal); err != nil {
+			common.SysLog("failed to create refund appeal notification: " + err.Error())
+		}
+	}
+	common.ApiSuccess(c, result)
 }
 
 func AdminRejectUIRefundAppeal(c *gin.Context) {
@@ -126,6 +151,9 @@ func AdminRejectUIRefundAppeal(c *gin.Context) {
 	if err != nil {
 		common.ApiError(c, err)
 		return
+	}
+	if err := model.NotifyUIRefundAppealStatus(appeal); err != nil {
+		common.SysLog("failed to create refund appeal notification: " + err.Error())
 	}
 	common.ApiSuccess(c, appeal)
 }

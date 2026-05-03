@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { ArrowRight, Megaphone, ShieldCheck, Sparkles } from 'lucide-react'
+import { ArrowRight, Bell, Megaphone, ShieldCheck, Sparkles } from 'lucide-react'
 import ClayCard from '../../components/clay/ClayCard.jsx'
 import ClayAdminShell from '../../components/layout/ClayAdminShell.jsx'
 
@@ -9,7 +9,7 @@ export default function AdminHome() {
       title="运营后台"
       subtitle="用于新 UI 页面运营、公告和后续申诉处理，不影响经典管理端设置。"
     >
-      <div className="grid md:grid-cols-3 gap-5">
+      <div className="grid md:grid-cols-2 xl:grid-cols-4 gap-5">
         <ClayCard className="!p-6 bg-gradient-to-br from-clay-blue-50 to-clay-bg">
           <div className="clay-icon-box !w-12 !h-12 text-clay-blue-300 mb-5">
             <Megaphone className="w-5 h-5" strokeWidth={2.5} />
@@ -23,6 +23,23 @@ export default function AdminHome() {
             className="inline-flex items-center gap-2 px-4 py-2 rounded-clay-pill bg-clay-bg shadow-clay text-sm font-extrabold text-clay-ink"
           >
             管理公告
+            <ArrowRight className="w-4 h-4" />
+          </Link>
+        </ClayCard>
+
+        <ClayCard className="!p-6">
+          <div className="clay-icon-box !w-12 !h-12 text-clay-blue-300 mb-5">
+            <Bell className="w-5 h-5" strokeWidth={2.5} />
+          </div>
+          <h2 className="text-xl font-black mb-2">通知管理</h2>
+          <p className="text-sm text-clay-faint font-semibold leading-relaxed mb-5">
+            管理头像红点、通知时间轴和手动运营通知，自动接入公告、充值与申诉状态。
+          </p>
+          <Link
+            to="/admin/notifications"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-clay-pill bg-clay-bg shadow-clay text-sm font-extrabold text-clay-ink"
+          >
+            管理通知
             <ArrowRight className="w-4 h-4" />
           </Link>
         </ClayCard>

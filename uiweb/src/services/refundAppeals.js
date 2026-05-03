@@ -39,6 +39,11 @@ export async function adminApproveRefundAppeal(id, payload = {}) {
   return res.data
 }
 
+export async function adminApproveAllRefundAppeals(payload = {}) {
+  const res = await api.post('/api/ui/admin/refund-appeals/approve-all', payload)
+  return res.data
+}
+
 export async function adminRejectRefundAppeal(id, payload = {}) {
   const res = await api.post(`/api/ui/admin/refund-appeals/${id}/reject`, payload)
   return res.data

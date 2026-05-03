@@ -19,6 +19,7 @@ import ClayAdminShell from '../../components/layout/ClayAdminShell.jsx'
 import { useToast } from '../../context/ToastContext.jsx'
 import { quotaToDisplay } from '../../utils/quota.js'
 import {
+  adminApproveAllRefundAppeals,
   adminApproveRefundAppeal,
   adminGetRefundAppeal,
   adminListRefundAppeals,
@@ -69,6 +70,7 @@ export default function AdminRefundAppeals() {
   const [detail, setDetail] = useState(null)
   const [reviewNote, setReviewNote] = useState('')
   const [reviewing, setReviewing] = useState(false)
+  const [approvingAll, setApprovingAll] = useState(false)
 
   const fetchData = async () => {
     setLoading(true)
@@ -143,11 +145,35 @@ export default function AdminRefundAppeals() {
     }
   }
 
+  const handleApproveAll = async () => {
+    const note = window.prompt('将通过所有待审核空回申诉，并立即补偿余额。可填写统一审核备注：', '批量审核通过')
+    if (note === null) return
+    if (!window.confirm('确认一键通过所有待审核申诉吗？该操作会逐单补偿余额。')) return
+    setApprovingAll(true)
+    try {
+      const res = await adminApproveAllRefundAppeals({ review_note: note.trim() })
+      if (res?.success === false) throw new Error(res.message || '批量通过失败')
+      const data = res?.data || {}
+      toast(`已通过 ${data.approved || 0} 个申诉${data.failed ? `，失败 ${data.failed} 个` : ''}`, data.failed ? 'warning' : 'success')
+      await fetchData()
+    } catch (err) {
+      toast(err?.response?.data?.message || err.message || '批量通过失败', 'error')
+    } finally {
+      setApprovingAll(false)
+    }
+  }
+
   const actions = (
-    <ClayButton variant="ghost" onClick={fetchData} disabled={loading} className="!px-5">
-      <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-      刷新
-    </ClayButton>
+    <>
+      <ClayButton variant="ghost" onClick={fetchData} disabled={loading} className="!px-5">
+        <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+        刷新
+      </ClayButton>
+      <ClayButton variant="secondary" onClick={handleApproveAll} disabled={approvingAll} className="!px-5">
+        <CheckCircle2 className="w-4 h-4" />
+        一键通过所有
+      </ClayButton>
+    </>
   )
 
   return (

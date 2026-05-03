@@ -17,6 +17,9 @@ type uiAnnouncementPayload struct {
 	ContentFormat string `json:"content_format"`
 	Type          string `json:"type"`
 	Scope         string `json:"scope"`
+	NotifyEnabled *bool  `json:"notify_enabled"`
+	NotifyLevel   string `json:"notify_level"`
+	RequireAck    *bool  `json:"require_ack"`
 	ForcePopup    *bool  `json:"force_popup"`
 	Pinned        *bool  `json:"pinned"`
 	Enabled       *bool  `json:"enabled"`
@@ -30,10 +33,12 @@ type uiAnnouncementAckPayload struct {
 }
 
 type uiAnnouncementPatchPayload struct {
-	ForcePopup *bool `json:"force_popup"`
-	Pinned     *bool `json:"pinned"`
-	Enabled    *bool `json:"enabled"`
-	Priority   *int  `json:"priority"`
+	NotifyEnabled *bool `json:"notify_enabled"`
+	RequireAck    *bool `json:"require_ack"`
+	ForcePopup    *bool `json:"force_popup"`
+	Pinned        *bool `json:"pinned"`
+	Enabled       *bool `json:"enabled"`
+	Priority      *int  `json:"priority"`
 }
 
 func boolPayloadValue(value *bool, fallback bool) bool {
@@ -50,6 +55,9 @@ func applyUIAnnouncementPayload(target *model.UIAnnouncement, payload uiAnnounce
 	target.ContentFormat = payload.ContentFormat
 	target.Type = payload.Type
 	target.Scope = payload.Scope
+	target.NotifyEnabled = boolPayloadValue(payload.NotifyEnabled, target.NotifyEnabled)
+	target.NotifyLevel = payload.NotifyLevel
+	target.RequireAck = boolPayloadValue(payload.RequireAck, target.RequireAck)
 	target.ForcePopup = boolPayloadValue(payload.ForcePopup, target.ForcePopup)
 	target.Pinned = boolPayloadValue(payload.Pinned, target.Pinned)
 	target.Enabled = boolPayloadValue(payload.Enabled, target.Enabled)
@@ -116,6 +124,11 @@ func AckUIAnnouncement(c *gin.Context) {
 		common.ApiError(c, err)
 		return
 	}
+	sourceKey := model.UIAnnouncementNotificationSourceKey(announcement.Id, announcement.Version)
+	if err = model.MarkUINotificationReadBySource(c.GetInt("id"), model.UINotificationSourceAnnouncement, sourceKey, true); err != nil {
+		common.ApiError(c, err)
+		return
+	}
 	common.ApiSuccess(c, nil)
 }
 
@@ -161,11 +174,15 @@ func AdminCreateUIAnnouncement(c *gin.Context) {
 		common.ApiError(c, err)
 		return
 	}
-	announcement := &model.UIAnnouncement{Enabled: true}
+	announcement := &model.UIAnnouncement{Enabled: true, NotifyEnabled: true}
 	applyUIAnnouncementPayload(announcement, payload)
 	announcement.CreatedBy = c.GetInt("id")
 	announcement.UpdatedBy = c.GetInt("id")
 	if err := model.CreateUIAnnouncement(announcement); err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	if err := model.SyncUIAnnouncementNotification(announcement); err != nil {
 		common.ApiError(c, err)
 		return
 	}
@@ -195,6 +212,10 @@ func AdminUpdateUIAnnouncement(c *gin.Context) {
 		common.ApiError(c, err)
 		return
 	}
+	if err = model.SyncUIAnnouncementNotification(announcement); err != nil {
+		common.ApiError(c, err)
+		return
+	}
 	common.ApiSuccess(c, announcement)
 }
 
@@ -215,8 +236,15 @@ func AdminPatchUIAnnouncement(c *gin.Context) {
 		return
 	}
 	previousForcePopup := announcement.ForcePopup
+	previousRequireAck := announcement.RequireAck
 	if payload.Enabled != nil {
 		announcement.Enabled = *payload.Enabled
+	}
+	if payload.NotifyEnabled != nil {
+		announcement.NotifyEnabled = *payload.NotifyEnabled
+	}
+	if payload.RequireAck != nil {
+		announcement.RequireAck = *payload.RequireAck
 	}
 	if payload.Pinned != nil {
 		announcement.Pinned = *payload.Pinned
@@ -227,11 +255,16 @@ func AdminPatchUIAnnouncement(c *gin.Context) {
 	if payload.Priority != nil {
 		announcement.Priority = *payload.Priority
 	}
-	if payload.ForcePopup != nil && previousForcePopup != announcement.ForcePopup {
+	if (payload.ForcePopup != nil && previousForcePopup != announcement.ForcePopup) ||
+		(payload.RequireAck != nil && previousRequireAck != announcement.RequireAck) {
 		announcement.Version++
 	}
 	announcement.UpdatedBy = c.GetInt("id")
 	if err = model.UpdateUIAnnouncement(announcement); err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	if err = model.SyncUIAnnouncementNotification(announcement); err != nil {
 		common.ApiError(c, err)
 		return
 	}
@@ -248,5 +281,6 @@ func AdminDeleteUIAnnouncement(c *gin.Context) {
 		common.ApiError(c, err)
 		return
 	}
+	_ = model.DisableUINotificationsBySource(model.UINotificationSourceAnnouncement, id)
 	common.ApiSuccess(c, nil)
 }

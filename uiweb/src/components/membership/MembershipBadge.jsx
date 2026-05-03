@@ -31,7 +31,7 @@ export function MembershipBadge({ user, compact = false, className = '' }) {
   )
 }
 
-export function MembershipAvatar({ user, name, src, size = 40, className = '' }) {
+export function MembershipAvatar({ user, name, src, size = 40, className = '', unread = false }) {
   const tier = getMembershipTier(user?.group)
   const dotSize = Math.max(10, Math.round(size * 0.28))
 
@@ -47,6 +47,12 @@ export function MembershipAvatar({ user, name, src, size = 40, className = '' })
       >
         <TierIcon tier={tier} className="w-2.5 h-2.5" />
       </span>
+      {unread && (
+        <span
+          className="absolute -right-1 -top-1 rounded-full border-2 border-clay-bg bg-clay-pink-400 shadow-clay-sm"
+          style={{ width: Math.max(11, Math.round(size * 0.26)), height: Math.max(11, Math.round(size * 0.26)) }}
+        />
+      )}
     </div>
   )
 }

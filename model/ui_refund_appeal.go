@@ -102,6 +102,15 @@ type UIRefundCandidateSummary struct {
 	Items           []*UIRefundCandidate `json:"items,omitempty"`
 }
 
+type UIRefundAppealBatchApproveResult struct {
+	Total       int64             `json:"total"`
+	Approved    int               `json:"approved"`
+	Failed      int               `json:"failed"`
+	RefundQuota int               `json:"refund_quota"`
+	Appeals     []*UIRefundAppeal `json:"appeals"`
+	Errors      []string          `json:"errors"`
+}
+
 func uiRefundAppealConfiguredCutoff() int64 {
 	raw := strings.TrimSpace(os.Getenv("UI_REFUND_APPEAL_START_AT"))
 	if raw == "" {
@@ -419,6 +428,37 @@ func ApproveUIRefundAppeal(id int64, adminId int, reviewNote string) (*UIRefundA
 		"total_items":  appeal.TotalItems,
 	})
 	return &appeal, nil
+}
+
+func ApproveAllPendingUIRefundAppeals(adminId int, reviewNote string) (*UIRefundAppealBatchApproveResult, error) {
+	reviewNote = strings.TrimSpace(reviewNote)
+	if len([]rune(reviewNote)) > 500 {
+		return nil, errors.New("审核备注不能超过 500 个字符")
+	}
+	var ids []int64
+	if err := DB.Model(&UIRefundAppeal{}).
+		Where("status = ?", UIRefundAppealStatusPending).
+		Order("id asc").
+		Pluck("id", &ids).Error; err != nil {
+		return nil, err
+	}
+	result := &UIRefundAppealBatchApproveResult{
+		Total:   int64(len(ids)),
+		Appeals: make([]*UIRefundAppeal, 0, len(ids)),
+		Errors:  make([]string, 0),
+	}
+	for _, id := range ids {
+		appeal, err := ApproveUIRefundAppeal(id, adminId, reviewNote)
+		if err != nil {
+			result.Failed++
+			result.Errors = append(result.Errors, fmt.Sprintf("申诉单 #%d：%s", id, err.Error()))
+			continue
+		}
+		result.Approved++
+		result.RefundQuota += appeal.RefundQuota
+		result.Appeals = append(result.Appeals, appeal)
+	}
+	return result, nil
 }
 
 func RejectUIRefundAppeal(id int64, adminId int, reviewNote string) (*UIRefundAppeal, error) {

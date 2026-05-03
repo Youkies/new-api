@@ -6,6 +6,7 @@ import { StatusProvider } from './context/StatusContext.jsx'
 import { UserProvider } from './context/UserContext.jsx'
 import { ToastProvider } from './context/ToastContext.jsx'
 import { ThemeProvider } from './context/ThemeContext.jsx'
+import { NotificationProvider } from './context/NotificationContext.jsx'
 import AnnouncementProvider from './components/announcement/AnnouncementProvider.jsx'
 import DebugModePanel from './components/debug/DebugModePanel.jsx'
 import './index.css'
@@ -17,10 +18,12 @@ ReactDOM.createRoot(document.getElementById('root')).render(
         <StatusProvider>
           <UserProvider>
             <ToastProvider>
-              <AnnouncementProvider>
-                <App />
-                <DebugModePanel />
-              </AnnouncementProvider>
+              <NotificationProvider>
+                <AnnouncementProvider>
+                  <App />
+                  <DebugModePanel />
+                </AnnouncementProvider>
+              </NotificationProvider>
             </ToastProvider>
           </UserProvider>
         </StatusProvider>

@@ -16,3 +16,5 @@
 - [2026-05-01 22:25] 新增 `empty_stream_diagnostic` 空流诊断日志，用户正常访问即可抓取首包前空关闭的渠道/模型/流状态/上游响应元信息；`go test ./relay ./relay/channel/openai ./relay/channel/gemini -count=1` 通过。
 - [2026-05-03 21:03] 完成新 UI 页面配置页、API 地址自定义、令牌复制兼容 fallback、移动端模型名换行与 Vite `/api-urls` 代理冲突修复；`go test ./model ./controller ./router` 和 `uiweb npm run build` 通过。
 - [2026-05-03 21:10] 复核并纳入 relay/error 客户端断开归一化改动，修复 channel affinity 测试唯一键碰撞；排除 `.tmp_mysql_migration/` 临时目录；`git diff --check`、相关 Go 测试和 `uiweb npm run build` 通过。
+- [2026-05-04 00:45] 修复 `ui_page_configs` 生产缺表读取回退，提交并推送 `dc5a8db6`；构建并推送 GHCR 镜像 `latest` / `dc5a8db6`，digest `sha256:70cb97ac09d3a38a8e23a9fccabdb637cef02179e8986fac5c235278eb8b1cfc`。
+- [2026-05-04 01:15] 完成通知中心体系、头像红点、公告/充值/申诉通知接入、通知管理后台和空回申诉一键通过所有；Go 相关测试、`uiweb npm run build` 与 `git diff --check` 通过。

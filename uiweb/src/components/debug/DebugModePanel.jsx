@@ -12,11 +12,13 @@ const LINKS = [
   { to: '/topup', label: '充值' },
   { to: '/checkin', label: '签到' },
   { to: '/personal', label: '设置' },
+  { to: '/notifications', label: '通知' },
   { to: '/announcements', label: '公告' },
   { to: '/pricing', label: '定价' },
   { to: '/status', label: '状态' },
   { to: '/admin', label: '管理端' },
   { to: '/admin/announcements', label: '公告管理' },
+  { to: '/admin/notifications', label: '通知管理' },
   { to: '/admin/refund-appeals', label: '申诉审核' },
   { to: '/admin/assistant', label: 'AI 助手配置' },
 ]

@@ -152,6 +152,9 @@ func Redeem(key string, userId int) (quota int, err error) {
 		return 0, ErrRedeemFailed
 	}
 	RecordLog(userId, LogTypeTopup, fmt.Sprintf("通过兑换码充值 %s，兑换码ID %d", logger.LogQuota(redemption.Quota), redemption.Id))
+	if err := NotifyUIRedemptionSuccess(userId, redemption.Quota, redemption.Id); err != nil {
+		common.SysLog("failed to create redemption notification: " + err.Error())
+	}
 	return redemption.Quota, nil
 }
 

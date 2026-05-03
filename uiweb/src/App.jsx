@@ -23,10 +23,12 @@ import LogList from './pages/LogList.jsx'
 import Checkin from './pages/Checkin.jsx'
 import ApiUrls from './pages/ApiUrls.jsx'
 import PaymentReturn from './pages/PaymentReturn.jsx'
+import Notifications from './pages/Notifications.jsx'
 import ProtectedRoute from './components/layout/ProtectedRoute.jsx'
 import AdminRoute from './components/layout/AdminRoute.jsx'
 import AdminHome from './pages/admin/AdminHome.jsx'
 import AdminAnnouncements from './pages/admin/AdminAnnouncements.jsx'
+import AdminNotifications from './pages/admin/AdminNotifications.jsx'
 import AdminRefundAppeals from './pages/admin/AdminRefundAppeals.jsx'
 import AdminAssistant from './pages/admin/AdminAssistant.jsx'
 import AdminPageConfig from './pages/admin/AdminPageConfig.jsx'
@@ -123,6 +125,14 @@ export default function App() {
         }
       />
       <Route
+        path="/notifications"
+        element={
+          <ProtectedRoute>
+            <Notifications />
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/admin"
         element={
           <ProtectedRoute>
@@ -138,6 +148,16 @@ export default function App() {
           <ProtectedRoute>
             <AdminRoute>
               <AdminAnnouncements />
+            </AdminRoute>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/notifications"
+        element={
+          <ProtectedRoute>
+            <AdminRoute>
+              <AdminNotifications />
             </AdminRoute>
           </ProtectedRoute>
         }

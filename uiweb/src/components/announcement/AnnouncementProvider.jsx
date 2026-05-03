@@ -4,6 +4,7 @@ import ClayButton from '../clay/ClayButton.jsx'
 import ClayCheckbox from '../clay/ClayCheckbox.jsx'
 import { useToast } from '../../context/ToastContext.jsx'
 import { useUser } from '../../context/UserContext.jsx'
+import { useNotifications } from '../../context/NotificationContext.jsx'
 import { ackAnnouncement, listActiveAnnouncements } from '../../services/announcements.js'
 
 function localAckKey(announcement) {
@@ -38,6 +39,7 @@ function getResponseItems(res) {
 
 export default function AnnouncementProvider({ children }) {
   const { user } = useUser()
+  const { refreshUnread } = useNotifications()
   const toast = useToast()
   const [queue, setQueue] = useState([])
   const [ackLoading, setAckLoading] = useState(false)
@@ -89,6 +91,7 @@ export default function AnnouncementProvider({ children }) {
       }
       markLocalAcknowledged(current, dontShowAgain)
       setQueue((prev) => prev.filter((item) => item.id !== current.id || item.version !== current.version))
+      refreshUnread()
     } catch (err) {
       toast(err?.response?.data?.message || err.message || '公告确认失败', 'error')
     } finally {

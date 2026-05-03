@@ -7,9 +7,12 @@ import (
 	"strings"
 
 	"github.com/QuantumNous/new-api/common"
+	"gorm.io/gorm"
 )
 
 const uiPageConfigMaxAPIURLs = 10
+
+var ErrUIPageConfigTableMissing = errors.New("页面配置表 ui_page_configs 不存在，请先完成数据库迁移")
 
 var uiPageAPIURLTones = map[string]bool{
 	"pink":   true,
@@ -161,10 +164,19 @@ func EnabledUIPageAPIURLs(items []UIPageAPIURL) []UIPageAPIURL {
 }
 
 func GetUIPageConfig() (*UIPageConfig, error) {
+	if DB == nil {
+		return defaultUIPageConfig(), nil
+	}
+	if !DB.Migrator().HasTable(UIPageConfig{}.TableName()) {
+		return defaultUIPageConfig(), nil
+	}
 	var config UIPageConfig
 	err := DB.First(&config, "id = ?", 1).Error
 	if err == nil {
 		return &config, nil
+	}
+	if !errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, err
 	}
 	configPtr := defaultUIPageConfig()
 	if err = DB.Create(configPtr).Error; err != nil {
@@ -176,6 +188,9 @@ func GetUIPageConfig() (*UIPageConfig, error) {
 func SaveUIPageConfigAPIURLs(config *UIPageConfig, items []UIPageAPIURL) error {
 	if config == nil {
 		return errors.New("页面配置不能为空")
+	}
+	if DB == nil || !DB.Migrator().HasTable(UIPageConfig{}.TableName()) {
+		return ErrUIPageConfigTableMissing
 	}
 	normalized, err := ValidateUIPageAPIURLs(items)
 	if err != nil {

@@ -988,9 +988,9 @@ export default function LogList() {
       }
     >
       {/* Today consumption */}
-      <ClayCard className="mb-6 !p-5 bg-gradient-to-br from-clay-pink-50 to-clay-pink-100">
-        <div className="flex flex-col md:flex-row md:items-center gap-4">
-          <div className="w-12 h-12 rounded-full bg-clay-pink-200 text-white shadow-clay flex items-center justify-center shrink-0">
+      <ClayCard className="mb-6 !p-4 md:!p-5 bg-gradient-to-br from-clay-pink-50 to-clay-pink-100">
+        <div className="flex flex-col md:flex-row md:items-center gap-3 md:gap-4">
+          <div className="w-11 h-11 md:w-12 md:h-12 rounded-full bg-clay-pink-200 text-white shadow-clay flex items-center justify-center shrink-0">
             <TrendingUp className="w-5 h-5" strokeWidth={2.5} />
           </div>
           <div className="flex-1 min-w-0">
@@ -1003,15 +1003,16 @@ export default function LogList() {
               )}
             </div>
           </div>
-          <div className="flex flex-wrap items-center gap-2 md:ml-auto">
+          <div className="flex w-full items-center gap-2 md:w-auto md:ml-auto">
             {!refundLoading && refundSummary?.available && (
               <ClayButton
                 variant="secondary"
                 onClick={() => setRefundModalOpen(true)}
-                className="!px-5 !py-2.5 !text-sm"
+                className="min-w-0 flex-1 md:flex-none !h-10 !px-3 !py-0 !text-xs sm:!text-sm md:!px-5 md:!py-2.5 whitespace-nowrap leading-none"
               >
-                <ShieldCheck className="w-4 h-4" />
-                自助补空回
+                <ShieldCheck className="w-4 h-4 shrink-0" />
+                <span className="sm:hidden">补空回</span>
+                <span className="hidden sm:inline">自助补空回</span>
               </ClayButton>
             )}
             {!refundAppealsLoading && hasRefundRecords && (
@@ -1021,13 +1022,30 @@ export default function LogList() {
                   setRefundRecordsOpen(true)
                   loadRefundAppeals()
                 }}
-                className="!px-5 !py-2.5 !text-sm"
+                className="min-w-0 flex-1 md:flex-none !h-10 !px-3 !py-0 !text-xs sm:!text-sm md:!px-5 md:!py-2.5 whitespace-nowrap leading-none"
               >
-                <History className="w-4 h-4" />
-                {refundSummary?.pending_count > 0 ? '申诉审核中' : '申诉记录'}
+                <History className="w-4 h-4 shrink-0" />
+                {refundSummary?.pending_count > 0 ? (
+                  <>
+                    <span className="sm:hidden">审核中</span>
+                    <span className="hidden sm:inline">申诉审核中</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="sm:hidden">记录</span>
+                    <span className="hidden sm:inline">申诉记录</span>
+                  </>
+                )}
               </ClayButton>
             )}
-            <ClayButton variant="ghost" onClick={refreshLatest} disabled={refreshing} aria-label="刷新">
+            <ClayButton
+              variant="ghost"
+              onClick={refreshLatest}
+              disabled={refreshing}
+              aria-label="刷新"
+              title="刷新"
+              className="shrink-0 !w-10 !h-10 !p-0"
+            >
               <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
             </ClayButton>
           </div>
@@ -1071,11 +1089,11 @@ export default function LogList() {
               onChange={(value) => setFilter((current) => ({ ...current, end_timestamp: value }))}
             />
           </div>
-          <div className="flex gap-3 mt-5">
-            <ClayButton variant="primary" onClick={onApply}>
+          <div className="flex flex-col sm:flex-row gap-3 mt-5">
+            <ClayButton variant="primary" onClick={onApply} className="sm:!w-auto">
               <Search className="w-4 h-4" /> 应用筛选
             </ClayButton>
-            <ClayButton variant="ghost" onClick={onReset}>重置</ClayButton>
+            <ClayButton variant="ghost" onClick={onReset} className="sm:!w-auto">重置</ClayButton>
           </div>
         </ClayCard>
       )}

@@ -44,6 +44,7 @@
 - 登录后页：Dashboard、TokenManage、LogList、TopUp、Checkin、PersonalSetting、Chat2Link、ApiUrls、PaymentReturn。
 - 控制台导航：仪表盘、令牌、日志、充值、签到、设置。
 - 业务约束：注册仅 QQ 邮箱；充值为兑换码 + ePay 在线充值；界面主要面向中文；不需要 2FA、Passkey、Turnstile、OAuth 绑定。
+- 移动端适配优先用户端新 UI；管理端主要在电脑上使用，不作为移动端效率优化目标，只需保持基本可访问。
 
 ## 新 UI 调试模式
 

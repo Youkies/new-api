@@ -48,7 +48,11 @@ export default function ClayModal({ open, onClose, title, children, footer, size
           </div>
         )}
         <div>{children}</div>
-        {footer && <div className="mt-6 flex justify-end gap-3">{footer}</div>}
+        {footer && (
+          <div className="mt-6 flex flex-col-reverse items-stretch gap-3 sm:flex-row sm:items-center sm:justify-end">
+            {footer}
+          </div>
+        )}
       </ClayCard>
     </div>
   )

@@ -20,3 +20,5 @@
 - [2026-05-04 01:15] 完成通知中心体系、头像红点、公告/充值/申诉通知接入、通知管理后台和空回申诉一键通过所有；Go 相关测试、`uiweb npm run build` 与 `git diff --check` 通过。
 - [2026-05-04 11:58] 按产品语义将 `/admin/notifications` 从手工通知列表调整为自动通知策略设置页，新增 `ui_notification_settings`，支持充值和空回申诉各事件独立启停与确认要求；`go test ./model ./controller ./router` 与 `uiweb npm run build` 通过。
 - [2026-05-04 13:11] 压缩通知中心移动端 UI：短页头、横滑筛选、小统计条、紧凑通知卡，并在该页隐藏会员徽章与 AI 助手悬浮按钮；`uiweb npm run build` 与 `git diff --check` 通过。
+- [2026-05-04 14:29] 明确移动端优化边界：管理端主要电脑使用，不做移动端效率优化；后续排查和改动聚焦用户端新 UI。
+- [2026-05-04 14:35] 优化用户端移动端按钮与弹窗：日志页补空回/申诉记录按钮改短文案和固定高度，通用弹窗 footer 手机纵向铺满，令牌弹窗底部操作同步适配；`uiweb npm run build` 与 `git diff --check` 通过。

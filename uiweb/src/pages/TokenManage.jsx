@@ -551,7 +551,7 @@ export default function TokenManage() {
             hint="留空表示永不过期"
           />
         </div>
-        <div className="flex justify-end gap-3 mt-6">
+        <div className="flex flex-col-reverse items-stretch gap-3 mt-6 sm:flex-row sm:items-center sm:justify-end">
           <ClayButton variant="ghost" onClick={() => setShowModal(false)}>取消</ClayButton>
           <ClayButton variant="primary" onClick={onSave} disabled={saving}>{saving ? '保存中…' : '保存'}</ClayButton>
         </div>

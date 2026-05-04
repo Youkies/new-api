@@ -18,3 +18,4 @@
 - [2026-05-03 21:10] 复核并纳入 relay/error 客户端断开归一化改动，修复 channel affinity 测试唯一键碰撞；排除 `.tmp_mysql_migration/` 临时目录；`git diff --check`、相关 Go 测试和 `uiweb npm run build` 通过。
 - [2026-05-04 00:45] 修复 `ui_page_configs` 生产缺表读取回退，提交并推送 `dc5a8db6`；构建并推送 GHCR 镜像 `latest` / `dc5a8db6`，digest `sha256:70cb97ac09d3a38a8e23a9fccabdb637cef02179e8986fac5c235278eb8b1cfc`。
 - [2026-05-04 01:15] 完成通知中心体系、头像红点、公告/充值/申诉通知接入、通知管理后台和空回申诉一键通过所有；Go 相关测试、`uiweb npm run build` 与 `git diff --check` 通过。
+- [2026-05-04 11:58] 按产品语义将 `/admin/notifications` 从手工通知列表调整为自动通知策略设置页，新增 `ui_notification_settings`，支持充值和空回申诉各事件独立启停与确认要求；`go test ./model ./controller ./router` 与 `uiweb npm run build` 通过。

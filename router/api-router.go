@@ -66,6 +66,8 @@ func SetApiRouter(router *gin.Engine) {
 				uiAdminRoute.DELETE("/announcements/:id", controller.AdminDeleteUIAnnouncement)
 				uiAdminRoute.GET("/notifications", controller.AdminListUINotifications)
 				uiAdminRoute.POST("/notifications", controller.AdminCreateUINotification)
+				uiAdminRoute.GET("/notifications/settings", controller.AdminGetUINotificationSetting)
+				uiAdminRoute.PUT("/notifications/settings", controller.AdminSaveUINotificationSetting)
 				uiAdminRoute.GET("/notifications/:id", controller.AdminGetUINotification)
 				uiAdminRoute.PUT("/notifications/:id", controller.AdminUpdateUINotification)
 				uiAdminRoute.PATCH("/notifications/:id", controller.AdminPatchUINotification)

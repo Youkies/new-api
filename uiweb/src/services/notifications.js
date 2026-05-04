@@ -50,6 +50,16 @@ export async function adminListNotifications({
   return res.data
 }
 
+export async function adminGetNotificationSettings() {
+  const res = await api.get('/api/ui/admin/notifications/settings')
+  return res.data
+}
+
+export async function adminSaveNotificationSettings(payload) {
+  const res = await api.put('/api/ui/admin/notifications/settings', payload)
+  return res.data
+}
+
 export async function adminCreateNotification(payload) {
   const res = await api.post('/api/ui/admin/notifications', payload)
   return res.data

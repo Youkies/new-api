@@ -390,6 +390,19 @@ function createInitialState() {
     refundAppeals,
     announcements,
     notifications,
+    notificationSettings: {
+      id: 1,
+      billing_enabled: true,
+      billing_require_ack: false,
+      appeal_submitted_enabled: true,
+      appeal_submitted_require_ack: false,
+      appeal_approved_enabled: true,
+      appeal_approved_require_ack: false,
+      appeal_rejected_enabled: true,
+      appeal_rejected_require_ack: false,
+      created_at: daysAgo(1),
+      updated_at: nowSec(),
+    },
     pageConfig: {
       api_urls: [
         {
@@ -861,25 +874,28 @@ export async function mockApiResponse(config) {
   if (path === '/api/user/amount' && method === 'POST') return plain({ message: 'success', data: String((Number(body.amount) || 0).toFixed(2)) })
   if (path === '/api/user/pay' && method === 'POST') return plain({ message: 'success', url: '#debug-pay', data: { amount: body.amount || 0, payment_method: body.payment_method || 'alipay' } })
   if (path === '/api/user/topup' && method === 'POST') {
-    debugState.notifications.unshift({
-      id: nextId(debugState.notifications, 7000),
-      title: '兑换码充值成功',
-      summary: '已为账户增加调试额度。',
-      content: '调试模式兑换码充值成功，通知红点会同步出现。',
-      category: 'billing',
-      level: 'success',
-      source_type: 'redemption',
-      source_key: `redemption:debug:${Date.now()}`,
-      source_id: 0,
-      source_version: 1,
-      target_type: 'user',
-      target_user_id: DEBUG_USER.id,
-      action_url: '/topup',
-      enabled: true,
-      created_at: nowSec(),
-      updated_at: nowSec(),
-      unread: true,
-    })
+    if (debugState.notificationSettings.billing_enabled) {
+      debugState.notifications.unshift({
+        id: nextId(debugState.notifications, 7000),
+        title: '兑换码充值成功',
+        summary: '已为账户增加调试额度。',
+        content: '调试模式兑换码充值成功，通知红点会同步出现。',
+        category: 'billing',
+        level: 'success',
+        source_type: 'redemption',
+        source_key: `redemption:debug:${Date.now()}`,
+        source_id: 0,
+        source_version: 1,
+        target_type: 'user',
+        target_user_id: DEBUG_USER.id,
+        action_url: '/topup',
+        require_ack: Boolean(debugState.notificationSettings.billing_require_ack),
+        enabled: true,
+        created_at: nowSec(),
+        updated_at: nowSec(),
+        unread: true,
+      })
+    }
     return plain({ success: true, message: '¥10.00', data: { ...DEBUG_USER, quota: DEBUG_USER.quota + 50000 } })
   }
   if (path === '/api/user/aff' && method === 'GET') return ok({ enabled: false })
@@ -1020,6 +1036,16 @@ export async function mockApiResponse(config) {
     ))
     return ok(debugState.notifications.find((item) => Number(item.id) === id) || null)
   }
+  if (path === '/api/ui/admin/notifications/settings' && method === 'GET') return ok(debugState.notificationSettings)
+  if (path === '/api/ui/admin/notifications/settings' && method === 'PUT') {
+    debugState.notificationSettings = {
+      ...debugState.notificationSettings,
+      ...body,
+      id: 1,
+      updated_at: nowSec(),
+    }
+    return ok(debugState.notificationSettings)
+  }
   if (path === '/api/ui/admin/notifications' && method === 'GET') return adminNotificationResponse(url)
   if (path === '/api/ui/admin/notifications' && method === 'POST') {
     const item = {
@@ -1062,7 +1088,32 @@ export async function mockApiResponse(config) {
       scan_end: nowSec(),
     })
   }
-  if (path === '/api/ui/refund-appeals' && method === 'POST') return ok({ appeal: debugState.refundAppeals[0] })
+  if (path === '/api/ui/refund-appeals' && method === 'POST') {
+    const appeal = debugState.refundAppeals[0]
+    if (appeal && debugState.notificationSettings.appeal_submitted_enabled) {
+      debugState.notifications.unshift({
+        id: nextId(debugState.notifications, 7000),
+        title: '空回补偿申诉已提交',
+        summary: `申诉单 #${appeal.id} 已进入人工审核。`,
+        content: `申诉单 #${appeal.id} 已进入人工审核。`,
+        category: 'appeal',
+        level: 'info',
+        source_type: 'refund_appeal',
+        source_key: `appeal:${appeal.id}:pending:${Date.now()}`,
+        source_id: appeal.id,
+        source_version: 1,
+        target_type: 'user',
+        target_user_id: appeal.user_id,
+        action_url: '/logs',
+        require_ack: Boolean(debugState.notificationSettings.appeal_submitted_require_ack),
+        enabled: true,
+        created_at: nowSec(),
+        updated_at: nowSec(),
+        unread: true,
+      })
+    }
+    return ok({ appeal })
+  }
   if (path === '/api/ui/refund-appeals/self' && method === 'GET') return page(paginate(debugState.refundAppeals, url), debugState.refundAppeals.length)
   if (path === '/api/ui/admin/refund-appeals' && method === 'GET') return refundAppealResponse(url)
   if (path === '/api/ui/admin/refund-appeals/approve-all' && method === 'POST') {
@@ -1072,25 +1123,28 @@ export async function mockApiResponse(config) {
       item.review_note = body.review_note || '批量审核通过'
       item.reviewed_at = nowSec()
       item.updated_at = nowSec()
-      debugState.notifications.unshift({
-        id: nextId(debugState.notifications, 7000),
-        title: '空回补偿申诉已通过',
-        summary: `申诉单 #${item.id} 已通过。`,
-        content: `申诉单 #${item.id} 已通过，补偿额度已到账。`,
-        category: 'appeal',
-        level: 'success',
-        source_type: 'refund_appeal',
-        source_key: `appeal:${item.id}:approved`,
-        source_id: item.id,
-        source_version: 1,
-        target_type: 'user',
-        target_user_id: item.user_id,
-        action_url: '/logs',
-        enabled: true,
-        created_at: nowSec(),
-        updated_at: nowSec(),
-        unread: true,
-      })
+      if (debugState.notificationSettings.appeal_approved_enabled) {
+        debugState.notifications.unshift({
+          id: nextId(debugState.notifications, 7000),
+          title: '空回补偿申诉已通过',
+          summary: `申诉单 #${item.id} 已通过。`,
+          content: `申诉单 #${item.id} 已通过，补偿额度已到账。`,
+          category: 'appeal',
+          level: 'success',
+          source_type: 'refund_appeal',
+          source_key: `appeal:${item.id}:approved`,
+          source_id: item.id,
+          source_version: 1,
+          target_type: 'user',
+          target_user_id: item.user_id,
+          action_url: '/logs',
+          require_ack: Boolean(debugState.notificationSettings.appeal_approved_require_ack),
+          enabled: true,
+          created_at: nowSec(),
+          updated_at: nowSec(),
+          unread: true,
+        })
+      }
     }
     return ok({ total: pending.length, approved: pending.length, failed: 0, refund_quota: pending.reduce((sum, item) => sum + (item.refund_quota || 0), 0), appeals: pending, errors: [] })
   }
@@ -1106,25 +1160,34 @@ export async function mockApiResponse(config) {
       item.review_note = body.review_note || body.note || '调试审核说明'
       item.reviewed_at = nowSec()
       item.updated_at = nowSec()
-      debugState.notifications.unshift({
-        id: nextId(debugState.notifications, 7000),
-        title: item.status === 'approved' ? '空回补偿申诉已通过' : '空回补偿申诉已驳回',
-        summary: `申诉单 #${item.id} 已${item.status === 'approved' ? '通过' : '驳回'}。`,
-        content: item.review_note,
-        category: 'appeal',
-        level: item.status === 'approved' ? 'success' : 'warning',
-        source_type: 'refund_appeal',
-        source_key: `appeal:${item.id}:${item.status}`,
-        source_id: item.id,
-        source_version: 1,
-        target_type: 'user',
-        target_user_id: item.user_id,
-        action_url: '/logs',
-        enabled: true,
-        created_at: nowSec(),
-        updated_at: nowSec(),
-        unread: true,
-      })
+      const approved = item.status === 'approved'
+      const enabled = approved
+        ? debugState.notificationSettings.appeal_approved_enabled
+        : debugState.notificationSettings.appeal_rejected_enabled
+      if (enabled) {
+        debugState.notifications.unshift({
+          id: nextId(debugState.notifications, 7000),
+          title: approved ? '空回补偿申诉已通过' : '空回补偿申诉已驳回',
+          summary: `申诉单 #${item.id} 已${approved ? '通过' : '驳回'}。`,
+          content: item.review_note,
+          category: 'appeal',
+          level: approved ? 'success' : 'warning',
+          source_type: 'refund_appeal',
+          source_key: `appeal:${item.id}:${item.status}`,
+          source_id: item.id,
+          source_version: 1,
+          target_type: 'user',
+          target_user_id: item.user_id,
+          action_url: '/logs',
+          require_ack: Boolean(approved
+            ? debugState.notificationSettings.appeal_approved_require_ack
+            : debugState.notificationSettings.appeal_rejected_require_ack),
+          enabled: true,
+          created_at: nowSec(),
+          updated_at: nowSec(),
+          unread: true,
+        })
+      }
     }
     return ok(item || null)
   }

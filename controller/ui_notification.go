@@ -43,6 +43,17 @@ type uiNotificationPatchPayload struct {
 	Priority   *int  `json:"priority"`
 }
 
+type uiNotificationSettingPayload struct {
+	BillingEnabled            bool `json:"billing_enabled"`
+	BillingRequireAck         bool `json:"billing_require_ack"`
+	AppealSubmittedEnabled    bool `json:"appeal_submitted_enabled"`
+	AppealSubmittedRequireAck bool `json:"appeal_submitted_require_ack"`
+	AppealApprovedEnabled     bool `json:"appeal_approved_enabled"`
+	AppealApprovedRequireAck  bool `json:"appeal_approved_require_ack"`
+	AppealRejectedEnabled     bool `json:"appeal_rejected_enabled"`
+	AppealRejectedRequireAck  bool `json:"appeal_rejected_require_ack"`
+}
+
 func applyUINotificationPayload(target *model.UINotification, payload uiNotificationPayload) {
 	target.Title = payload.Title
 	target.Summary = payload.Summary
@@ -158,6 +169,41 @@ func AdminListUINotifications(c *gin.Context) {
 	pageInfo.SetTotal(int(total))
 	pageInfo.SetItems(notifications)
 	common.ApiSuccess(c, pageInfo)
+}
+
+func AdminGetUINotificationSetting(c *gin.Context) {
+	setting, err := model.GetUINotificationSetting()
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	common.ApiSuccess(c, setting)
+}
+
+func AdminSaveUINotificationSetting(c *gin.Context) {
+	var payload uiNotificationSettingPayload
+	if err := c.ShouldBindJSON(&payload); err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	setting, err := model.GetUINotificationSetting()
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	setting.BillingEnabled = payload.BillingEnabled
+	setting.BillingRequireAck = payload.BillingRequireAck
+	setting.AppealSubmittedEnabled = payload.AppealSubmittedEnabled
+	setting.AppealSubmittedRequireAck = payload.AppealSubmittedRequireAck
+	setting.AppealApprovedEnabled = payload.AppealApprovedEnabled
+	setting.AppealApprovedRequireAck = payload.AppealApprovedRequireAck
+	setting.AppealRejectedEnabled = payload.AppealRejectedEnabled
+	setting.AppealRejectedRequireAck = payload.AppealRejectedRequireAck
+	if err = model.SaveUINotificationSetting(setting); err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	common.ApiSuccess(c, setting)
 }
 
 func AdminGetUINotification(c *gin.Context) {

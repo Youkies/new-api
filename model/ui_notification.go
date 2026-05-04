@@ -40,6 +40,8 @@ const (
 
 var ErrUINotificationRequiresAck = errors.New("该通知需要点击确认")
 
+var ErrUINotificationSettingTableMissing = errors.New("通知设置表 ui_notification_settings 不存在，请先完成数据库迁移")
+
 type UINotification struct {
 	Id            int64  `json:"id" gorm:"primaryKey;autoIncrement"`
 	Title         string `json:"title" gorm:"type:varchar(191);not null"`
@@ -88,6 +90,24 @@ func (UINotificationRead) TableName() string {
 	return "ui_notification_reads"
 }
 
+type UINotificationSetting struct {
+	Id                        int   `json:"id" gorm:"primaryKey"`
+	BillingEnabled            bool  `json:"billing_enabled" gorm:"default:true"`
+	BillingRequireAck         bool  `json:"billing_require_ack" gorm:"default:false"`
+	AppealSubmittedEnabled    bool  `json:"appeal_submitted_enabled" gorm:"default:true"`
+	AppealSubmittedRequireAck bool  `json:"appeal_submitted_require_ack" gorm:"default:false"`
+	AppealApprovedEnabled     bool  `json:"appeal_approved_enabled" gorm:"default:true"`
+	AppealApprovedRequireAck  bool  `json:"appeal_approved_require_ack" gorm:"default:false"`
+	AppealRejectedEnabled     bool  `json:"appeal_rejected_enabled" gorm:"default:true"`
+	AppealRejectedRequireAck  bool  `json:"appeal_rejected_require_ack" gorm:"default:false"`
+	CreatedAt                 int64 `json:"created_at" gorm:"default:0"`
+	UpdatedAt                 int64 `json:"updated_at" gorm:"default:0"`
+}
+
+func (UINotificationSetting) TableName() string {
+	return "ui_notification_settings"
+}
+
 type UINotificationView struct {
 	UINotification
 	ReadAt         int64 `json:"read_at"`
@@ -99,6 +119,57 @@ type UINotificationView struct {
 type UINotificationListOptions struct {
 	Category   string
 	UnreadOnly bool
+}
+
+func defaultUINotificationSetting() *UINotificationSetting {
+	now := common.GetTimestamp()
+	return &UINotificationSetting{
+		Id:                     1,
+		BillingEnabled:         true,
+		AppealSubmittedEnabled: true,
+		AppealApprovedEnabled:  true,
+		AppealRejectedEnabled:  true,
+		CreatedAt:              now,
+		UpdatedAt:              now,
+	}
+}
+
+func GetUINotificationSetting() (*UINotificationSetting, error) {
+	if DB == nil {
+		return defaultUINotificationSetting(), nil
+	}
+	if !DB.Migrator().HasTable(UINotificationSetting{}.TableName()) {
+		return defaultUINotificationSetting(), nil
+	}
+	var setting UINotificationSetting
+	err := DB.First(&setting, "id = ?", 1).Error
+	if err == nil {
+		return &setting, nil
+	}
+	if !errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, err
+	}
+	settingPtr := defaultUINotificationSetting()
+	if err = DB.Create(settingPtr).Error; err != nil {
+		return nil, err
+	}
+	return settingPtr, nil
+}
+
+func SaveUINotificationSetting(setting *UINotificationSetting) error {
+	if setting == nil {
+		return errors.New("通知设置不能为空")
+	}
+	if DB == nil || !DB.Migrator().HasTable(UINotificationSetting{}.TableName()) {
+		return ErrUINotificationSettingTableMissing
+	}
+	now := common.GetTimestamp()
+	setting.Id = 1
+	if setting.CreatedAt == 0 {
+		setting.CreatedAt = now
+	}
+	setting.UpdatedAt = now
+	return DB.Save(setting).Error
 }
 
 type uiNotificationUserScope struct {
@@ -604,6 +675,13 @@ func NotifyUITopUpSuccess(topUp *TopUp, quota int, provider string) error {
 	if topUp == nil || topUp.UserId <= 0 || quota <= 0 {
 		return nil
 	}
+	setting, err := GetUINotificationSetting()
+	if err != nil {
+		return err
+	}
+	if !setting.BillingEnabled {
+		return nil
+	}
 	provider = strings.TrimSpace(provider)
 	if provider == "" {
 		provider = topUp.PaymentProvider
@@ -626,12 +704,20 @@ func NotifyUITopUpSuccess(topUp *TopUp, quota int, provider string) error {
 		TargetType:    UINotificationTargetUser,
 		TargetUserId:  topUp.UserId,
 		ActionUrl:     "/topup",
+		RequireAck:    setting.BillingRequireAck,
 		Enabled:       true,
 	})
 }
 
 func NotifyUIRedemptionSuccess(userId int, quota int, redemptionId int) error {
 	if userId <= 0 || quota <= 0 || redemptionId <= 0 {
+		return nil
+	}
+	setting, err := GetUINotificationSetting()
+	if err != nil {
+		return err
+	}
+	if !setting.BillingEnabled {
 		return nil
 	}
 	return UpsertSourceUINotification(&UINotification{
@@ -648,6 +734,7 @@ func NotifyUIRedemptionSuccess(userId int, quota int, redemptionId int) error {
 		TargetType:    UINotificationTargetUser,
 		TargetUserId:  userId,
 		ActionUrl:     "/topup",
+		RequireAck:    setting.BillingRequireAck,
 		Enabled:       true,
 	})
 }
@@ -656,21 +743,34 @@ func NotifyUIRefundAppealStatus(appeal *UIRefundAppeal) error {
 	if appeal == nil || appeal.Id <= 0 || appeal.UserId <= 0 {
 		return nil
 	}
+	setting, err := GetUINotificationSetting()
+	if err != nil {
+		return err
+	}
 	title := "空回补偿申诉已提交"
 	level := UINotificationLevelInfo
 	summary := fmt.Sprintf("申诉单 #%d 已进入人工审核，共 %d 条记录。", appeal.Id, appeal.TotalItems)
 	content := summary
+	enabled := setting.AppealSubmittedEnabled
+	requireAck := setting.AppealSubmittedRequireAck
 	switch appeal.Status {
 	case UIRefundAppealStatusApproved:
+		enabled = setting.AppealApprovedEnabled
+		requireAck = setting.AppealApprovedRequireAck
 		title = "空回补偿申诉已通过"
 		level = UINotificationLevelSuccess
 		summary = fmt.Sprintf("申诉单 #%d 已通过，补偿 %s。", appeal.Id, logger.LogQuota(appeal.RefundQuota))
 		content = fmt.Sprintf("%s\n审核备注：%s", summary, emptyTextFallback(appeal.ReviewNote, "管理员未填写备注"))
 	case UIRefundAppealStatusRejected:
+		enabled = setting.AppealRejectedEnabled
+		requireAck = setting.AppealRejectedRequireAck
 		title = "空回补偿申诉已驳回"
 		level = UINotificationLevelWarning
 		summary = fmt.Sprintf("申诉单 #%d 已驳回。", appeal.Id)
 		content = fmt.Sprintf("%s\n驳回原因：%s", summary, emptyTextFallback(appeal.ReviewNote, "管理员未填写原因"))
+	}
+	if !enabled {
+		return nil
 	}
 	return UpsertSourceUINotification(&UINotification{
 		Title:         title,
@@ -686,6 +786,7 @@ func NotifyUIRefundAppealStatus(appeal *UIRefundAppeal) error {
 		TargetType:    UINotificationTargetUser,
 		TargetUserId:  appeal.UserId,
 		ActionUrl:     "/logs",
+		RequireAck:    requireAck,
 		Enabled:       true,
 	})
 }

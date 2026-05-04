@@ -10,6 +10,7 @@
 - 经典后台“签到设置”页新增分组签到额度 JSON 编辑框，并在保存前校验 JSON；后端保存时校验额度非负且最大值不小于最小值。
 - 新增 `setting/operation_setting/checkin_setting_test.go` 覆盖分组范围解析与非法配置校验。
 - 新 UI 已补齐 `Standard 优` 会员徽章，位于普通与 Pro 之间，使用薄荷绿色 Clay 风格和 `BadgeCheck` 图标。
+- 已修复分组签到配置 key 兼容：配置里写 `standard优`、`pro优`、`super优`、`ultra优` 也会归一化匹配对应会员分组，不再只能写 `standard/pro/super/ultra`。
 
 ### 验证
 
@@ -18,6 +19,7 @@
 - `npx prettier src/pages/Setting/Operation/SettingsCheckin.jsx src/components/settings/OperationSetting.jsx --check`（`web`）通过。
 - `git diff --check` 通过。
 - 补齐 `Standard 优` 徽章后，`npm run build`（`uiweb`）与 `git diff --check` 通过。
+- 修复中文后缀分组 key 后，`go test ./setting/operation_setting ./model ./controller ./router` 与 `git diff --check` 通过。
 
 ### 下一步
 

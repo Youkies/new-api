@@ -28,11 +28,11 @@ func TestGetCheckinQuotaRangeForGroup(t *testing.T) {
 	checkinSetting.MinQuota = 10
 	checkinSetting.MaxQuota = 20
 	checkinSetting.GroupQuotas = map[string]CheckinQuotaRange{
-		"default":  {MinQuota: 1, MaxQuota: 3},
-		"standard": {MinQuota: 5, MaxQuota: 8},
-		"pro":      {MinQuota: 7, MaxQuota: 10},
-		"super":    {MinQuota: 9, MaxQuota: 12},
-		"vip":      {MinQuota: 30, MaxQuota: 40},
+		"default":   {MinQuota: 1, MaxQuota: 3},
+		"standard优": {MinQuota: 5, MaxQuota: 8},
+		"pro优":      {MinQuota: 7, MaxQuota: 10},
+		"super优":    {MinQuota: 9, MaxQuota: 12},
+		"vip":       {MinQuota: 30, MaxQuota: 40},
 	}
 
 	tests := []struct {

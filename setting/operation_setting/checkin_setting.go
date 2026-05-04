@@ -67,6 +67,12 @@ func GetCheckinQuotaRangeForGroup(group string) (min, max int) {
 		return normalizeCheckinQuotaRangeWithFallback(quotaRange, defaultMin, defaultMax)
 	}
 
+	for configuredGroup, quotaRange := range checkinSetting.GroupQuotas {
+		if normalizeCheckinGroup(configuredGroup) == canonicalGroup {
+			return normalizeCheckinQuotaRangeWithFallback(quotaRange, defaultMin, defaultMax)
+		}
+	}
+
 	return defaultMin, defaultMax
 }
 

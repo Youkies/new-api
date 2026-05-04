@@ -8,7 +8,8 @@ import (
 )
 
 type uiPageConfigPayload struct {
-	APIURLs []model.UIPageAPIURL `json:"api_urls"`
+	APIURLs          []model.UIPageAPIURL          `json:"api_urls"`
+	MembershipBadges []model.UIPageMembershipBadge `json:"membership_badges"`
 }
 
 func uiPageConfigResponse(config *model.UIPageConfig, admin bool) gin.H {
@@ -17,8 +18,9 @@ func uiPageConfigResponse(config *model.UIPageConfig, admin bool) gin.H {
 		items = model.EnabledUIPageAPIURLs(items)
 	}
 	return gin.H{
-		"api_urls":   items,
-		"updated_at": config.UpdatedAt,
+		"api_urls":          items,
+		"membership_badges": model.GetUIPageMembershipBadges(),
+		"updated_at":        config.UpdatedAt,
 	}
 }
 
@@ -54,6 +56,12 @@ func AdminSaveUIPageConfig(c *gin.Context) {
 	if err = model.SaveUIPageConfigAPIURLs(config, payload.APIURLs); err != nil {
 		common.ApiError(c, err)
 		return
+	}
+	if payload.MembershipBadges != nil {
+		if err = model.SaveUIPageMembershipBadges(payload.MembershipBadges); err != nil {
+			common.ApiError(c, err)
+			return
+		}
 	}
 	common.ApiSuccess(c, uiPageConfigResponse(config, true))
 }

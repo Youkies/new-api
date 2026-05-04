@@ -11,6 +11,7 @@ import (
 )
 
 const uiPageConfigMaxAPIURLs = 10
+const uiPageMembershipBadgesOptionKey = "ui_page_config.membership_badges"
 
 var ErrUIPageConfigTableMissing = errors.New("页面配置表 ui_page_configs 不存在，请先完成数据库迁移")
 
@@ -47,6 +48,13 @@ type UIPageAPIURL struct {
 	Enabled bool   `json:"enabled"`
 }
 
+type UIPageMembershipBadge struct {
+	Key        string `json:"key"`
+	Label      string `json:"label"`
+	ShortLabel string `json:"short_label"`
+	Tagline    string `json:"tagline"`
+}
+
 func DefaultUIPageAPIURLs() []UIPageAPIURL {
 	return []UIPageAPIURL{
 		{
@@ -65,6 +73,16 @@ func DefaultUIPageAPIURLs() []UIPageAPIURL {
 			Tone:    "blue",
 			Enabled: true,
 		},
+	}
+}
+
+func DefaultUIPageMembershipBadges() []UIPageMembershipBadge {
+	return []UIPageMembershipBadge{
+		{Key: "default", Label: "普通用户", ShortLabel: "普通", Tagline: "基础额度与标准模型权限"},
+		{Key: "standard", Label: "Standard 优", ShortLabel: "Standard", Tagline: "充值活跃用户专属签到福利"},
+		{Key: "pro", Label: "Pro优", ShortLabel: "Pro", Tagline: "更优价格与常用高级模型"},
+		{Key: "super", Label: "Super优", ShortLabel: "Super", Tagline: "更高调用优先级与扩展权益"},
+		{Key: "ultra", Label: "Ultra优", ShortLabel: "Ultra", Tagline: "最高阶权限与旗舰模型体验"},
 	}
 }
 
@@ -163,6 +181,113 @@ func EnabledUIPageAPIURLs(items []UIPageAPIURL) []UIPageAPIURL {
 	return result
 }
 
+func normalizeUIPageMembershipBadgeKey(key string) string {
+	key = strings.ToLower(strings.TrimSpace(key))
+	key = strings.ReplaceAll(key, " ", "")
+	key = strings.ReplaceAll(key, "_", "")
+	key = strings.ReplaceAll(key, "-", "")
+	switch {
+	case key == "":
+		return "default"
+	case strings.Contains(key, "ultra"):
+		return "ultra"
+	case strings.Contains(key, "super") || strings.Contains(key, "spuer"):
+		return "super"
+	case strings.Contains(key, "pro"):
+		return "pro"
+	case strings.Contains(key, "standard") || strings.Contains(key, "stand"):
+		return "standard"
+	default:
+		return key
+	}
+}
+
+func defaultUIPageMembershipBadgeMap() map[string]UIPageMembershipBadge {
+	result := make(map[string]UIPageMembershipBadge)
+	for _, item := range DefaultUIPageMembershipBadges() {
+		result[item.Key] = item
+	}
+	return result
+}
+
+func NormalizeUIPageMembershipBadges(items []UIPageMembershipBadge) []UIPageMembershipBadge {
+	defaults := defaultUIPageMembershipBadgeMap()
+	orderedKeys := []string{"default", "standard", "pro", "super", "ultra"}
+	for _, item := range items {
+		key := normalizeUIPageMembershipBadgeKey(item.Key)
+		base, ok := defaults[key]
+		if !ok {
+			base = UIPageMembershipBadge{Key: key}
+		}
+		item.Key = key
+		item.Label = strings.TrimSpace(item.Label)
+		item.ShortLabel = strings.TrimSpace(item.ShortLabel)
+		item.Tagline = strings.TrimSpace(item.Tagline)
+		if item.Label == "" {
+			item.Label = base.Label
+		}
+		if item.ShortLabel == "" {
+			item.ShortLabel = base.ShortLabel
+		}
+		if item.Tagline == "" {
+			item.Tagline = base.Tagline
+		}
+		defaults[key] = item
+	}
+	result := make([]UIPageMembershipBadge, 0, len(defaults))
+	for _, key := range orderedKeys {
+		if item, ok := defaults[key]; ok {
+			result = append(result, item)
+			delete(defaults, key)
+		}
+	}
+	for _, item := range defaults {
+		result = append(result, item)
+	}
+	return result
+}
+
+func ValidateUIPageMembershipBadges(items []UIPageMembershipBadge) ([]UIPageMembershipBadge, error) {
+	items = NormalizeUIPageMembershipBadges(items)
+	for _, item := range items {
+		if len([]rune(item.Label)) > 30 {
+			return nil, errors.New("会员铭牌名称不能超过 30 个字符")
+		}
+		if len([]rune(item.ShortLabel)) > 20 {
+			return nil, errors.New("会员铭牌短名称不能超过 20 个字符")
+		}
+		if len([]rune(item.Tagline)) > 80 {
+			return nil, errors.New("会员铭牌描述不能超过 80 个字符")
+		}
+	}
+	return items, nil
+}
+
+func GetUIPageMembershipBadges() []UIPageMembershipBadge {
+	raw := ""
+	common.OptionMapRWMutex.RLock()
+	if common.OptionMap != nil {
+		raw = common.OptionMap[uiPageMembershipBadgesOptionKey]
+	}
+	common.OptionMapRWMutex.RUnlock()
+
+	if strings.TrimSpace(raw) == "" && DB != nil {
+		var option Option
+		if err := DB.Where(commonKeyCol+" = ?", uiPageMembershipBadgesOptionKey).First(&option).Error; err == nil {
+			raw = option.Value
+		}
+	}
+
+	if strings.TrimSpace(raw) == "" {
+		return DefaultUIPageMembershipBadges()
+	}
+	var items []UIPageMembershipBadge
+	if err := common.UnmarshalJsonStr(raw, &items); err != nil {
+		return DefaultUIPageMembershipBadges()
+	}
+	return NormalizeUIPageMembershipBadges(items)
+}
+
 func GetUIPageConfig() (*UIPageConfig, error) {
 	if DB == nil {
 		return defaultUIPageConfig(), nil
@@ -208,4 +333,16 @@ func SaveUIPageConfigAPIURLs(config *UIPageConfig, items []UIPageAPIURL) error {
 	config.UpdatedAt = now
 	config.APIURLs = string(payload)
 	return DB.Save(config).Error
+}
+
+func SaveUIPageMembershipBadges(items []UIPageMembershipBadge) error {
+	normalized, err := ValidateUIPageMembershipBadges(items)
+	if err != nil {
+		return err
+	}
+	payload, err := common.Marshal(normalized)
+	if err != nil {
+		return err
+	}
+	return UpdateOption(uiPageMembershipBadgesOptionKey, string(payload))
 }

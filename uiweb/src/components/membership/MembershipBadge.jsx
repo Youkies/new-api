@@ -1,6 +1,37 @@
+import { useEffect, useState } from 'react'
 import { BadgeCheck, Crown, Gem, ShieldCheck, Sparkles } from 'lucide-react'
 import ClayAvatar from '../clay/ClayAvatar.jsx'
-import { getMembershipTier } from '../../utils/membership.js'
+import { getMembershipTier, setMembershipBadgeConfig } from '../../utils/membership.js'
+import { getPageConfig } from '../../services/pageConfig.js'
+
+let membershipConfigPromise = null
+
+function loadMembershipBadgeConfig() {
+  if (!membershipConfigPromise) {
+    membershipConfigPromise = getPageConfig()
+      .then((res) => {
+        setMembershipBadgeConfig(res?.data?.membership_badges)
+      })
+      .catch(() => {})
+  }
+  return membershipConfigPromise
+}
+
+function useMembershipTier(group) {
+  const [version, setVersion] = useState(0)
+
+  useEffect(() => {
+    let mounted = true
+    loadMembershipBadgeConfig().then(() => {
+      if (mounted) setVersion((value) => value + 1)
+    })
+    return () => {
+      mounted = false
+    }
+  }, [])
+
+  return getMembershipTier(group, version)
+}
 
 const ICONS = {
   badge: BadgeCheck,
@@ -16,7 +47,7 @@ function TierIcon({ tier, className = 'w-4 h-4' }) {
 }
 
 export function MembershipBadge({ user, compact = false, className = '' }) {
-  const tier = getMembershipTier(user?.group)
+  const tier = useMembershipTier(user?.group)
 
   return (
     <div
@@ -33,7 +64,7 @@ export function MembershipBadge({ user, compact = false, className = '' }) {
 }
 
 export function MembershipAvatar({ user, name, src, size = 40, className = '', unread = false }) {
-  const tier = getMembershipTier(user?.group)
+  const tier = useMembershipTier(user?.group)
   const dotSize = Math.max(10, Math.round(size * 0.28))
 
   return (
@@ -59,7 +90,7 @@ export function MembershipAvatar({ user, name, src, size = 40, className = '', u
 }
 
 export function MembershipCard({ user }) {
-  const tier = getMembershipTier(user?.group)
+  const tier = useMembershipTier(user?.group)
 
   return (
     <div className={`rounded-clay border ${tier.tone.border} ${tier.tone.softBg} p-4 shadow-clay-inset`}>

@@ -11,6 +11,8 @@
 - 新增 `setting/operation_setting/checkin_setting_test.go` 覆盖分组范围解析与非法配置校验。
 - 新 UI 已补齐 `Standard 优` 会员徽章，位于普通与 Pro 之间，使用薄荷绿色 Clay 风格和 `BadgeCheck` 图标。
 - 已修复分组签到配置 key 兼容：配置里写 `standard优`、`pro优`、`super优`、`ultra优` 也会归一化匹配对应会员分组，不再只能写 `standard/pro/super/ultra`。
+- `/admin/page-config` 已扩展会员铭牌配置，可修改普通、Standard、Pro、Super、Ultra 的铭牌名称、短名与描述；配置通过 `ui_page_config.membership_badges` option 保存，不新增数据库表/列。
+- 用户侧新 UI 会员徽章、头像角标和会员卡片会通过 `/api/ui/page-config` 加载 `membership_badges` 并覆盖默认文案；未配置或加载失败时继续使用内置默认文案。
 
 ### 验证
 
@@ -20,6 +22,7 @@
 - `git diff --check` 通过。
 - 补齐 `Standard 优` 徽章后，`npm run build`（`uiweb`）与 `git diff --check` 通过。
 - 修复中文后缀分组 key 后，`go test ./setting/operation_setting ./model ./controller ./router` 与 `git diff --check` 通过。
+- 扩展页面配置会员铭牌后，`go test ./model ./controller ./router`、`npm run build`（`uiweb`）与 `git diff --check` 通过。
 
 ### 下一步
 

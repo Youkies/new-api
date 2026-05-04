@@ -51,6 +51,16 @@ function newUrlRow() {
   }
 }
 
+function badgeRowFromItem(item, index) {
+  return {
+    local_id: makeId(),
+    key: item?.key || ['default', 'standard', 'pro', 'super', 'ultra'][index] || '',
+    label: item?.label || '',
+    short_label: item?.short_label || item?.shortLabel || '',
+    tagline: item?.tagline || '',
+  }
+}
+
 function rowFromItem(item, index) {
   return {
     local_id: makeId(),
@@ -72,12 +82,23 @@ function payloadFromRows(rows) {
   }))
 }
 
+function badgePayloadFromRows(rows) {
+  return rows.map(({ local_id: _, ...row }) => ({
+    ...row,
+    key: row.key.trim(),
+    label: row.label.trim(),
+    short_label: row.short_label.trim(),
+    tagline: row.tagline.trim(),
+  }))
+}
+
 export default function AdminPageConfig() {
   const toast = useToast()
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [rows, setRows] = useState([])
+  const [badgeRows, setBadgeRows] = useState([])
   const [updatedAt, setUpdatedAt] = useState(0)
 
   const enabledCount = useMemo(() => rows.filter((item) => item.enabled).length, [rows])
@@ -89,7 +110,9 @@ export default function AdminPageConfig() {
       const res = await adminGetPageConfig()
       if (res?.success === false) throw new Error(res.message || '页面配置加载失败')
       const list = Array.isArray(res?.data?.api_urls) ? res.data.api_urls : []
+      const badges = Array.isArray(res?.data?.membership_badges) ? res.data.membership_badges : []
       setRows(list.map(rowFromItem))
+      setBadgeRows(badges.map(badgeRowFromItem))
       setUpdatedAt(res?.data?.updated_at || 0)
     } catch (err) {
       setError(err?.response?.data?.message || err.message || '页面配置加载失败')
@@ -104,6 +127,10 @@ export default function AdminPageConfig() {
 
   const updateRow = (id, key, value) => {
     setRows((prev) => prev.map((row) => (row.local_id === id ? { ...row, [key]: value } : row)))
+  }
+
+  const updateBadgeRow = (id, key, value) => {
+    setBadgeRows((prev) => prev.map((row) => (row.local_id === id ? { ...row, [key]: value } : row)))
   }
 
   const moveRow = (index, direction) => {
@@ -123,6 +150,7 @@ export default function AdminPageConfig() {
 
   const save = async () => {
     const payload = payloadFromRows(rows)
+    const membershipBadges = badgePayloadFromRows(badgeRows)
     if (payload.length === 0) {
       toast('至少需要配置一个 API 地址', 'warning')
       return
@@ -135,12 +163,18 @@ export default function AdminPageConfig() {
       toast('API 地址不能为空', 'warning')
       return
     }
+    if (membershipBadges.some((item) => !item.key || !item.label || !item.short_label)) {
+      toast('会员铭牌名称和短名不能为空', 'warning')
+      return
+    }
     setSaving(true)
     try {
-      const res = await adminSavePageConfig({ api_urls: payload })
+      const res = await adminSavePageConfig({ api_urls: payload, membership_badges: membershipBadges })
       if (res?.success === false) throw new Error(res.message || '保存失败')
       const list = Array.isArray(res?.data?.api_urls) ? res.data.api_urls : payload
+      const badges = Array.isArray(res?.data?.membership_badges) ? res.data.membership_badges : membershipBadges
       setRows(list.map(rowFromItem))
+      setBadgeRows(badges.map(badgeRowFromItem))
       setUpdatedAt(res?.data?.updated_at || 0)
       toast('页面配置已保存', 'success')
     } catch (err) {
@@ -166,7 +200,7 @@ export default function AdminPageConfig() {
   return (
     <ClayAdminShell
       title="页面配置"
-      subtitle="管理新 UI 中需要高频微调的页面内容；当前先开放 API 地址页。"
+      subtitle="管理新 UI 中需要高频微调的页面内容。"
       actions={actions}
     >
       {error && (
@@ -189,7 +223,7 @@ export default function AdminPageConfig() {
           </div>
 
           <ClayAlert tone="info">
-            目前最常需要改的是 `/api-urls` 的公开地址列表。首页文案、提示语和运营位暂不放进这里，保持界面轻一点。
+            页面配置会影响用户侧新 UI。API 地址用于 `/api-urls`，会员铭牌会显示在控制台页头、头像角标和会员卡片里。
           </ClayAlert>
 
           <ClayCard className="!overflow-visible">
@@ -226,9 +260,54 @@ export default function AdminPageConfig() {
               </div>
             )}
           </ClayCard>
+
+          <ClayCard className="!overflow-visible">
+            <div className="mb-5">
+              <h2 className="text-2xl font-black tracking-tight">会员铭牌</h2>
+              <p className="text-sm text-clay-faint font-semibold mt-1">
+                修改不同会员身份旁边的短描述，不改变真实用户分组和权限。
+              </p>
+            </div>
+
+            <div className="grid gap-4">
+              {badgeRows.map((row) => (
+                <MembershipBadgeRow
+                  key={row.local_id}
+                  row={row}
+                  onChange={updateBadgeRow}
+                />
+              ))}
+            </div>
+          </ClayCard>
         </div>
       )}
     </ClayAdminShell>
+  )
+}
+
+function MembershipBadgeRow({ row, onChange }) {
+  return (
+    <div className="rounded-clay bg-white/45 shadow-clay-inset p-4 md:p-5">
+      <div className="grid md:grid-cols-[140px_1fr_140px] gap-4">
+        <Field label="分组 key">
+          <ClayInput value={row.key} onChange={(e) => onChange(row.local_id, 'key', e.target.value)} placeholder="pro" />
+        </Field>
+        <Field label="铭牌名称">
+          <ClayInput value={row.label} onChange={(e) => onChange(row.local_id, 'label', e.target.value)} placeholder="Pro优" />
+        </Field>
+        <Field label="短名">
+          <ClayInput value={row.short_label} onChange={(e) => onChange(row.local_id, 'short_label', e.target.value)} placeholder="Pro" />
+        </Field>
+      </div>
+      <Field label="描述">
+        <textarea
+          value={row.tagline}
+          onChange={(e) => onChange(row.local_id, 'tagline', e.target.value)}
+          placeholder="更优价格与常用高级模型"
+          className="clay-input min-h-[72px] resize-y"
+        />
+      </Field>
+    </div>
   )
 }
 

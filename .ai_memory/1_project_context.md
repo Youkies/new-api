@@ -55,7 +55,7 @@
 ## 管理端与公告
 
 - 新 UI 管理端定位为轻量“站点运营后台”，不复刻原版 new-api 管理设置页，降低与上游同步冲突。
-- 页面配置页：`/admin/page-config` 管理 `/api-urls` 的公开地址列表；配置存储在 `ui_page_configs.api_urls` JSON 中，用户页通过 `GET /api/ui/page-config` 读取启用项。
+- 页面配置页：`/admin/page-config` 管理 `/api-urls` 的公开地址列表与会员铭牌文案；API 地址存储在 `ui_page_configs.api_urls` JSON 中，会员铭牌存储在 `ui_page_config.membership_badges` option 中，用户侧通过 `GET /api/ui/page-config` 读取。
 - 第一阶段已实现公告系统：公共历史页 `/announcements`，管理页 `/admin/announcements`。
 - 公告确认按 `announcement_id + version` 判断；公告内容更新后递增版本可重新触发确认。
 - 新表：`ui_announcements`、`ui_announcement_acks`；生产 slave 环境需手动建表。

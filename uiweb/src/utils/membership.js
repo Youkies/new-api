@@ -86,19 +86,53 @@ const MEMBERSHIP_TIERS = [
   },
 ]
 
+let badgeOverrides = {}
+
 function normalizeGroup(group) {
-  return String(group || 'default').trim().toLowerCase()
+  return String(group || 'default').trim().toLowerCase().replace(/[\s_-]/g, '')
+}
+
+function canonicalMembershipKey(group) {
+  const normalized = normalizeGroup(group)
+  if (normalized.includes('ultra')) return 'ultra'
+  if (normalized.includes('super') || normalized.includes('spuer')) return 'super'
+  if (normalized.includes('pro')) return 'pro'
+  if (normalized.includes('standard') || normalized.includes('stand')) return 'standard'
+  return 'default'
+}
+
+function applyBadgeOverride(tier) {
+  const override = badgeOverrides[tier.key]
+  if (!override) return tier
+  return {
+    ...tier,
+    label: override.label || tier.label,
+    shortLabel: override.shortLabel || override.short_label || tier.shortLabel,
+    tagline: override.tagline || tier.tagline,
+  }
+}
+
+export function setMembershipBadgeConfig(items) {
+  const next = {}
+  if (Array.isArray(items)) {
+    items.forEach((item) => {
+      const key = canonicalMembershipKey(item?.key)
+      next[key] = {
+        label: String(item?.label || '').trim(),
+        shortLabel: String(item?.shortLabel || item?.short_label || '').trim(),
+        tagline: String(item?.tagline || '').trim(),
+      }
+    })
+  }
+  badgeOverrides = next
 }
 
 export function getMembershipTier(group) {
-  const normalized = normalizeGroup(group)
-  if (normalized.includes('ultra')) return MEMBERSHIP_TIERS[4]
-  if (normalized.includes('super') || normalized.includes('spuer')) return MEMBERSHIP_TIERS[3]
-  if (normalized.includes('pro')) return MEMBERSHIP_TIERS[2]
-  if (normalized.includes('standard') || normalized.includes('stand')) return MEMBERSHIP_TIERS[1]
-  return MEMBERSHIP_TIERS[0]
+  const key = canonicalMembershipKey(group)
+  const tier = MEMBERSHIP_TIERS.find((item) => item.key === key) || MEMBERSHIP_TIERS[0]
+  return applyBadgeOverride(tier)
 }
 
 export function getMembershipTiers() {
-  return MEMBERSHIP_TIERS
+  return MEMBERSHIP_TIERS.map(applyBadgeOverride)
 }

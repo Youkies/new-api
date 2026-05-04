@@ -422,6 +422,13 @@ function createInitialState() {
           enabled: true,
         },
       ],
+      membership_badges: [
+        { key: 'default', label: '普通用户', short_label: '普通', tagline: '基础额度与标准模型权限' },
+        { key: 'standard', label: 'Standard 优', short_label: 'Standard', tagline: '充值活跃用户专属签到福利' },
+        { key: 'pro', label: 'Pro优', short_label: 'Pro', tagline: '更优价格与常用高级模型' },
+        { key: 'super', label: 'Super优', short_label: 'Super', tagline: '更高调用优先级与扩展权益' },
+        { key: 'ultra', label: 'Ultra优', short_label: 'Ultra', tagline: '最高阶权限与旗舰模型体验' },
+      ],
       updated_at: nowSec(),
     },
     assistantConfig: {
@@ -954,6 +961,7 @@ export async function mockApiResponse(config) {
   if (path === '/api/ui/page-config' && method === 'GET') {
     return ok({
       api_urls: debugState.pageConfig.api_urls.filter((item) => item.enabled),
+      membership_badges: debugState.pageConfig.membership_badges,
       updated_at: debugState.pageConfig.updated_at,
     })
   }
@@ -962,6 +970,7 @@ export async function mockApiResponse(config) {
     debugState.pageConfig = {
       ...debugState.pageConfig,
       api_urls: Array.isArray(body.api_urls) ? body.api_urls : [],
+      membership_badges: Array.isArray(body.membership_badges) ? body.membership_badges : debugState.pageConfig.membership_badges,
       updated_at: nowSec(),
     }
     return ok(debugState.pageConfig)

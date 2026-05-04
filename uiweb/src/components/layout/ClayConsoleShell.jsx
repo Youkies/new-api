@@ -251,7 +251,7 @@ export default function ClayConsoleShell({
                 : 'flex items-end justify-between gap-4 flex-wrap mb-6'
             }
           >
-            <div className="min-w-0 flex-1">
+            <div className={compactHeader ? 'min-w-0 flex-1' : 'w-full sm:min-w-0 sm:flex-1'}>
               {title && (
                 <h1 className={`${compactHeader ? 'text-2xl md:text-4xl truncate' : 'text-3xl md:text-4xl'} font-black tracking-tight`}>
                   {title}
@@ -267,7 +267,7 @@ export default function ClayConsoleShell({
               )}
             </div>
             {actions && (
-              <div className={`${compactHeader ? 'gap-2 sm:gap-3 shrink-0' : 'gap-3'} flex items-center`}>
+              <div className={`${compactHeader ? 'gap-2 sm:gap-3 shrink-0' : 'w-full sm:w-auto gap-3 flex-wrap'} flex items-center`}>
                 {actions}
               </div>
             )}

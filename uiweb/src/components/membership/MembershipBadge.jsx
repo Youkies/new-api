@@ -19,10 +19,10 @@ export function MembershipBadge({ user, compact = false, className = '' }) {
 
   return (
     <div
-      className={`inline-flex items-center gap-2 rounded-clay-pill border ${tier.tone.border} ${tier.tone.bg} ${tier.tone.text} ${tier.tone.shadow} px-3 py-1.5 font-black ${className}`}
+      className={`inline-flex items-center gap-2 rounded-clay-pill border ${tier.tone.border} ${tier.tone.bg} ${tier.tone.text} ${tier.tone.shadow} px-3 py-1.5 font-black whitespace-nowrap ${className}`}
       title={`当前身份：${tier.label}`}
     >
-      <TierIcon tier={tier} />
+      <TierIcon tier={tier} className="w-4 h-4 shrink-0" />
       <span className={compact ? 'text-xs' : 'text-sm'}>{tier.label}</span>
       {!compact && (
         <span className="hidden sm:inline text-xs font-bold opacity-70">{tier.tagline}</span>

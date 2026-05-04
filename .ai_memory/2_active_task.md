@@ -21,6 +21,9 @@
 - 已按移动端反馈压缩 `/notifications`：`ClayConsoleShell` 新增紧凑页头、隐藏会员徽章和隐藏 AI 助手开关；通知页移动端改为短标题、图标操作、一行横滑筛选、小统计条和更紧凑的通知卡片，目标是首屏优先看到列表。
 - 用户确认管理端不需要移动端效率优化，后续移动端排查和改动聚焦用户端新 UI；管理端仅保持基本可访问。
 - 已继续优化用户端移动端：`/logs` 今日消耗卡片的“自助补空回/申诉记录/刷新”按钮改为手机短文案与固定高度，筛选面板操作按钮手机纵向铺满；`ClayModal` footer 手机纵向铺满，`/tokens` 令牌弹窗的手写 footer 同步改为移动端纵向。
+- 已修复 `/logs` 移动端页头挤压：普通 `ClayConsoleShell` 页头在手机上让标题/副标题/会员徽章独占一行，操作按钮下移；会员徽章增加不换行与图标防压缩，避免 Ultra 优被挤成两行。
+- 已修复个人设置移动端选项卡：`ClayTabs` 改为可横向滑动，单个 tab 不换行，图标不压缩，避免“账号/安全/通知/偏好”被拆成竖排。
+- 已调整 `/notifications` 通知卡片：正文默认折叠，仅展示摘要；有正文的通知需先点“展开正文”，展开后才显示“标记已读/我已知晓”，避免长公告撑爆移动端列表。
 - 调试模式 mock 已覆盖通知中心、通知设置、公告同步通知、充值通知、申诉状态通知和批量通过。
 
 ### 验证
@@ -29,10 +32,13 @@
 - `npm run build`（`uiweb`）通过；仍有既有 `vendor-icons` 大 chunk 警告。
 - 本次移动端 UI 修复中先尝试 `bun run build`，但当前环境未安装 Bun；已回退并通过 `npm run build`（`uiweb`）。
 - 本次用户端移动端按钮/弹窗优化后，`npm run build`（`uiweb`）通过；仍有既有 `vendor-icons` 大 chunk 警告。
+- 本次 `/logs` 页头与 Ultra 优徽章修复后，`npm run build`（`uiweb`）通过；仍有既有 `vendor-icons` 大 chunk 警告。
+- 本次个人设置选项卡修复后，`npm run build`（`uiweb`）通过；仍有既有 `vendor-icons` 大 chunk 警告。
+- 本次通知正文折叠与展开后已读修复后，`npm run build`（`uiweb`）通过；仍有既有 `vendor-icons` 大 chunk 警告。
 - `git diff --check` 通过。
 
 ### 下一步
 
-- 提交并推送当前用户端移动端 UI 修复。
+- 等用户确认后再提交；本次按用户要求先不推送。
 - 生产 `NODE_TYPE=slave` 部署前需手动迁移：新增 `ui_notifications`、`ui_notification_reads`，并给 `ui_announcements` 增加 `notify_enabled`、`notify_level`、`require_ack` 列。
 - 通知设置还需要新增 `ui_notification_settings` 表；如表缺失，读取设置会回退默认值，保存设置会提示先迁移。

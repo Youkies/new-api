@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   Bell,
+  ChevronDown,
+  ChevronUp,
   CheckCircle2,
   CircleDollarSign,
   FileText,
@@ -70,6 +72,7 @@ export default function Notifications() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [actioning, setActioning] = useState('')
+  const [expandedIds, setExpandedIds] = useState(() => new Set())
 
   const fetchData = async () => {
     setLoading(true)
@@ -95,6 +98,18 @@ export default function Notifications() {
   const unreadCount = useMemo(() => items.filter((item) => item.unread).length, [items])
   const ackCount = useMemo(() => items.filter((item) => item.require_ack && item.unread).length, [items])
   const listCount = total || items.length
+
+  const toggleExpanded = (id) => {
+    setExpandedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) {
+        next.delete(id)
+      } else {
+        next.add(id)
+      }
+      return next
+    })
+  }
 
   const handleRead = async (item) => {
     const key = `${item.id}:${item.require_ack ? 'ack' : 'read'}`
@@ -233,6 +248,8 @@ export default function Notifications() {
               item={item}
               loading={actioning === `${item.id}:${item.require_ack ? 'ack' : 'read'}`}
               onRead={handleRead}
+              expanded={expandedIds.has(item.id)}
+              onToggleExpand={toggleExpanded}
             />
           ))}
         </div>
@@ -255,10 +272,12 @@ function Stat({ label, value, tone }) {
   )
 }
 
-function NotificationCard({ item, loading, onRead }) {
+function NotificationCard({ item, loading, onRead, expanded, onToggleExpand }) {
   const meta = categoryMeta[item.category] ?? categoryMeta.system
   const Icon = meta.icon
   const border = levelClass[item.level] || levelClass.info
+  const hasContent = Boolean(String(item.content || '').trim())
+  const canRead = !hasContent || expanded
   return (
     <ClayCard className={`!p-4 md:!p-6 border-2 ${border} ${item.unread ? 'bg-white/40' : 'bg-clay-bg/70'}`}>
       <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-3 md:gap-4">
@@ -286,7 +305,7 @@ function NotificationCard({ item, loading, onRead }) {
               {item.summary}
             </p>
           )}
-          {item.content && (
+          {hasContent && expanded && (
             <div className="mt-3 md:mt-4 rounded-clay bg-white/45 shadow-clay-inset p-3 md:p-4">
               <div className="whitespace-pre-wrap break-words text-sm font-semibold text-clay-ink leading-6 md:leading-7">
                 {item.content}
@@ -301,7 +320,17 @@ function NotificationCard({ item, loading, onRead }) {
               查看
             </ClayButton>
           )}
-          {item.unread && (
+          {hasContent && (
+            <ClayButton
+              variant={expanded ? 'ghost' : 'secondary'}
+              onClick={() => onToggleExpand(item.id)}
+              className="!px-3 !py-2 md:!px-4 md:!py-3 text-sm"
+            >
+              {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+              {expanded ? '收起正文' : '展开正文'}
+            </ClayButton>
+          )}
+          {item.unread && canRead && (
             <ClayButton variant="secondary" onClick={() => onRead(item)} disabled={loading} className="!px-3 !py-2 md:!px-4 md:!py-3 text-sm">
               <CheckCircle2 className="w-4 h-4" />
               {item.require_ack ? '我已知晓' : '标记已读'}

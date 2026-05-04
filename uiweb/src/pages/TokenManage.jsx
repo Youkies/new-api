@@ -327,14 +327,20 @@ export default function TokenManage() {
       }
     >
       {/* Search */}
-      <form onSubmit={onSearch} className="flex gap-3 mb-6 max-w-md">
+      <form onSubmit={onSearch} className="flex items-center gap-3 mb-6 max-w-md">
         <ClayField
           value={keyword}
           onChange={(e) => setKeyword(e.target.value)}
           placeholder="搜索令牌名称…"
-          className="flex-1"
+          className="!mb-0 flex-1"
         />
-        <ClayButton type="submit" variant="ghost">
+        <ClayButton
+          type="submit"
+          variant="ghost"
+          className="shrink-0 !w-12 !h-12 sm:!w-14 sm:!h-14 !p-0"
+          aria-label="搜索令牌"
+          title="搜索令牌"
+        >
           <Search className="w-4 h-4" />
         </ClayButton>
       </form>

@@ -27,3 +27,4 @@
 - [2026-05-04 18:42] 调整通知卡片移动端阅读流程：正文默认折叠，需展开正文后才显示已读/知晓按钮，避免长公告撑爆列表；`uiweb npm run build` 与 `git diff --check` 通过，暂不推送。
 - [2026-05-04 19:02] 收紧令牌管理搜索区：搜索按钮改固定小尺寸图标按钮，输入框去掉默认底部空隙并垂直居中；`uiweb npm run build` 与 `git diff --check` 通过。
 - [2026-05-04 21:23] 完成签到系统分组额度改造：新增 `checkin_setting.group_quotas`，签到按用户分组选择奖励范围，经典后台可编辑 JSON；Go 相关测试、`uiweb npm run build`、经典后台 JSX Prettier check 与 `git diff --check` 通过。
+- [2026-05-04 21:34] 补齐新 UI `Standard 优` 会员标志：新增独立 membership tier、薄荷绿色徽章和 `BadgeCheck` 图标映射；`uiweb npm run build` 与 `git diff --check` 通过。

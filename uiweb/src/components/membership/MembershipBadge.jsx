@@ -1,8 +1,9 @@
-import { Crown, Gem, ShieldCheck, Sparkles } from 'lucide-react'
+import { BadgeCheck, Crown, Gem, ShieldCheck, Sparkles } from 'lucide-react'
 import ClayAvatar from '../clay/ClayAvatar.jsx'
 import { getMembershipTier } from '../../utils/membership.js'
 
 const ICONS = {
+  badge: BadgeCheck,
   shield: ShieldCheck,
   sparkles: Sparkles,
   crown: Crown,

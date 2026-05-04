@@ -17,8 +17,25 @@ const MEMBERSHIP_TIERS = [
     },
   },
   {
-    key: 'pro',
+    key: 'standard',
     rank: 1,
+    label: 'Standard 优',
+    shortLabel: 'Standard',
+    tagline: '充值活跃用户专属签到福利',
+    icon: 'badge',
+    tone: {
+      text: 'text-[#3d6b4f]',
+      bg: 'bg-clay-green-100',
+      softBg: 'bg-clay-green-100/55',
+      border: 'border-clay-green-200/60',
+      ring: 'ring-clay-green-200',
+      dot: 'bg-clay-green-200',
+      shadow: 'shadow-clay',
+    },
+  },
+  {
+    key: 'pro',
+    rank: 2,
     label: 'Pro优',
     shortLabel: 'Pro',
     tagline: '更优价格与常用高级模型',
@@ -35,7 +52,7 @@ const MEMBERSHIP_TIERS = [
   },
   {
     key: 'super',
-    rank: 2,
+    rank: 3,
     label: 'Super优',
     shortLabel: 'Super',
     tagline: '更高调用优先级与扩展权益',
@@ -52,7 +69,7 @@ const MEMBERSHIP_TIERS = [
   },
   {
     key: 'ultra',
-    rank: 3,
+    rank: 4,
     label: 'Ultra优',
     shortLabel: 'Ultra',
     tagline: '最高阶权限与旗舰模型体验',
@@ -75,9 +92,10 @@ function normalizeGroup(group) {
 
 export function getMembershipTier(group) {
   const normalized = normalizeGroup(group)
-  if (normalized.includes('ultra')) return MEMBERSHIP_TIERS[3]
-  if (normalized.includes('super') || normalized.includes('spuer')) return MEMBERSHIP_TIERS[2]
-  if (normalized.includes('pro')) return MEMBERSHIP_TIERS[1]
+  if (normalized.includes('ultra')) return MEMBERSHIP_TIERS[4]
+  if (normalized.includes('super') || normalized.includes('spuer')) return MEMBERSHIP_TIERS[3]
+  if (normalized.includes('pro')) return MEMBERSHIP_TIERS[2]
+  if (normalized.includes('standard') || normalized.includes('stand')) return MEMBERSHIP_TIERS[1]
   return MEMBERSHIP_TIERS[0]
 }
 

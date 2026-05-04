@@ -1,5 +1,26 @@
 # 当前任务
 
+## 当前任务：分组签到额度配置（2026-05-04）
+
+### 已完成
+
+- 在原 `checkin_setting.min_quota` / `max_quota` 默认范围基础上新增 `checkin_setting.group_quotas`，支持按用户 `group` 配置签到最小/最大额度。
+- 签到执行与签到状态接口都会读取用户真实分组；未命中分组配置时回退全局默认范围。
+- 分组匹配支持精确分组名，也兼容 `standard`、`pro`、`super`、`spuer`、`ultra` 等会员语义 key。
+- 经典后台“签到设置”页新增分组签到额度 JSON 编辑框，并在保存前校验 JSON；后端保存时校验额度非负且最大值不小于最小值。
+- 新增 `setting/operation_setting/checkin_setting_test.go` 覆盖分组范围解析与非法配置校验。
+
+### 验证
+
+- `go test ./setting/operation_setting ./model ./controller ./router` 通过。
+- `npm run build`（`uiweb`）通过；仍有既有 `vendor-icons` 大 chunk 警告。
+- `npx prettier src/pages/Setting/Operation/SettingsCheckin.jsx src/components/settings/OperationSetting.jsx --check`（`web`）通过。
+- `git diff --check` 通过。
+
+### 下一步
+
+- 可在后台写入类似 `{"default":{"min_quota":...,"max_quota":...},"standard":...}` 的配置后上线；生产无需新增表或列，只会新增/更新 options 键。
+
 ## 当前任务：通知中心与空回申诉批量审核（2026-05-04）
 
 ### 已加载状态

@@ -581,6 +581,10 @@ func handleConfigUpdate(key, value string) bool {
 	} else if configName == "billing_setting" {
 		InvalidatePricingCache()
 		ratio_setting.InvalidateExposedDataCache()
+	} else if configName == "checkin_setting" && configKey == "group_quotas" {
+		if err := operation_setting.UpdateCheckinGroupQuotasByJSONString(value); err != nil {
+			common.SysLog("failed to update checkin group quotas: " + err.Error())
+		}
 	}
 
 	return true // 已处理

@@ -841,6 +841,7 @@ export async function mockApiResponse(config) {
       enabled: true,
       min_quota: 250000,
       max_quota: 400000,
+      user_group: DEBUG_USER.group,
       next_checkin_at: daysAgo(-1, 0),
       server_now: nowSec(),
       stats: {

@@ -92,6 +92,7 @@
 - 头像 API：`POST/DELETE /api/user/avatar` 需登录；`GET /api/user/avatar/:id` 公开，ETag 使用 CRC32(data)，`Cache-Control: no-cache`。
 - cache-bust：user 对象带 `_avatar_t`，头像 URL 加 `?t=`；`setUser` 会保留旧 `_avatar_t`，重新登录且 `has_avatar` 时自动生成时间戳。
 - 会员身份：按 `user.group` 展示普通用户、Pro优、Super优、Ultra优；兼容历史 `spuer` 拼写；升级由外部项目移组，newapi 只展示身份。
+- 签到奖励：`checkin_setting.min_quota` / `max_quota` 仍是默认范围；`checkin_setting.group_quotas` 可按用户 `group` 覆盖签到最小/最大额度，支持精确分组名以及 `standard`、`pro`、`super`/`spuer`、`ultra` 等会员语义 key。
 
 ## 关键前端细节
 

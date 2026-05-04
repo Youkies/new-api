@@ -97,10 +97,17 @@ func UserCheckin(userId int) (*Checkin, error) {
 		return nil, errors.New("今日已签到")
 	}
 
+	userGroup, err := GetUserGroup(userId, false)
+	if err != nil {
+		return nil, err
+	}
+
+	minQuota, maxQuota := operation_setting.GetCheckinQuotaRangeForGroup(userGroup)
+
 	// 计算随机额度奖励
-	quotaAwarded := setting.MinQuota
-	if setting.MaxQuota > setting.MinQuota {
-		quotaAwarded = setting.MinQuota + rand.Intn(setting.MaxQuota-setting.MinQuota+1)
+	quotaAwarded := minQuota
+	if maxQuota > minQuota {
+		quotaAwarded = minQuota + rand.Intn(maxQuota-minQuota+1)
 	}
 
 	today := todayStr()

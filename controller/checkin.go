@@ -46,6 +46,16 @@ func GetCheckinStatus(c *gin.Context) {
 		return
 	}
 	userId := c.GetInt("id")
+	userGroup, err := model.GetUserGroup(userId, false)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"success": false,
+			"message": err.Error(),
+		})
+		return
+	}
+	minQuota, maxQuota := operation_setting.GetCheckinQuotaRangeForGroup(userGroup)
+
 	loc := checkinTimezone()
 	// 获取月份参数，默认为当前月份（按签到时区）
 	month := c.DefaultQuery("month", time.Now().In(loc).Format("2006-01"))
@@ -63,8 +73,9 @@ func GetCheckinStatus(c *gin.Context) {
 		"success": true,
 		"data": gin.H{
 			"enabled":         setting.Enabled,
-			"min_quota":       setting.MinQuota,
-			"max_quota":       setting.MaxQuota,
+			"min_quota":       minQuota,
+			"max_quota":       maxQuota,
+			"user_group":      userGroup,
 			"server_now":      time.Now().Unix(),
 			"next_checkin_at": nextLocalMidnight().Unix(),
 			"stats":           stats,

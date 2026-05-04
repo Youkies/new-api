@@ -25,8 +25,17 @@ import {
   showError,
   showSuccess,
   showWarning,
+  verifyJSON,
 } from '../../../helpers';
 import { useTranslation } from 'react-i18next';
+
+const GROUP_QUOTAS_PLACEHOLDER = `{
+  "default": { "min_quota": 50000, "max_quota": 150000 },
+  "standard": { "min_quota": 250000, "max_quota": 400000 },
+  "pro": { "min_quota": 350000, "max_quota": 500000 },
+  "super": { "min_quota": 450000, "max_quota": 600000 },
+  "ultra": { "min_quota": 500000, "max_quota": 650000 }
+}`;
 
 export default function SettingsCheckin(props) {
   const { t } = useTranslation();
@@ -35,6 +44,7 @@ export default function SettingsCheckin(props) {
     'checkin_setting.enabled': false,
     'checkin_setting.min_quota': 1000,
     'checkin_setting.max_quota': 10000,
+    'checkin_setting.group_quotas': '{}',
   });
   const refForm = useRef();
   const [inputsRow, setInputsRow] = useState(inputs);
@@ -46,6 +56,9 @@ export default function SettingsCheckin(props) {
   }
 
   function onSubmit() {
+    if (!verifyJSON(inputs['checkin_setting.group_quotas'] || '{}')) {
+      return showError(t('分组签到额度不是合法的 JSON 字符串'));
+    }
     const updateArray = compareObjects(inputs, inputsRow);
     if (!updateArray.length) return showWarning(t('你似乎并没有修改什么'));
     const requestQueue = updateArray.map((item) => {
@@ -84,7 +97,19 @@ export default function SettingsCheckin(props) {
     const currentInputs = {};
     for (let key in props.options) {
       if (Object.keys(inputs).includes(key)) {
-        currentInputs[key] = props.options[key];
+        if (key === 'checkin_setting.group_quotas') {
+          try {
+            currentInputs[key] = JSON.stringify(
+              JSON.parse(props.options[key] || '{}'),
+              null,
+              2,
+            );
+          } catch {
+            currentInputs[key] = props.options[key] || '{}';
+          }
+        } else {
+          currentInputs[key] = props.options[key];
+        }
       }
     }
     setInputs(currentInputs);
@@ -136,6 +161,27 @@ export default function SettingsCheckin(props) {
                   onChange={handleFieldChange('checkin_setting.max_quota')}
                   min={0}
                   disabled={!inputs['checkin_setting.enabled']}
+                />
+              </Col>
+            </Row>
+            <Row>
+              <Col xs={24}>
+                <Form.TextArea
+                  field={'checkin_setting.group_quotas'}
+                  label={t('分组签到额度')}
+                  placeholder={GROUP_QUOTAS_PLACEHOLDER}
+                  extraText={t(
+                    '可选。键为用户分组，值为该分组签到最小/最大额度；未配置的分组会使用上方默认额度。支持 default、standard、pro、super、ultra 等分组名。',
+                  )}
+                  autosize={{ minRows: 6, maxRows: 12 }}
+                  disabled={!inputs['checkin_setting.enabled']}
+                  onChange={handleFieldChange('checkin_setting.group_quotas')}
+                  rules={[
+                    {
+                      validator: (rule, value) => verifyJSON(value || '{}'),
+                      message: t('不是合法的 JSON 字符串'),
+                    },
+                  ]}
                 />
               </Col>
             </Row>

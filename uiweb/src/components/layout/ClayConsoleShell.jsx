@@ -40,7 +40,15 @@ const LEGACY = [
   { href: '/legacy/playground', label: '游乐场', icon: MessageSquare },
 ]
 
-export default function ClayConsoleShell({ title, subtitle, actions, children }) {
+export default function ClayConsoleShell({
+  title,
+  subtitle,
+  actions,
+  children,
+  compactHeader = false,
+  showMembershipBadge = true,
+  showAssistantWidget = true,
+}) {
   const { user, logout } = useUser()
   const { unreadCount, refreshUnread } = useNotifications()
   const navigate = useNavigate()
@@ -79,9 +87,9 @@ export default function ClayConsoleShell({ title, subtitle, actions, children })
 
   return (
     <div className="min-h-screen bg-clay-bg">
-      <div className="max-w-7xl mx-auto px-5 md:px-8 py-6">
+      <div className={`max-w-7xl mx-auto px-5 md:px-8 ${compactHeader ? 'py-4 md:py-6' : 'py-6'}`}>
         {/* Top bar */}
-        <header className="flex flex-wrap items-center justify-between gap-4 mb-6">
+        <header className={`flex flex-wrap items-center justify-between gap-4 ${compactHeader ? 'mb-4 md:mb-6' : 'mb-6'}`}>
           <div className="flex items-center gap-3">
             <button
               type="button"
@@ -236,24 +244,38 @@ export default function ClayConsoleShell({ title, subtitle, actions, children })
 
         {/* Page title */}
         {(title || subtitle || actions) && (
-          <div className="flex items-end justify-between gap-4 flex-wrap mb-6">
-            <div>
+          <div
+            className={
+              compactHeader
+                ? 'flex items-center justify-between gap-3 mb-4 md:mb-6'
+                : 'flex items-end justify-between gap-4 flex-wrap mb-6'
+            }
+          >
+            <div className="min-w-0 flex-1">
               {title && (
-                <h1 className="text-3xl md:text-4xl font-black tracking-tight">{title}</h1>
+                <h1 className={`${compactHeader ? 'text-2xl md:text-4xl truncate' : 'text-3xl md:text-4xl'} font-black tracking-tight`}>
+                  {title}
+                </h1>
               )}
               {subtitle && (
-                <p className="text-clay-faint mt-1 text-base">{subtitle}</p>
+                <p className={`${compactHeader ? 'hidden sm:block text-sm md:text-base' : 'text-base'} text-clay-faint mt-1`}>
+                  {subtitle}
+                </p>
               )}
-              {user && (
-                <MembershipBadge user={user} className="mt-3" />
+              {user && showMembershipBadge && (
+                <MembershipBadge user={user} className={compactHeader ? 'hidden sm:inline-flex mt-3' : 'mt-3'} />
               )}
             </div>
-            {actions && <div className="flex gap-3 items-center">{actions}</div>}
+            {actions && (
+              <div className={`${compactHeader ? 'gap-2 sm:gap-3 shrink-0' : 'gap-3'} flex items-center`}>
+                {actions}
+              </div>
+            )}
           </div>
         )}
 
         <main>{children}</main>
-        <AssistantWidget />
+        {showAssistantWidget && <AssistantWidget />}
 
         <ClayFooter />
       </div>

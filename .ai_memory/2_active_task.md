@@ -18,16 +18,18 @@
 - 空回补偿申诉已接入 `appeal` 通知：提交、审核通过、驳回可分别按设置给用户写通知，并可分别要求确认。
 - 已新增管理员“一键通过所有”待审核空回申诉：`POST /api/ui/admin/refund-appeals/approve-all`，前端在 `/admin/refund-appeals` 提供按钮，逐单事务补偿并汇总成功/失败。
 - 前端已新增 `/notifications` 通知中心，头像红点和菜单未读数接入通知未读数；打开页面不自动已读，必须点击“标记已读”或“我已知晓”。
+- 已按移动端反馈压缩 `/notifications`：`ClayConsoleShell` 新增紧凑页头、隐藏会员徽章和隐藏 AI 助手开关；通知页移动端改为短标题、图标操作、一行横滑筛选、小统计条和更紧凑的通知卡片，目标是首屏优先看到列表。
 - 调试模式 mock 已覆盖通知中心、通知设置、公告同步通知、充值通知、申诉状态通知和批量通过。
 
 ### 验证
 
 - `go test ./service ./model ./controller ./router ./relay ./relay/channel/openai ./relay/channel/gemini` 通过。
 - `npm run build`（`uiweb`）通过；仍有既有 `vendor-icons` 大 chunk 警告。
+- 本次移动端 UI 修复中先尝试 `bun run build`，但当前环境未安装 Bun；已回退并通过 `npm run build`（`uiweb`）。
 - `git diff --check` 通过。
 
 ### 下一步
 
-- 提交并推送当前通知中心改动。
+- 提交并推送当前通知中心移动端 UI 修复。
 - 生产 `NODE_TYPE=slave` 部署前需手动迁移：新增 `ui_notifications`、`ui_notification_reads`，并给 `ui_announcements` 增加 `notify_enabled`、`notify_level`、`require_ack` 列。
 - 通知设置还需要新增 `ui_notification_settings` 表；如表缺失，读取设置会回退默认值，保存设置会提示先迁移。

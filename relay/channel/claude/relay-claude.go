@@ -3,6 +3,7 @@ package claude
 import (
 	"bufio"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -34,6 +35,113 @@ const (
 	WebSearchMaxUsesMedium = 5
 	WebSearchMaxUsesHigh   = 10
 )
+
+func mimeTypeFromDataPrefix(data string) string {
+	if !strings.HasPrefix(data, "data:") {
+		return ""
+	}
+	comma := strings.Index(data, ",")
+	if comma <= len("data:") {
+		return ""
+	}
+	header := data[len("data:"):comma]
+	if semi := strings.Index(header, ";"); semi >= 0 {
+		header = header[:semi]
+	}
+	return strings.TrimSpace(header)
+}
+
+func mimeTypeFromFileName(fileName string) string {
+	dot := strings.LastIndex(fileName, ".")
+	if dot < 0 || dot == len(fileName)-1 {
+		return ""
+	}
+	mimeType := service.GetMimeTypeByExtension(fileName[dot+1:])
+	if mimeType == "application/octet-stream" {
+		return ""
+	}
+	return mimeType
+}
+
+func claudeFileMimeType(file *dto.MessageFile) string {
+	if file == nil {
+		return ""
+	}
+	if mimeType := mimeTypeFromDataPrefix(file.FileData); mimeType != "" {
+		return mimeType
+	}
+	return mimeTypeFromFileName(file.FileName)
+}
+
+func decodeClaudeTextFile(base64Data string) (string, error) {
+	decoded, err := base64.StdEncoding.DecodeString(base64Data)
+	if err != nil {
+		return "", err
+	}
+	return string(decoded), nil
+}
+
+func appendClaudeFileContent(c *gin.Context, messages []dto.ClaudeMediaMessage, mediaMessage dto.MediaContent) ([]dto.ClaudeMediaMessage, error) {
+	source := mediaMessage.ToFileSource()
+	if source == nil {
+		return messages, nil
+	}
+
+	mimeType := ""
+	if mediaMessage.Type == dto.ContentTypeFile {
+		file := mediaMessage.GetFile()
+		mimeType = claudeFileMimeType(file)
+		if mimeType == "" {
+			return messages, nil
+		}
+		source = types.NewFileSourceFromData(file.FileData, mimeType)
+	}
+
+	if mediaMessage.Type == dto.ContentTypeFile && strings.HasPrefix(mimeType, "text/") {
+		base64Data, _, err := service.GetBase64Data(c, source, "formatting text file for Claude")
+		if err != nil {
+			return nil, fmt.Errorf("get file data failed: %s", err.Error())
+		}
+		text, err := decodeClaudeTextFile(base64Data)
+		if err != nil {
+			return nil, fmt.Errorf("decode text file failed: %s", err.Error())
+		}
+		if text != "" {
+			messages = append(messages, dto.ClaudeMediaMessage{
+				Type: "text",
+				Text: common.GetPointer[string](text),
+			})
+		}
+		return messages, nil
+	}
+
+	base64Data, loadedMimeType, err := service.GetBase64Data(c, source, "formatting file for Claude")
+	if err != nil {
+		return nil, fmt.Errorf("get file data failed: %s", err.Error())
+	}
+	if loadedMimeType != "" {
+		mimeType = loadedMimeType
+	}
+
+	claudeMediaMessage := dto.ClaudeMediaMessage{
+		Source: &dto.ClaudeMessageSource{
+			Type: "base64",
+		},
+	}
+	switch {
+	case strings.HasPrefix(mimeType, "application/pdf"):
+		claudeMediaMessage.Type = "document"
+	case strings.HasPrefix(mimeType, "image/"):
+		claudeMediaMessage.Type = "image"
+	default:
+		return messages, nil
+	}
+
+	claudeMediaMessage.Source.MediaType = mimeType
+	claudeMediaMessage.Source.Data = base64Data
+	messages = append(messages, claudeMediaMessage)
+	return messages, nil
+}
 
 // NormalizeThinkingRequest removes Anthropic parameters that are invalid when
 // extended thinking is enabled. OpenAI-compatible clients often send sampling
@@ -408,29 +516,11 @@ func RequestOpenAI2ClaudeMessage(c *gin.Context, textRequest dto.GeneralOpenAIRe
 							})
 						}
 					default:
-						source := mediaMessage.ToFileSource()
-						if source == nil {
-							continue
-						}
-						base64Data, mimeType, err := service.GetBase64Data(c, source, "formatting image for Claude")
+						var err error
+						claudeMediaMessages, err = appendClaudeFileContent(c, claudeMediaMessages, mediaMessage)
 						if err != nil {
-							return nil, fmt.Errorf("get file data failed: %s", err.Error())
+							return nil, err
 						}
-						claudeMediaMessage := dto.ClaudeMediaMessage{
-							Source: &dto.ClaudeMessageSource{
-								Type: "base64",
-							},
-						}
-						if strings.HasPrefix(mimeType, "application/pdf") {
-							claudeMediaMessage.Type = "document"
-						} else {
-							claudeMediaMessage.Type = "image"
-						}
-
-						claudeMediaMessage.Source.MediaType = mimeType
-						claudeMediaMessage.Source.Data = base64Data
-						claudeMediaMessages = append(claudeMediaMessages, claudeMediaMessage)
-						continue
 					}
 				}
 
@@ -599,12 +689,14 @@ func ResponseClaude2OpenAI(claudeResponse *dto.ClaudeResponse) *dto.OpenAITextRe
 	}
 	choice.SetStringContent(responseText)
 	if len(responseThinking) > 0 {
-		choice.ReasoningContent = responseThinking
+		choice.ReasoningContent = &responseThinking
 	}
 	if len(tools) > 0 {
 		choice.Message.SetToolCalls(tools)
 	}
-	choice.Message.ReasoningContent = thinkingContent
+	if thinkingContent != "" {
+		choice.Message.ReasoningContent = &thinkingContent
+	}
 	fullTextResponse.Model = claudeResponse.Model
 	choices = append(choices, choice)
 	fullTextResponse.Choices = choices

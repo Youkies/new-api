@@ -505,9 +505,11 @@ func (accumulator *chatChoiceStreamAccumulator) toTextResponseChoice(index int) 
 
 	content := accumulator.content.String()
 	message := dto.Message{
-		Role:             role,
-		Content:          content,
-		ReasoningContent: accumulator.reasoning.String(),
+		Role:    role,
+		Content: content,
+	}
+	if reasoning := accumulator.reasoning.String(); reasoning != "" {
+		message.ReasoningContent = &reasoning
 	}
 	toolCalls := accumulator.finalToolCalls()
 	if len(toolCalls) > 0 {
@@ -593,7 +595,7 @@ func OpenaiHandler(c *gin.Context, info *relaycommon.RelayInfo, resp *http.Respo
 		completionTokens := simpleResponse.Usage.CompletionTokens
 		if completionTokens == 0 {
 			for _, choice := range simpleResponse.Choices {
-				ctkm := service.CountTextToken(choice.Message.StringContent()+choice.Message.ReasoningContent+choice.Message.Reasoning, info.UpstreamModelName)
+				ctkm := service.CountTextToken(choice.Message.StringContent()+choice.Message.GetReasoningContent(), info.UpstreamModelName)
 				completionTokens += ctkm
 			}
 		}

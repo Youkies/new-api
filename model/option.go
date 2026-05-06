@@ -585,6 +585,8 @@ func handleConfigUpdate(key, value string) bool {
 		if err := operation_setting.UpdateCheckinGroupQuotasByJSONString(value); err != nil {
 			common.SysLog("failed to update checkin group quotas: " + err.Error())
 		}
+	} else if configName == "theme" {
+		system_setting.UpdateAndSyncTheme()
 	}
 
 	return true // 已处理

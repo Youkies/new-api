@@ -54,6 +54,7 @@ const MjLogsFilters = ({
               type='dateTimeRange'
               placeholder={[t('开始时间'), t('结束时间')]}
               showClear
+              insetInput
               pure
               size='small'
               presets={DATE_RANGE_PRESETS.map((preset) => ({

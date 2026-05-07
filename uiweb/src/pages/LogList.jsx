@@ -345,6 +345,53 @@ function sameDate(a, b) {
     && a.getDate() === b.getDate()
 }
 
+const HOUR_OPTIONS = Array.from({ length: 24 }, (_, value) => String(value).padStart(2, '0'))
+const MINUTE_OPTIONS = Array.from({ length: 60 }, (_, value) => String(value).padStart(2, '0'))
+
+function ClayTimeColumn({ label, options, value, onSelect, tone = 'blue' }) {
+  const scrollRef = useRef(null)
+  const activeRef = useRef(null)
+  const activeClass = tone === 'pink'
+    ? 'bg-clay-pink-100 text-[#8a4860] shadow-clay'
+    : 'bg-clay-blue-100 text-[#43658b] shadow-clay'
+
+  useEffect(() => {
+    const container = scrollRef.current
+    const active = activeRef.current
+    if (!container || !active) return
+    container.scrollTop = active.offsetTop - (container.clientHeight / 2) + (active.clientHeight / 2)
+  }, [value])
+
+  return (
+    <div className="min-w-0 flex-1">
+      <div className="mb-2 px-1 text-[10px] font-black text-clay-faint">{label}</div>
+      <div
+        ref={scrollRef}
+        className="h-36 overflow-y-auto overscroll-contain rounded-[22px] bg-clay-bg p-1.5 shadow-clay-inset"
+      >
+        {options.map((option) => {
+          const active = option === value
+          return (
+            <button
+              key={option}
+              ref={active ? activeRef : null}
+              type="button"
+              onClick={() => onSelect(option)}
+              className={`mb-1 flex h-9 w-full items-center justify-center rounded-[16px] px-3 text-center font-mono text-sm font-black transition-all last:mb-0 ${
+                active
+                  ? activeClass
+                  : 'text-clay-faint hover:bg-white/40 hover:text-clay-ink'
+              }`}
+            >
+              {option}
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 function formatQuotaDelta(quota) {
   if (!quota) return null
   return `${quota < 0 ? '+' : '-'}${quotaToDisplay(Math.abs(quota)).text}`
@@ -392,6 +439,7 @@ function LogSummary({ log }) {
 
 function ClayDateTimeField({ label, value, onChange }) {
   const [open, setOpen] = useState(false)
+  const isMobile = useIsMobile()
   const selectedDate = useMemo(() => parseLocalDateTime(value), [value])
   const [viewDate, setViewDate] = useState(selectedDate)
   const rootRef = useRef(null)
@@ -458,6 +506,9 @@ function ClayDateTimeField({ label, value, onChange }) {
   const monthLabel = `${viewDate.getFullYear()}年${pad(viewDate.getMonth() + 1)}月`
   const selectedHour = pad(selectedDate.getHours())
   const selectedMinute = pad(selectedDate.getMinutes())
+  const panelClassName = isMobile
+    ? 'fixed inset-x-3 top-1/2 z-[100] max-h-[calc(100dvh-1.5rem)] -translate-y-1/2 overflow-y-auto rounded-clay-lg bg-clay-bg p-4 shadow-clay border-2 border-white/30'
+    : 'absolute left-0 top-full z-[80] mt-3 w-full min-w-[320px] max-w-[calc(100vw-2rem)] rounded-clay-lg bg-clay-bg p-4 shadow-clay border-2 border-white/30'
 
   return (
     <div ref={rootRef} className="relative">
@@ -472,7 +523,7 @@ function ClayDateTimeField({ label, value, onChange }) {
       </button>
 
       {open && (
-        <div className="absolute left-0 top-full z-[80] mt-3 w-full min-w-[320px] max-w-[calc(100vw-2rem)] rounded-clay-lg bg-clay-bg p-4 shadow-clay border-2 border-white/30">
+        <div className={panelClassName}>
           <div className="flex items-center justify-between mb-3">
             <button type="button" onClick={() => jumpMonth(-1)} className="w-9 h-9 rounded-full bg-clay-bg shadow-clay flex items-center justify-center">
               <ChevronLeft className="w-4 h-4" />
@@ -512,21 +563,21 @@ function ClayDateTimeField({ label, value, onChange }) {
 
           <div className="mt-4 rounded-clay bg-clay-bg shadow-clay-inset p-3">
             <div className="text-[10px] font-black text-clay-faint mb-2">时间</div>
-            <div className="flex items-center gap-2">
-              <input
+            <div className="flex items-start gap-3">
+              <ClayTimeColumn
+                label="小时"
+                options={HOUR_OPTIONS}
                 value={selectedHour}
-                onChange={(e) => setTimePart('hour', e.target.value)}
-                inputMode="numeric"
-                maxLength={2}
-                className="w-16 rounded-clay-sm bg-clay-bg shadow-clay px-3 py-2 text-center font-mono font-black outline-none"
+                onSelect={(hour) => setTimePart('hour', hour)}
+                tone="blue"
               />
-              <span className="font-black text-clay-faint">:</span>
-              <input
+              <div className="pt-11 font-black text-clay-faint">:</div>
+              <ClayTimeColumn
+                label="分钟"
+                options={MINUTE_OPTIONS}
                 value={selectedMinute}
-                onChange={(e) => setTimePart('minute', e.target.value)}
-                inputMode="numeric"
-                maxLength={2}
-                className="w-16 rounded-clay-sm bg-clay-bg shadow-clay px-3 py-2 text-center font-mono font-black outline-none"
+                onSelect={(minute) => setTimePart('minute', minute)}
+                tone="pink"
               />
             </div>
           </div>

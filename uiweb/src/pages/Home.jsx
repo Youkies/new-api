@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { Activity, Cloud, Layers, LayoutDashboard, Megaphone, Smile, Tags } from 'lucide-react'
+import { Activity, Cloud, Layers, LayoutDashboard, LogIn, Megaphone, Smile, Tags, UserPlus } from 'lucide-react'
 import ClayCard from '../components/clay/ClayCard.jsx'
 import ClayButton from '../components/clay/ClayButton.jsx'
 import ClayPageShell from '../components/layout/ClayPageShell.jsx'
@@ -10,13 +10,38 @@ export default function Home() {
   const actionButtonClass = '!h-14 !w-full !px-4 !py-0 text-sm sm:!w-auto sm:!px-8 sm:!py-3'
   const actionContentClass = 'inline-flex w-full items-center justify-center gap-2 whitespace-nowrap'
   const actionIconClass = 'h-4 w-4 shrink-0'
+  const authButtonClass = '!h-10 !px-5 !py-0 !text-sm'
+  const authContentClass = 'inline-flex items-center justify-center gap-2 whitespace-nowrap'
+  const authIconClass = 'h-4 w-4 shrink-0'
 
   return (
-    <ClayPageShell>
+    <ClayPageShell hideGuestActions={!user} compactNav={!user}>
       {/* Hero */}
       <section className="grid md:grid-cols-2 gap-12 md:gap-16 items-center min-h-[60vh]">
         <div>
-          <span className="clay-badge mb-6">AI Gateway · Clay Edition</span>
+          {!user && (
+            <div className="mb-3 flex max-w-full flex-wrap items-center gap-2">
+              <Link to="/login" className="min-w-0">
+                <ClayButton variant="ghost" className={authButtonClass}>
+                  <span className={authContentClass}>
+                    <LogIn className={authIconClass} />
+                    <span>登录</span>
+                  </span>
+                </ClayButton>
+              </Link>
+              <Link to="/register" className="min-w-0">
+                <ClayButton variant="primary" className={authButtonClass}>
+                  <span className={authContentClass}>
+                    <UserPlus className={authIconClass} />
+                    <span>注册</span>
+                  </span>
+                </ClayButton>
+              </Link>
+            </div>
+          )}
+          <div className="mb-6 flex max-w-full flex-wrap items-center gap-2">
+            <span className="clay-badge !inline-flex !h-[30px] items-center !py-0">AI Gateway · Clay Edition</span>
+          </div>
           <h1 className="text-5xl md:text-6xl font-black leading-tight mb-5 tracking-tight">
             温馨、和谐、
             <br />

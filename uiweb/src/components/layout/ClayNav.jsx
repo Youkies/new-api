@@ -11,12 +11,12 @@ const linkBase =
   'px-4 py-2 rounded-clay-pill font-bold text-sm transition-all hover:text-clay-pink-300'
 const linkActive = 'text-clay-pink-300'
 
-export default function ClayNav() {
+export default function ClayNav({ hideGuestActions = false, compactBottom = false }) {
   const { user } = useUser()
   const logoSrc = getFaviconSrc()
 
   return (
-    <header className="flex items-center justify-between mb-10 gap-3">
+    <header className={`flex items-center justify-between gap-3 ${compactBottom ? 'mb-3' : 'mb-10'}`}>
       <Link to="/" className="min-w-0">
         <ClayCard
           interactive
@@ -59,7 +59,7 @@ export default function ClayNav() {
               进入控制台
             </ClayButton>
           </Link>
-        ) : (
+        ) : hideGuestActions ? null : (
           <>
             <Link to="/login">
               <ClayButton variant="ghost" className="!px-5 !py-2 !text-sm">

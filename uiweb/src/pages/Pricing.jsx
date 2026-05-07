@@ -1,5 +1,17 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Search, Coins, Loader2, ChevronDown, ArrowDownToLine, ArrowUpFromLine, Database, Sparkles } from 'lucide-react'
+import {
+  Search,
+  Coins,
+  Loader2,
+  ArrowDownToLine,
+  ArrowUpFromLine,
+  Database,
+  Sparkles,
+  Filter,
+  Gem,
+  X,
+  CheckCircle2,
+} from 'lucide-react'
 import ClayCard from '../components/clay/ClayCard.jsx'
 import ClayInput from '../components/clay/ClayInput.jsx'
 import ClayAlert from '../components/clay/ClayAlert.jsx'
@@ -89,18 +101,30 @@ function calcFixedPrice(model, groupRatio, cc) {
   return formatPrice(usd, cc)
 }
 
+function isModelEnabledForGroup(model, group) {
+  if (group === 'all') return true
+  const enableGroups = Array.isArray(model.enable_groups) ? model.enable_groups : []
+  return enableGroups.includes(group) || enableGroups.includes('all')
+}
+
+function formatRatioValue(value) {
+  const ratio = Number(value)
+  if (!Number.isFinite(ratio)) return '1x'
+  return `${Number.isInteger(ratio) ? ratio : ratio.toFixed(2).replace(/0+$/, '').replace(/\.$/, '')}x`
+}
+
 export default function Pricing() {
   const { status } = useStatus()
   const [models, setModels] = useState([])
   const [vendorsMap, setVendorsMap] = useState({})
   const [groupRatio, setGroupRatio] = useState({})
+  const [groupDetails, setGroupDetails] = useState({})
   const [usableGroup, setUsableGroup] = useState({})
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [keyword, setKeyword] = useState('')
   const [selectedGroup, setSelectedGroup] = useState('all')
-  const [selectedVendor, setSelectedVendor] = useState('all')
-  const [vendorOpen, setVendorOpen] = useState(false)
+  const [groupDialogOpen, setGroupDialogOpen] = useState(false)
 
   useEffect(() => {
     ;(async () => {
@@ -123,6 +147,7 @@ export default function Pricing() {
         setVendorsMap(vMap)
         setGroupRatio(res?.group_ratio ?? {})
         setUsableGroup(res?.usable_group ?? {})
+        setGroupDetails(res?.group_details ?? res?.group_detail_descriptions ?? {})
       } catch (err) {
         setError(err?.response?.data?.message ?? err.message ?? '价格加载失败')
       } finally {
@@ -136,32 +161,68 @@ export default function Pricing() {
     return ['all', ...keys]
   }, [usableGroup])
 
-  const vendors = useMemo(() => {
-    const set = new Map()
-    for (const m of models) {
-      if (m.vendor_name && !set.has(m.vendor_name)) {
-        set.set(m.vendor_name, m.vendor_icon)
-      }
+  useEffect(() => {
+    if (!groups.includes(selectedGroup)) {
+      setSelectedGroup('all')
     }
-    return set
-  }, [models])
+  }, [groups, selectedGroup])
+
+  useEffect(() => {
+    if (!groupDialogOpen) return undefined
+    const originalOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    document.body.classList.add('pricing-group-dialog-open')
+    const onKeyDown = (event) => {
+      if (event.key === 'Escape') setGroupDialogOpen(false)
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => {
+      document.body.style.overflow = originalOverflow
+      document.body.classList.remove('pricing-group-dialog-open')
+      window.removeEventListener('keydown', onKeyDown)
+    }
+  }, [groupDialogOpen])
+
+  const groupOptions = useMemo(() => {
+    return groups.map((group) => {
+      const isAll = group === 'all'
+      const count = isAll
+        ? models.length
+        : models.filter((model) => isModelEnabledForGroup(model, group)).length
+      return {
+        key: group,
+        name: isAll ? '全部分组' : group,
+        description: isAll ? '显示当前账号可用的所有模型' : (usableGroup[group] || group),
+        detail: isAll
+          ? '默认展示当前账号可用的全部模型，并按模型可用分组使用对应倍率计算展示价格。'
+          : String(groupDetails[group] || '').trim(),
+        ratio: isAll ? null : groupRatio[group],
+        count,
+      }
+    })
+  }, [groups, groupRatio, groupDetails, models, usableGroup])
+
+  const selectedGroupOption = useMemo(() => (
+    groupOptions.find((item) => item.key === selectedGroup) || groupOptions[0] || {
+      key: 'all',
+      name: '全部分组',
+      count: models.length,
+      detail: '',
+      ratio: null,
+    }
+  ), [groupOptions, models.length, selectedGroup])
 
   const filtered = useMemo(() => {
     let result = models
     if (selectedGroup !== 'all') {
-      result = result.filter((m) =>
-        m.enable_groups?.includes(selectedGroup) || m.enable_groups?.includes('all')
-      )
-    }
-    if (selectedVendor !== 'all') {
-      result = result.filter((m) => m.vendor_name === selectedVendor)
+      result = result.filter((m) => isModelEnabledForGroup(m, selectedGroup))
     }
     if (keyword) {
       const k = keyword.toLowerCase()
       result = result.filter((m) => (m.model_name ?? '').toLowerCase().includes(k))
     }
     return result
-  }, [models, keyword, selectedGroup, selectedVendor])
+  }, [models, keyword, selectedGroup])
 
   const cc = getCurrencyConfig(status)
   const unitLabel = cc.type === 'TOKENS' ? '倍率' : '/1M tokens'
@@ -170,10 +231,10 @@ export default function Pricing() {
     <ClayPageShell>
       <section>
         {/* Header */}
-        <div className="clay-icon-box !w-16 !h-16 mx-auto mb-6 text-clay-pink-200">
+        <div className="clay-icon-box !w-16 !h-16 mx-auto mb-6 text-clay-pink-200 hidden sm:flex">
           <Coins className="w-7 h-7" strokeWidth={2.5} />
         </div>
-        <h1 className="text-4xl md:text-5xl font-black text-center mb-3 tracking-tight">
+        <h1 className="text-[34px] sm:text-4xl md:text-5xl font-black text-center mb-3 tracking-tight">
           模型与价格
         </h1>
         <p className="text-center text-clay-faint mb-3 max-w-2xl mx-auto">
@@ -188,96 +249,229 @@ export default function Pricing() {
           </div>
         )}
 
-        {/* Group pills */}
+        {/* Desktop group pills */}
         {groups.length > 1 && (
-          <div className="flex flex-wrap items-center justify-center gap-2 mb-4 px-2">
-            {groups.map((g) => {
-              const active = selectedGroup === g
-              const ratio = g === 'all' ? null : groupRatio[g]
+          <div className="hidden md:flex flex-wrap items-center justify-center gap-2 mb-5 px-2">
+            {groupOptions.map((option) => {
+              const active = selectedGroup === option.key
               return (
-                <button
-                  key={g}
-                  onClick={() => setSelectedGroup(g)}
-                  className={`inline-flex items-center justify-center gap-1.5 min-w-[5.5rem] px-4 py-2 rounded-clay-pill text-sm font-extrabold transition-all ${
-                    active
-                      ? 'bg-clay-pink-100 text-[#8a4860] shadow-clay'
-                      : 'bg-clay-bg text-clay-faint shadow-clay-inset hover:text-clay-ink'
-                  }`}
-                >
-                  {g === 'all' ? '全部分组' : g}
-                  {ratio != null && (
-                    <span className={`text-[11px] font-bold px-1.5 py-0.5 rounded-full ${
-                      active ? 'bg-white/40' : 'bg-black/5'
-                    }`}>
-                      {ratio}x
-                    </span>
-                  )}
-                </button>
+                <div key={option.key} className="relative group">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedGroup(option.key)}
+                    className={`inline-flex items-center justify-center gap-2 px-4 py-2 rounded-clay-pill text-sm font-extrabold transition-all ${
+                      active
+                        ? 'bg-clay-pink-100 text-[#8a4860] shadow-clay'
+                        : 'bg-clay-bg text-clay-faint shadow-clay-inset hover:text-clay-ink hover:shadow-clay'
+                    }`}
+                  >
+                    <span className="whitespace-nowrap">{option.name}</span>
+                    {option.ratio != null && (
+                      <span className={`text-[11px] font-black px-2 py-0.5 rounded-full ${
+                        active ? 'bg-white/40' : 'bg-black/[0.04]'
+                      }`}>
+                        {formatRatioValue(option.ratio)}
+                      </span>
+                    )}
+                  </button>
+                  <div className="pointer-events-none absolute left-1/2 top-[calc(100%+10px)] z-[80] w-80 -translate-x-1/2 rounded-clay bg-clay-surface px-4 py-3 text-left text-clay-ink shadow-clay-hover border border-white/30 opacity-0 scale-95 transition-all duration-150 group-hover:opacity-100 group-hover:scale-100 group-focus-within:opacity-100 group-focus-within:scale-100">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="font-black leading-tight break-words">{option.name}</div>
+                        <div className="mt-1 text-xs font-bold text-clay-faint leading-relaxed">
+                          {option.description || '暂无简介'}
+                        </div>
+                      </div>
+                      <div className="shrink-0 flex flex-col items-end gap-1">
+                        <span className="rounded-clay-pill bg-clay-blue-100/70 px-2.5 py-1 text-[11px] font-black text-[#43658b]">
+                          {option.count} 个模型
+                        </span>
+                        {option.ratio != null && (
+                          <span className="rounded-clay-pill bg-white/45 px-2.5 py-1 text-[11px] font-black text-clay-faint shadow-clay-sm">
+                            {formatRatioValue(option.ratio)}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="mt-3 border-t border-black/[0.04] pt-3">
+                      <div className="mb-1 text-[11px] font-extrabold uppercase tracking-wider text-clay-faint/70">
+                        详细介绍
+                      </div>
+                      <p className="text-sm font-semibold leading-relaxed text-clay-faint">
+                        {option.detail || '暂无详细介绍'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
               )
             })}
           </div>
         )}
 
-        {/* Vendor filter + search row */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 max-w-3xl mx-auto mb-10">
-          {/* Vendor dropdown */}
-          {vendors.size > 1 && (
-            <div className="relative shrink-0">
-              <button
-                onClick={() => setVendorOpen(!vendorOpen)}
-                onBlur={() => setTimeout(() => setVendorOpen(false), 150)}
-                className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-clay text-sm font-extrabold transition-all w-full sm:w-auto ${
-                  selectedVendor !== 'all'
-                    ? 'bg-clay-pink-100 text-[#8a4860] shadow-clay'
-                    : 'bg-clay-bg text-clay-faint shadow-clay-inset hover:text-clay-ink'
-                }`}
-              >
-                {selectedVendor !== 'all' && (
-                  <span className="shrink-0">{getLobeHubIcon(vendors.get(selectedVendor), 16)}</span>
-                )}
-                <span className="truncate">{selectedVendor === 'all' ? '全部供应商' : selectedVendor}</span>
-                <ChevronDown className={`w-4 h-4 shrink-0 transition-transform ${vendorOpen ? 'rotate-180' : ''}`} />
-              </button>
-              {vendorOpen && (
-                <div className="absolute z-50 mt-2 left-0 min-w-[200px] max-h-72 overflow-y-auto rounded-clay bg-white shadow-clay-hover p-2 space-y-0.5">
-                  <button
-                    onMouseDown={(e) => e.preventDefault()}
-                    onClick={() => { setSelectedVendor('all'); setVendorOpen(false) }}
-                    className={`w-full text-left px-3 py-2 rounded-clay-sm text-sm font-bold transition-colors ${
-                      selectedVendor === 'all' ? 'bg-clay-pink-50 text-[#8a4860]' : 'text-clay-ink hover:bg-clay-bg'
-                    }`}
-                  >
-                    全部供应商
-                  </button>
-                  {[...vendors.entries()].map(([name, icon]) => (
-                    <button
-                      key={name}
-                      onMouseDown={(e) => e.preventDefault()}
-                      onClick={() => { setSelectedVendor(name); setVendorOpen(false) }}
-                      className={`w-full text-left px-3 py-2 rounded-clay-sm text-sm font-bold transition-colors flex items-center gap-2 ${
-                        selectedVendor === name ? 'bg-clay-pink-50 text-[#8a4860]' : 'text-clay-ink hover:bg-clay-bg'
-                      }`}
-                    >
-                      <span className="shrink-0">{getLobeHubIcon(icon, 16)}</span>
-                      <span className="truncate">{name}</span>
-                    </button>
-                  ))}
+        {/* Mobile group selector */}
+        {groups.length > 1 && (
+          <div className="md:hidden max-w-3xl mx-auto mb-4 px-0 sm:px-2">
+            <div className="rounded-clay bg-clay-bg shadow-clay-inset px-5 py-4 text-clay-faint">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="text-[11px] font-extrabold uppercase tracking-wider text-clay-faint/75">
+                    当前分组
+                  </div>
+                  <div className="mt-1 text-lg font-black leading-tight text-clay-ink break-words">
+                    {selectedGroupOption.name}
+                  </div>
+                </div>
+                <div className="shrink-0 flex items-center gap-1.5">
+                  <span className="rounded-clay-pill bg-clay-blue-100/70 px-2.5 py-1 text-[11px] font-black text-[#43658b]">
+                    {selectedGroupOption.count} 个模型
+                  </span>
+                  {selectedGroupOption.ratio != null && (
+                    <span className="rounded-clay-pill bg-white/45 px-2.5 py-1 text-[11px] font-black text-clay-faint shadow-clay-sm">
+                      {formatRatioValue(selectedGroupOption.ratio)}
+                    </span>
+                  )}
+                </div>
+              </div>
+              {selectedGroupOption.detail && (
+                <div className="mt-3 border-t border-black/[0.04] pt-3 text-sm font-semibold leading-relaxed">
+                  <div className="mb-1 text-[11px] font-extrabold uppercase tracking-wider text-clay-faint/70">
+                    详细介绍
+                  </div>
+                  <p>{selectedGroupOption.detail}</p>
                 </div>
               )}
             </div>
-          )}
+          </div>
+        )}
 
-          {/* Search */}
-          <div className="relative flex-1">
-            <ClayInput
-              value={keyword}
-              onChange={(e) => setKeyword(e.target.value)}
-              placeholder="搜索模型名称…"
-              className="!pl-12"
-            />
-            <Search className="w-5 h-5 absolute left-5 top-1/2 -translate-y-1/2 text-clay-faint pointer-events-none" />
+        {/* Search */}
+        <div className="max-w-3xl mx-auto mb-10">
+          <div className="grid grid-cols-[minmax(0,1fr)_auto] md:grid-cols-1 items-center gap-2">
+            <div className="relative min-w-0">
+              <ClayInput
+                value={keyword}
+                onChange={(e) => setKeyword(e.target.value)}
+                placeholder="搜索模型名称…"
+                className="!h-[52px] !pl-12"
+              />
+              <Search className="w-5 h-5 absolute left-5 top-1/2 -translate-y-1/2 text-clay-faint pointer-events-none" />
+            </div>
+            {groups.length > 1 && (
+              <button
+                type="button"
+                onClick={() => setGroupDialogOpen(true)}
+                className="md:hidden inline-flex h-[52px] shrink-0 items-center justify-center gap-1.5 rounded-clay-pill bg-clay-pink-100 px-4 text-sm font-extrabold text-[#8a4860] shadow-clay transition-all active:scale-95 active:shadow-clay-active"
+              >
+                <Filter className="w-3.5 h-3.5" strokeWidth={2.5} />
+                查看分组
+              </button>
+            )}
           </div>
         </div>
+
+        {groupDialogOpen && (
+          <div className="fixed inset-0 z-[10000] flex items-end justify-center px-3 py-4 sm:items-center sm:px-6">
+            <button
+              type="button"
+              aria-label="关闭分组选择"
+              className="absolute inset-0 bg-black/20 backdrop-blur-[2px]"
+              onClick={() => setGroupDialogOpen(false)}
+            />
+            <div className="relative w-full max-w-2xl max-h-[86vh] overflow-hidden rounded-[32px] bg-clay-surface shadow-clay-hover border border-white/30">
+              <div className="px-5 sm:px-6 pt-5 pb-4 border-b border-black/[0.04]">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="clay-icon-box !w-12 !h-12 text-[#43658b] shrink-0">
+                      <Filter className="w-5 h-5" strokeWidth={2.5} />
+                    </div>
+                    <div className="min-w-0">
+                      <h2 className="text-xl sm:text-2xl font-black text-clay-ink truncate">
+                        选择分组
+                      </h2>
+                      <p className="text-xs sm:text-sm font-semibold text-clay-faint">
+                        查看倍率、简介和每个分组的模型数量
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setGroupDialogOpen(false)}
+                    className="clay-icon-box !w-11 !h-11 text-clay-faint hover:text-clay-ink shrink-0"
+                    aria-label="关闭"
+                  >
+                    <X className="w-5 h-5" strokeWidth={2.5} />
+                  </button>
+                </div>
+
+                <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <div className="rounded-clay bg-clay-blue-100/65 shadow-clay-inset px-4 py-3 flex items-center gap-3 text-[#43658b]">
+                    <Sparkles className="w-5 h-5 shrink-0" strokeWidth={2.5} />
+                    <div className="min-w-0">
+                      <div className="font-black leading-tight">Pro优专属倍率</div>
+                      <div className="text-[11px] font-bold opacity-70">常用高级模型更优价格</div>
+                    </div>
+                  </div>
+                  <div className="rounded-clay bg-clay-yellow-100/70 shadow-clay-inset px-4 py-3 flex items-center gap-3 text-[#8a6a32]">
+                    <Gem className="w-5 h-5 shrink-0" strokeWidth={2.5} />
+                    <div className="min-w-0">
+                      <div className="font-black leading-tight">Ultra优专属倍率</div>
+                      <div className="text-[11px] font-bold opacity-70">旗舰模型与高阶权益档位</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="max-h-[58vh] overflow-y-auto clay-scrollbar-none px-4 sm:px-6 pt-4 pb-12 space-y-2">
+                {groupOptions.map((option) => {
+                  const active = option.key === selectedGroup
+                  return (
+                    <button
+                      type="button"
+                      key={option.key}
+                      onClick={() => {
+                        setSelectedGroup(option.key)
+                        setGroupDialogOpen(false)
+                      }}
+                      className={`w-full rounded-clay px-4 py-3 text-left transition-all ${
+                        active
+                          ? 'bg-clay-pink-100/85 text-[#8a4860] shadow-clay'
+                          : 'bg-clay-bg text-clay-ink shadow-clay-inset hover:shadow-clay'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="font-black text-base truncate">{option.name}</span>
+                            {active && <CheckCircle2 className="w-4 h-4 shrink-0" strokeWidth={2.5} />}
+                          </div>
+                          <p className={`mt-1 text-xs sm:text-sm font-semibold leading-relaxed ${
+                            active ? 'text-[#8a4860]/75' : 'text-clay-faint'
+                          }`}>
+                            {option.description}
+                          </p>
+                        </div>
+                        <div className="shrink-0 flex flex-col items-end gap-1">
+                          <span className={`rounded-clay-pill px-2.5 py-1 text-xs font-black shadow-clay-sm ${
+                            active ? 'bg-white/40 text-[#8a4860]' : 'bg-white/45 text-[#43658b]'
+                          }`}>
+                            {option.count} 个模型
+                          </span>
+                          {option.ratio != null && (
+                            <span className={`rounded-clay-pill px-2.5 py-1 text-xs font-black ${
+                              active ? 'bg-white/30 text-[#8a4860]/85' : 'bg-black/[0.04] text-clay-faint'
+                            }`}>
+                              {formatRatioValue(option.ratio)}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          </div>
+        )}
 
         {error && (
           <ClayAlert tone="error" className="max-w-2xl mx-auto mb-8">
@@ -414,10 +608,7 @@ export default function Pricing() {
           <div className="mt-6 text-center text-sm text-clay-faint">
             共 {filtered.length} 个模型
             {selectedGroup !== 'all' && (
-              <span>，分组 <strong className="text-clay-ink">{selectedGroup}</strong>（{groupRatio[selectedGroup] ?? 1}x）</span>
-            )}
-            {selectedVendor !== 'all' && (
-              <span>，供应商 <strong className="text-clay-ink">{selectedVendor}</strong></span>
+              <span>，分组 <strong className="text-clay-ink">{selectedGroup}</strong>（{formatRatioValue(groupRatio[selectedGroup] ?? 1)}）</span>
             )}
           </div>
         )}

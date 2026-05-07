@@ -819,7 +819,7 @@ export default function AssistantWidget() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="fixed right-5 bottom-[calc(env(safe-area-inset-bottom)+1.25rem)] z-[9990] w-16 h-16 rounded-full bg-clay-pink-100 shadow-clay hover:shadow-clay-hover active:shadow-clay-active transition-all duration-200 ease-clay flex items-center justify-center text-[#8a4860]"
+        className="assistant-widget-toggle fixed right-5 bottom-[calc(env(safe-area-inset-bottom)+1.25rem)] z-[9990] w-16 h-16 rounded-full bg-clay-pink-100 shadow-clay hover:shadow-clay-hover active:shadow-clay-active transition-all duration-200 ease-clay flex items-center justify-center text-[#8a4860]"
         aria-label={assistantName}
         title={assistantName}
       >

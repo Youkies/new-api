@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { ArrowRight, Activity, Cloud, Layers, Megaphone, Smile } from 'lucide-react'
+import { Activity, Cloud, Layers, LayoutDashboard, Megaphone, Smile, Tags } from 'lucide-react'
 import ClayCard from '../components/clay/ClayCard.jsx'
 import ClayButton from '../components/clay/ClayButton.jsx'
 import ClayPageShell from '../components/layout/ClayPageShell.jsx'
@@ -7,6 +7,9 @@ import { useUser } from '../context/UserContext.jsx'
 
 export default function Home() {
   const { user } = useUser()
+  const actionButtonClass = '!h-14 !w-full !px-4 !py-0 text-sm sm:!w-auto sm:!px-8 sm:!py-3'
+  const actionContentClass = 'inline-flex w-full items-center justify-center gap-2 whitespace-nowrap'
+  const actionIconClass = 'h-4 w-4 shrink-0'
 
   return (
     <ClayPageShell>
@@ -22,31 +25,48 @@ export default function Home() {
           <p className="text-clay-faint text-lg leading-relaxed mb-7 max-w-lg">
             每一次对话都被温柔以待，每一个想法都值得被认真回应。这里是你与 AI 最舒适的相遇方式。
           </p>
-          <div className="flex flex-wrap gap-4 items-center">
+          <div className="grid max-w-md grid-cols-2 gap-3 sm:flex sm:max-w-none sm:flex-wrap sm:items-center sm:gap-4">
             {user ? (
-              <Link to="/dashboard">
-                <ClayButton variant="secondary">
-                  进入控制台 <ArrowRight className="w-4 h-4" />
+              <Link to="/dashboard" className="min-w-0">
+                <ClayButton variant="secondary" className={actionButtonClass}>
+                  <span className={actionContentClass}>
+                    <LayoutDashboard className={actionIconClass} />
+                    <span>进入控制台</span>
+                  </span>
                 </ClayButton>
               </Link>
             ) : (
-              <Link to="/register">
-                <ClayButton variant="secondary">
-                  立即开始 <ArrowRight className="w-4 h-4" />
+              <Link to="/register" className="min-w-0">
+                <ClayButton variant="secondary" className={actionButtonClass}>
+                  <span className={actionContentClass}>
+                    <LayoutDashboard className={actionIconClass} />
+                    <span>立即开始</span>
+                  </span>
                 </ClayButton>
               </Link>
             )}
-            <Link to="/pricing">
-              <ClayButton variant="ghost">查看价格</ClayButton>
-            </Link>
-            <Link to="/status" className="md:hidden">
-              <ClayButton variant="ghost">
-                <Activity className="w-4 h-4" /> 模型状态
+            <Link to="/pricing" className="min-w-0">
+              <ClayButton variant="ghost" className={actionButtonClass}>
+                <span className={actionContentClass}>
+                  <Tags className={actionIconClass} />
+                  <span>查看价格</span>
+                </span>
               </ClayButton>
             </Link>
-            <Link to="/announcements" className="md:hidden">
-              <ClayButton variant="ghost">
-                <Megaphone className="w-4 h-4" /> 站点公告
+            <Link to="/status" className="min-w-0 md:hidden">
+              <ClayButton variant="ghost" className={actionButtonClass}>
+                <span className={actionContentClass}>
+                  <Activity className={actionIconClass} />
+                  <span>模型状态</span>
+                </span>
+              </ClayButton>
+            </Link>
+            <Link to="/announcements" className="min-w-0 md:hidden">
+              <ClayButton variant="ghost" className={actionButtonClass}>
+                <span className={actionContentClass}>
+                  <Megaphone className={actionIconClass} />
+                  <span>站点公告</span>
+                </span>
               </ClayButton>
             </Link>
           </div>

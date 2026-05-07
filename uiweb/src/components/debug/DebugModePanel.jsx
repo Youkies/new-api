@@ -38,7 +38,7 @@ export default function DebugModePanel() {
   }
 
   return (
-    <div className="fixed left-3 bottom-3 z-[10020] text-clay-ink">
+    <div className="ui-debug-panel fixed left-3 bottom-3 z-[10020] text-clay-ink">
       <div className="rounded-clay bg-clay-bg/95 shadow-clay border-2 border-white/40 overflow-hidden max-w-[calc(100vw-1.5rem)]">
         <button
           type="button"

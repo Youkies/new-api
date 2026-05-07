@@ -16,14 +16,14 @@ export default function ClayNav() {
   const logoSrc = getFaviconSrc()
 
   return (
-    <header className="flex justify-between items-center mb-10 gap-4 flex-wrap">
-      <Link to="/">
+    <header className="flex items-center justify-between mb-10 gap-3">
+      <Link to="/" className="min-w-0">
         <ClayCard
           interactive
-          className="!p-2 !px-5 !rounded-clay-pill !flex-row !flex gap-2 items-center !border-0"
+          className="!p-2 !px-4 md:!px-5 !rounded-clay-pill !flex-row !flex gap-2 items-center !border-0"
         >
-          <img src={logoSrc} alt="logo" className="w-6 h-6" />
-          <span className="font-black text-lg">Youkies API · Clay</span>
+          <img src={logoSrc} alt="logo" className="w-6 h-6 shrink-0" />
+          <span className="truncate text-base font-black md:text-lg">Youkies API</span>
         </ClayCard>
       </Link>
 
@@ -45,7 +45,7 @@ export default function ClayNav() {
         </NavLink>
       </nav>
 
-      <div className="flex gap-3 items-center">
+      <div className="flex shrink-0 gap-3 items-center">
         <ThemeToggle />
         {user ? (
           <Link to="/dashboard" className="flex items-center gap-2">

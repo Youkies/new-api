@@ -2,6 +2,7 @@ import React, { useState, useCallback, useMemo, useRef } from 'react';
 import {
   Button,
   Input,
+  TextArea,
   InputNumber,
   Checkbox,
   Typography,
@@ -25,13 +26,15 @@ function parseJSON(str, fallback) {
   }
 }
 
-function buildRows(groupRatioStr, userUsableGroupsStr) {
+function buildRows(groupRatioStr, userUsableGroupsStr, userUsableGroupDetailsStr) {
   const ratioMap = parseJSON(groupRatioStr, {});
   const usableMap = parseJSON(userUsableGroupsStr, {});
+  const detailMap = parseJSON(userUsableGroupDetailsStr, {});
 
   const allNames = new Set([
     ...Object.keys(ratioMap),
     ...Object.keys(usableMap),
+    ...Object.keys(detailMap),
   ]);
 
   return Array.from(allNames).map((name) => ({
@@ -40,12 +43,14 @@ function buildRows(groupRatioStr, userUsableGroupsStr) {
     ratio: ratioMap[name] ?? 1,
     selectable: name in usableMap,
     description: usableMap[name] ?? '',
+    detail: detailMap[name] ?? '',
   }));
 }
 
 export function serializeGroupTable(rows) {
   const groupRatio = {};
   const userUsableGroups = {};
+  const userUsableGroupDetails = {};
 
   rows.forEach((row) => {
     if (!row.name) return;
@@ -53,19 +58,28 @@ export function serializeGroupTable(rows) {
     if (row.selectable) {
       userUsableGroups[row.name] = row.description;
     }
+    if (row.detail?.trim()) {
+      userUsableGroupDetails[row.name] = row.detail;
+    }
   });
 
   return {
     GroupRatio: JSON.stringify(groupRatio, null, 2),
     UserUsableGroups: JSON.stringify(userUsableGroups, null, 2),
+    UserUsableGroupDetails: JSON.stringify(userUsableGroupDetails, null, 2),
   };
 }
 
-export default function GroupTable({ groupRatio, userUsableGroups, onChange }) {
+export default function GroupTable({
+  groupRatio,
+  userUsableGroups,
+  userUsableGroupDetails,
+  onChange,
+}) {
   const { t } = useTranslation();
 
   const [rows, setRows] = useState(() =>
-    buildRows(groupRatio, userUsableGroups),
+    buildRows(groupRatio, userUsableGroups, userUsableGroupDetails),
   );
 
   // Use functional setRows to keep updateRow/addRow/removeRow referentially
@@ -108,6 +122,7 @@ export default function GroupTable({ groupRatio, userUsableGroups, onChange }) {
           ratio: 1,
           selectable: true,
           description: '',
+          detail: '',
         },
       ];
     });
@@ -188,6 +203,7 @@ export default function GroupTable({ groupRatio, userUsableGroups, onChange }) {
         title: t('描述'),
         dataIndex: 'description',
         key: 'description',
+        width: 220,
         render: (_, record) =>
           record.selectable ? (
             <Input
@@ -201,6 +217,21 @@ export default function GroupTable({ groupRatio, userUsableGroups, onChange }) {
               -
             </Text>
           ),
+      },
+      {
+        title: t('详细介绍'),
+        dataIndex: 'detail',
+        key: 'detail',
+        width: 320,
+        render: (_, record) => (
+          <TextArea
+            size='small'
+            value={record.detail}
+            placeholder={t('价格页选中该分组后展示，可留空')}
+            autosize={{ minRows: 1, maxRows: 4 }}
+            onChange={(v) => updateRow(record._id, 'detail', v)}
+          />
+        ),
       },
       {
         title: '',

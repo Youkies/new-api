@@ -30,3 +30,27 @@
 - [2026-05-04 21:34] 补齐新 UI `Standard 优` 会员标志：新增独立 membership tier、薄荷绿色徽章和 `BadgeCheck` 图标映射；`uiweb npm run build` 与 `git diff --check` 通过。
 - [2026-05-04 21:48] 修复分组签到配置中文后缀 key 兼容：配置写 `standard优`、`pro优` 等也会归一化命中；Go 相关测试与 `git diff --check` 通过。
 - [2026-05-04 22:01] 扩展新 UI 页面配置：`/admin/page-config` 支持编辑会员铭牌名称、短名和描述，保存到 `ui_page_config.membership_badges` option；用户侧会员展示从 `/api/ui/page-config` 加载覆盖；Go 相关测试、`uiweb npm run build` 与 `git diff --check` 通过。
+- [2026-05-04 22:18] 排查流式请求 600s 精确断开：本地代码未发现 600s relay 硬编码，重点锁定入口层/客户端总时长；记录 Zeabur 600s ingress 案例、Cloudflare 灰云 DNS-only 影响和下一步分层 A/B 测试。
+- [2026-05-04 22:36] 构建并推送 Docker 镜像到 GHCR：`ghcr.io/youkies/new-api:05e71fe0` 与 `latest`，digest `sha256:93d21924f76789c9dff8482c36512587469326467dd3d0c62ff0655e334760fb`。
+- [2026-05-04 22:40] 新增受环境变量和 token 保护的 `/api/debug/long-stream` SSE 诊断接口，用于在不调用上游模型的情况下验证 Zeabur/域名链路是否 600s 固定断开；`go test ./controller ./router` 与 `git diff --check` 通过。
+- [2026-05-04 23:02] 使用 `newapi-clay.youkies.space` 诊断接口进行 900s SSE 测试，连接在 `TOTAL=600.500145` 断开，最后事件 `elapsed=595`，确认 600s 问题不来自上游模型。
+- [2026-05-04 23:56] 整理会员体系 AI 小助手知识库文档，覆盖等级、升级门槛、分组识别、签到区间、折扣权益、Ultra 优 Claude 权益、常见问答和后台配置参考。
+- [2026-05-05 00:05] 补充用户常见报错文档：`Invalid URL (POST /v1)` 属于客户端地址路径不完整，区分 Base URL 与完整 chat completions endpoint，并提醒截图泄露 Key 后重置令牌。
+- [2026-05-05 00:12] 补充 Claude 工具调用常见报错：`tool_result` 必须对应上一条 assistant 的 `tool_use`，建议用户新建对话或关闭工具调用、插件、MCP、联网搜索后重试。
+- [2026-05-05 12:40] 复测 `newapi-clay.youkies.space` 长流诊断接口，SSE 完整持续 900s 并正常返回 `done`，curl `HTTP_CODE=200`、`TOTAL=901.044056`，600s 固定断开当前未复现。
+- [2026-05-06 23:33] 合并官方 `upstream/main` / `v1.0.0-rc.4`：保留 `uiweb` 为主 UI，官方 default 挂 `/default/`、classic 挂 `/legacy/`；修复 Claude file content 与 stream scanner 测试问题，生成 merge commit `1ebb0e1d`。
+- [2026-05-08 01:35] 整理三套 UI 长期策略：`uiweb` 继续主 UI，`/legacy/` 承担重管理，`/default/` 保留作备用参考；确认后续官方 default 更新优先借鉴逻辑而非替换主界面。
+- [2026-05-08 02:13] 复测生产无模型 SSE 诊断链路：`newapi-clay.youkies.space` 900s 长流完整返回 `done`，`TOTAL=901.670609`，未复现固定 600s 断开；国内 `newapi.youkies.cn` 诊断口当前为 404。
+- [2026-05-08 02:35] 从 git 历史取回归档前长记忆版本 `4f2a92bc`，结合当前记忆新增项目手册与 `docs/uiweb/` 专题文档，把细节从记忆库沉淀到可查阅文档。
+- [2026-05-08 02:42] 更新全局个性化设置 `C:/Users/Youkies/.codex/AGENTS.md`：明确记忆库只作索引，完整项目细节按需查 `docs/` 文档；仓库 `AGENTS.md` 不承载这条全局规则。
+- [2026-05-08 02:43] 完整复核复盘文档后再次规范化 `.ai_memory`：`1_project_context` 改为稳定索引，`2_active_task` 改为当前交接单，归档记录二次规范化原则。
+- [2026-05-08 02:50] 更正 Zeabur 部署事实：同项目内包含数据库和应用服务；正式网站使用本地 Docker 打包推 GHCR 的镜像，调试/验证部署使用 `NODE_TYPE=slave` 并随 GitHub push 自动构建。
+- [2026-05-08 02:58] 新增 `docs/memory-to-docs-migration-guide.md`，总结从旧长记忆库迁移到“轻量记忆 + 项目文档”模式的通用流程，便于复用到其他项目。
+- [2026-05-08 04:04] 记录本地验收偏好：功能修改后优先前台可见 debug 测试，完成后保留浏览器供用户手测；完整联调使用本地 gitignored `.env` 持久配置，不把具体凭据写入记忆。
+- [2026-05-08 04:15] 固化本地可见验收流程：`uiweb` 以 `0.0.0.0:5178` 启动，前台浏览器和局域网手机地址同步保留给用户手测。
+- [2026-05-08 04:38] 细化本地 UI 验收流程：`uiweb` dev server 已运行时优先依赖 Vite HMR，让用户直接看实时更新，非必要不重启。
+- [2026-05-08 05:11] 完成价格页移动端分组弹窗改造：新增 `group_details` 配置链路、经典控制台详细介绍输入、`uiweb` 查看分组弹窗，并通过 Go 测试、双前端构建和本地可见浏览器验收。
+- [2026-05-08 05:16] 按验收反馈压缩价格页顶部控件：缩小“查看分组”和当前分组状态条，移除供应商筛选，`uiweb npm run build` 通过。
+- [2026-05-08 05:20] 调整价格页分组控件顺序：当前分组在左、查看分组按钮在右，并压缩状态条以完整显示 `Claude-Antigravity` 长分组名。
+- [2026-05-08 05:29] 重排价格页分组区域：当前分组和详细介绍合并为信息框，搜索框与查看分组按钮并排，长分组名完整显示。
+- [2026-05-08 05:42] 调整价格页桌面端分组方案：保留分组胶囊墙，移除供应商筛选，分组 hover 显示简介与详细介绍。

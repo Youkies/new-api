@@ -100,6 +100,17 @@ Use `bun` as the preferred package manager and script runner for the frontend (`
 - `bun run build` for production build
 - `bun run i18n:*` for i18n tooling
 
+### Rule 3a: uiweb Local Verification Workflow
+
+When working on the project-owned `uiweb` frontend:
+
+- Prefer keeping the Vite dev server and a visible browser open during UI iteration.
+- If the dev server is already running, rely on Vite HMR for small UI tweaks; let the user inspect the live-updated desktop browser and same-LAN phone page directly.
+- Only refresh or restart the dev server when HMR fails, page state becomes invalid, or dependencies, environment variables, or Vite config change.
+- For local visible verification, run `uiweb` with `--host 0.0.0.0 --port 5178`, choose the physical LAN IPv4 address, and provide a phone URL such as `http://<LAN_IP>:5178/...`.
+- Use a headed browser for smoke tests and leave the browser plus dev server running after verification so the user can continue manual testing.
+- If full local backend verification is needed, use the git-ignored repo-root `.env` for `NODE_TYPE=slave`, `SESSION_SECRET`, `CRYPTO_SECRET`, `SQL_DSN`, and related local settings. Never write actual secret values into docs, memory, commits, or responses.
+
 ### Rule 4: New Channel StreamOptions Support
 
 When implementing a new channel:

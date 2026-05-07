@@ -3,7 +3,7 @@ import {
   Search, ChevronLeft, ChevronRight, Filter,
   Clock, CalendarDays,
   Activity, AlertCircle, RefreshCw, CreditCard, Settings, Terminal,
-  RotateCcw, FileText, TrendingUp, ShieldCheck, History, CheckCircle2, XCircle,
+  RotateCcw, FileText, TrendingUp, ShieldCheck, History, CheckCircle2, XCircle, X,
 } from 'lucide-react'
 import ClayCard from '../components/clay/ClayCard.jsx'
 import ClayButton from '../components/clay/ClayButton.jsx'
@@ -347,46 +347,143 @@ function sameDate(a, b) {
 
 const HOUR_OPTIONS = Array.from({ length: 24 }, (_, value) => String(value).padStart(2, '0'))
 const MINUTE_OPTIONS = Array.from({ length: 60 }, (_, value) => String(value).padStart(2, '0'))
+const WHEEL_REPEAT = 5
+const WHEEL_CENTER_REPEAT = Math.floor(WHEEL_REPEAT / 2)
+const WHEEL_ITEM_HEIGHT = 32
+const WHEEL_CONTAINER_HEIGHT = 88
+const WHEEL_EDGE_PADDING = (WHEEL_CONTAINER_HEIGHT - WHEEL_ITEM_HEIGHT) / 2
 
-function ClayTimeColumn({ label, options, value, onSelect, tone = 'blue' }) {
+function wrapIndex(index, length) {
+  if (!length) return 0
+  return ((index % length) + length) % length
+}
+
+function ClayTimeColumn({ options, value, onSelect, tone = 'blue' }) {
   const scrollRef = useRef(null)
-  const activeRef = useRef(null)
-  const activeClass = tone === 'pink'
-    ? 'bg-clay-pink-100 text-[#8a4860] shadow-clay'
-    : 'bg-clay-blue-100 text-[#43658b] shadow-clay'
+  const snapTimerRef = useRef(null)
+  const syncTimerRef = useRef(null)
+  const syncingRef = useRef(false)
+  const wheelOptions = useMemo(() => (
+    Array.from({ length: WHEEL_REPEAT }, (_, round) => (
+      options.map((option) => ({
+        key: `${round}-${option}`,
+        option,
+      }))
+    )).flat()
+  ), [options])
+  const highlightClass = tone === 'pink'
+    ? 'bg-clay-pink-100/80 text-[#8a4860]'
+    : 'bg-clay-blue-100/80 text-[#43658b]'
+  const activeTextClass = tone === 'pink' ? 'text-[#8a4860]' : 'text-[#43658b]'
+
+  const scrollToOption = useCallback((optionValue, behavior = 'auto') => {
+    const container = scrollRef.current
+    if (!container || options.length === 0) return
+    const optionIndex = Math.max(0, options.indexOf(optionValue))
+    const targetIndex = (WHEEL_CENTER_REPEAT * options.length) + optionIndex
+    syncingRef.current = true
+    container.scrollTo({
+      top: targetIndex * WHEEL_ITEM_HEIGHT,
+      behavior,
+    })
+    window.clearTimeout(syncTimerRef.current)
+    syncTimerRef.current = window.setTimeout(() => {
+      syncingRef.current = false
+    }, behavior === 'smooth' ? 220 : 40)
+  }, [options])
 
   useEffect(() => {
+    const frame = window.requestAnimationFrame(() => scrollToOption(value, 'auto'))
+    return () => window.cancelAnimationFrame(frame)
+  }, [scrollToOption, value])
+
+  useEffect(() => () => {
+    window.clearTimeout(snapTimerRef.current)
+    window.clearTimeout(syncTimerRef.current)
+  }, [])
+
+  const commitNearest = useCallback((behavior = 'smooth') => {
     const container = scrollRef.current
-    const active = activeRef.current
-    if (!container || !active) return
-    container.scrollTop = active.offsetTop - (container.clientHeight / 2) + (active.clientHeight / 2)
-  }, [value])
+    if (!container || options.length === 0) return
+    const rawIndex = Math.round(container.scrollTop / WHEEL_ITEM_HEIGHT)
+    const optionIndex = wrapIndex(rawIndex, options.length)
+    const option = options[optionIndex]
+    const targetIndex = (WHEEL_CENTER_REPEAT * options.length) + optionIndex
+
+    syncingRef.current = true
+    container.scrollTo({
+      top: targetIndex * WHEEL_ITEM_HEIGHT,
+      behavior,
+    })
+    window.clearTimeout(syncTimerRef.current)
+    syncTimerRef.current = window.setTimeout(() => {
+      syncingRef.current = false
+    }, behavior === 'smooth' ? 220 : 40)
+
+    if (option && option !== value) onSelect(option)
+  }, [onSelect, options, value])
+
+  const handleScroll = useCallback(() => {
+    if (syncingRef.current) return
+    const container = scrollRef.current
+    if (!container || options.length === 0) return
+    const rawIndex = Math.round(container.scrollTop / WHEEL_ITEM_HEIGHT)
+    const lowerBuffer = options.length
+    const upperBuffer = options.length * (WHEEL_REPEAT - 1)
+
+    if (rawIndex < lowerBuffer || rawIndex >= upperBuffer) {
+      const optionIndex = wrapIndex(rawIndex, options.length)
+      const targetIndex = (WHEEL_CENTER_REPEAT * options.length) + optionIndex
+      syncingRef.current = true
+      container.scrollTop = targetIndex * WHEEL_ITEM_HEIGHT
+      window.clearTimeout(syncTimerRef.current)
+      syncTimerRef.current = window.setTimeout(() => {
+        syncingRef.current = false
+      }, 40)
+    }
+
+    window.clearTimeout(snapTimerRef.current)
+    snapTimerRef.current = window.setTimeout(() => commitNearest('smooth'), 90)
+  }, [commitNearest, options.length])
 
   return (
     <div className="min-w-0 flex-1">
-      <div className="mb-2 px-1 text-[10px] font-black text-clay-faint">{label}</div>
-      <div
-        ref={scrollRef}
-        className="h-36 overflow-y-auto overscroll-contain rounded-[22px] bg-clay-bg p-1.5 shadow-clay-inset"
-      >
-        {options.map((option) => {
-          const active = option === value
-          return (
-            <button
-              key={option}
-              ref={active ? activeRef : null}
-              type="button"
-              onClick={() => onSelect(option)}
-              className={`mb-1 flex h-9 w-full items-center justify-center rounded-[16px] px-3 text-center font-mono text-sm font-black transition-all last:mb-0 ${
-                active
-                  ? activeClass
-                  : 'text-clay-faint hover:bg-white/40 hover:text-clay-ink'
-              }`}
-            >
-              {option}
-            </button>
-          )
-        })}
+      <div className="relative h-[88px] overflow-hidden rounded-[18px] bg-clay-bg shadow-clay-inset">
+        <div
+          className={`pointer-events-none absolute left-1 right-1 top-1/2 z-0 h-8 -translate-y-1/2 rounded-[14px] shadow-clay ${highlightClass}`}
+        />
+        <div
+          ref={scrollRef}
+          onScroll={handleScroll}
+          className="clay-scrollbar-none relative z-10 h-full overflow-y-auto overscroll-contain"
+          style={{
+            paddingTop: WHEEL_EDGE_PADDING,
+            paddingBottom: WHEEL_EDGE_PADDING,
+            scrollSnapType: 'y mandatory',
+          }}
+        >
+          {wheelOptions.map(({ key, option }) => {
+            const active = option === value
+            return (
+              <button
+                key={key}
+                type="button"
+                aria-current={active ? 'true' : undefined}
+                onClick={() => {
+                  onSelect(option)
+                  scrollToOption(option, 'smooth')
+                }}
+                className={`flex h-8 w-full snap-center items-center justify-center rounded-[14px] px-3 text-center font-mono text-base font-black transition-colors ${
+                  active
+                    ? activeTextClass
+                    : 'text-clay-faint/70 hover:text-clay-ink'
+                }`}
+              >
+                {option}
+              </button>
+            )
+          })}
+        </div>
       </div>
     </div>
   )
@@ -507,16 +604,16 @@ function ClayDateTimeField({ label, value, onChange }) {
   const selectedHour = pad(selectedDate.getHours())
   const selectedMinute = pad(selectedDate.getMinutes())
   const panelClassName = isMobile
-    ? 'fixed inset-x-3 top-1/2 z-[100] max-h-[calc(100dvh-1.5rem)] -translate-y-1/2 overflow-y-auto rounded-clay-lg bg-clay-bg p-4 shadow-clay border-2 border-white/30'
+    ? 'fixed inset-x-3 top-1/2 z-[10000] mx-auto max-w-[340px] max-h-[calc(100dvh-1rem)] -translate-y-1/2 overflow-y-auto rounded-[26px] bg-clay-bg p-2.5 shadow-clay border-2 border-white/30'
     : 'absolute left-0 top-full z-[80] mt-3 w-full min-w-[320px] max-w-[calc(100vw-2rem)] rounded-clay-lg bg-clay-bg p-4 shadow-clay border-2 border-white/30'
 
   return (
     <div ref={rootRef} className="relative">
-      <label className="block ml-4 mb-2 font-bold text-sm text-clay-ink">{label}</label>
+      <label className="block ml-4 mb-1.5 md:mb-2 font-bold text-sm text-clay-ink">{label}</label>
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="w-full clay-input !py-3.5 flex items-center justify-between gap-3 text-left"
+        className="w-full clay-input !py-3 md:!py-3.5 flex items-center justify-between gap-3 text-left"
       >
         <span className={value ? 'font-semibold' : 'text-clay-faint'}>{formatDateTimeLabel(value)}</span>
         <CalendarDays className="w-4 h-4 text-clay-faint shrink-0" />
@@ -524,20 +621,20 @@ function ClayDateTimeField({ label, value, onChange }) {
 
       {open && (
         <div className={panelClassName}>
-          <div className="flex items-center justify-between mb-3">
-            <button type="button" onClick={() => jumpMonth(-1)} className="w-9 h-9 rounded-full bg-clay-bg shadow-clay flex items-center justify-center">
+          <div className="flex items-center justify-between mb-2.5">
+            <button type="button" onClick={() => jumpMonth(-1)} className="w-8 h-8 rounded-full bg-clay-bg shadow-clay flex items-center justify-center">
               <ChevronLeft className="w-4 h-4" />
             </button>
             <div className="text-sm font-black">{monthLabel}</div>
-            <button type="button" onClick={() => jumpMonth(1)} className="w-9 h-9 rounded-full bg-clay-bg shadow-clay flex items-center justify-center">
+            <button type="button" onClick={() => jumpMonth(1)} className="w-8 h-8 rounded-full bg-clay-bg shadow-clay flex items-center justify-center">
               <ChevronRight className="w-4 h-4" />
             </button>
           </div>
 
-          <div className="grid grid-cols-7 gap-1 text-center text-[10px] font-black text-clay-faint mb-1">
+          <div className="grid grid-cols-7 gap-0.5 sm:gap-1 text-center text-[10px] font-black text-clay-faint mb-1">
             {['日', '一', '二', '三', '四', '五', '六'].map((day) => <span key={day}>{day}</span>)}
           </div>
-          <div className="grid grid-cols-7 gap-1">
+          <div className="grid grid-cols-7 gap-0.5 sm:gap-1">
             {monthDays.map((day) => {
               const inMonth = day.getMonth() === viewDate.getMonth()
               const active = value && sameDate(day, selectedDate)
@@ -547,7 +644,7 @@ function ClayDateTimeField({ label, value, onChange }) {
                   key={day.toISOString()}
                   type="button"
                   onClick={() => setDate(day)}
-                  className={`aspect-square rounded-clay-sm text-xs font-black transition-all ${
+                  className={`aspect-square rounded-[14px] text-[11px] font-black transition-all sm:rounded-clay-sm sm:text-xs ${
                     active
                       ? 'bg-clay-blue-100 text-[#43658b] shadow-clay-inset'
                       : today
@@ -561,28 +658,23 @@ function ClayDateTimeField({ label, value, onChange }) {
             })}
           </div>
 
-          <div className="mt-4 rounded-clay bg-clay-bg shadow-clay-inset p-3">
-            <div className="text-[10px] font-black text-clay-faint mb-2">时间</div>
-            <div className="flex items-start gap-3">
-              <ClayTimeColumn
-                label="小时"
-                options={HOUR_OPTIONS}
-                value={selectedHour}
-                onSelect={(hour) => setTimePart('hour', hour)}
-                tone="blue"
-              />
-              <div className="pt-11 font-black text-clay-faint">:</div>
-              <ClayTimeColumn
-                label="分钟"
-                options={MINUTE_OPTIONS}
-                value={selectedMinute}
-                onSelect={(minute) => setTimePart('minute', minute)}
-                tone="pink"
-              />
-            </div>
+          <div className="mt-2.5 flex items-center gap-2 sm:mt-4 sm:gap-3">
+            <ClayTimeColumn
+              options={HOUR_OPTIONS}
+              value={selectedHour}
+              onSelect={(hour) => setTimePart('hour', hour)}
+              tone="blue"
+            />
+            <div className="flex h-[88px] items-center font-black text-clay-faint">:</div>
+            <ClayTimeColumn
+              options={MINUTE_OPTIONS}
+              value={selectedMinute}
+              onSelect={(minute) => setTimePart('minute', minute)}
+              tone="pink"
+            />
           </div>
 
-          <div className="mt-4 flex flex-wrap gap-2">
+          <div className="mt-2.5 grid grid-cols-2 gap-2 sm:mt-4 sm:flex sm:flex-wrap">
             <button type="button" onClick={setTodayStart} className="px-3 py-2 rounded-clay-pill bg-clay-pink-50 shadow-clay text-[11px] font-black text-[#8a4860]">
               今天 0 点
             </button>
@@ -591,6 +683,9 @@ function ClayDateTimeField({ label, value, onChange }) {
             </button>
             <button type="button" onClick={() => { onChange(''); setOpen(false) }} className="px-3 py-2 rounded-clay-pill bg-clay-bg shadow-clay text-[11px] font-black text-clay-faint">
               清空
+            </button>
+            <button type="button" onClick={() => setOpen(false)} className="px-3 py-2 rounded-clay-pill bg-clay-green-100 shadow-clay text-[11px] font-black text-[#3d6b4f]">
+              确认
             </button>
           </div>
         </div>
@@ -1016,12 +1111,26 @@ export default function LogList() {
     setPage(1)
   }
 
+  useEffect(() => {
+    if (!showFilter || typeof document === 'undefined') return undefined
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    document.body.classList.add('log-filter-dialog-open')
+    return () => {
+      document.body.style.overflow = previousOverflow
+      document.body.classList.remove('log-filter-dialog-open')
+    }
+  }, [showFilter])
+
   const totalPages = Math.max(1, Math.ceil(total / pageSize))
 
   const hasActiveFilter = hasNonDefaultLogFilter(appliedFilter)
   const refreshing = loading || todayLoading
   const refundRecordCount = Math.max(refundAppealsTotal, refundAppeals.length)
   const hasRefundRecords = refundRecordCount > 0 || (refundSummary?.pending_count ?? 0) > 0
+  const filterDialogClassName = isMobile
+    ? 'relative w-full max-w-[360px] max-h-[calc(100dvh-1.5rem)] overflow-y-auto rounded-[30px] bg-clay-bg p-4 shadow-clay border-2 border-white/30'
+    : 'relative w-full max-w-4xl max-h-[calc(100dvh-3rem)] overflow-y-auto rounded-clay-lg bg-clay-bg p-6 shadow-clay border-2 border-white/30'
 
   return (
     <ClayConsoleShell
@@ -1103,50 +1212,82 @@ export default function LogList() {
         </div>
       </ClayCard>
 
-      {/* Filter Panel */}
+      {/* Filter Dialog */}
       {showFilter && (
-        <ClayCard className="mb-6 !p-6 !overflow-visible">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="mb-5">
-              <label className="block ml-4 mb-2 font-bold text-sm text-clay-ink">类型</label>
-              <ClaySelect
-                value={filter.type}
-                onChange={(v) => setFilter((current) => ({ ...current, type: v }))}
-                options={TYPE_OPTIONS}
+        <div
+          className="fixed inset-0 z-[90] flex items-center justify-center bg-clay-bg/55 px-4 py-4 backdrop-blur-sm"
+          role="dialog"
+          aria-modal="true"
+          aria-label="筛选日志"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setShowFilter(false)
+          }}
+        >
+          <div className={filterDialogClassName} onMouseDown={(event) => event.stopPropagation()}>
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <div className="flex min-w-0 items-center gap-2">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-clay-blue-50 shadow-clay">
+                  <Filter className="h-4 w-4 text-[#43658b]" />
+                </div>
+                <div className="min-w-0 text-lg font-black text-clay-ink">筛选日志</div>
+              </div>
+              <button
+                type="button"
+                aria-label="关闭筛选"
+                onClick={() => setShowFilter(false)}
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-clay-bg text-clay-faint shadow-clay transition-all hover:text-clay-ink active:scale-95 active:shadow-clay-active"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-3 md:gap-4">
+              <div className="mb-3 md:mb-5">
+                <label className="block ml-4 mb-2 font-bold text-sm text-clay-ink">类型</label>
+                <ClaySelect
+                  value={filter.type}
+                  onChange={(v) => setFilter((current) => ({ ...current, type: v }))}
+                  options={TYPE_OPTIONS}
+                  className="[&>button]:!px-5 [&>button]:!py-3 md:[&>button]:!px-6 md:[&>button]:!py-4"
+                />
+              </div>
+              <ClayField
+                label="模型"
+                className="!mb-3 md:!mb-5"
+                inputClassName="!px-5 !py-3 md:!px-6 md:!py-4"
+                value={filter.model_name}
+                onChange={(e) => setFilter((current) => ({ ...current, model_name: e.target.value }))}
+                placeholder="如 gpt-4o"
+              />
+              <ClayField
+                label="令牌名称"
+                className="!mb-3 md:!mb-5"
+                inputClassName="!px-5 !py-3 md:!px-6 md:!py-4"
+                value={filter.token_name}
+                onChange={(e) => setFilter((current) => ({ ...current, token_name: e.target.value }))}
+                placeholder="令牌名称"
               />
             </div>
-            <ClayField
-              label="模型"
-              value={filter.model_name}
-              onChange={(e) => setFilter((current) => ({ ...current, model_name: e.target.value }))}
-              placeholder="如 gpt-4o"
-            />
-            <ClayField
-              label="令牌名称"
-              value={filter.token_name}
-              onChange={(e) => setFilter((current) => ({ ...current, token_name: e.target.value }))}
-              placeholder="令牌名称"
-            />
+            <div className="mt-1 grid grid-cols-1 gap-3 md:mt-4 md:grid-cols-2 md:gap-4">
+              <ClayDateTimeField
+                label="开始时间"
+                value={filter.start_timestamp}
+                onChange={(value) => setFilter((current) => ({ ...current, start_timestamp: value }))}
+              />
+              <ClayDateTimeField
+                label="结束时间"
+                value={filter.end_timestamp}
+                onChange={(value) => setFilter((current) => ({ ...current, end_timestamp: value }))}
+              />
+            </div>
+            <div className="mt-4 flex flex-col gap-2.5 md:mt-5 md:flex-row md:gap-3">
+              <ClayButton variant="primary" onClick={onApply} className="!py-3 md:!w-auto">
+                <Search className="w-4 h-4" /> 应用筛选
+              </ClayButton>
+              <ClayButton variant="ghost" onClick={onReset} className="!py-3 md:!w-auto">重置</ClayButton>
+            </div>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
-            <ClayDateTimeField
-              label="开始时间"
-              value={filter.start_timestamp}
-              onChange={(value) => setFilter((current) => ({ ...current, start_timestamp: value }))}
-            />
-            <ClayDateTimeField
-              label="结束时间"
-              value={filter.end_timestamp}
-              onChange={(value) => setFilter((current) => ({ ...current, end_timestamp: value }))}
-            />
-          </div>
-          <div className="flex flex-col sm:flex-row gap-3 mt-5">
-            <ClayButton variant="primary" onClick={onApply} className="sm:!w-auto">
-              <Search className="w-4 h-4" /> 应用筛选
-            </ClayButton>
-            <ClayButton variant="ghost" onClick={onReset} className="sm:!w-auto">重置</ClayButton>
-          </div>
-        </ClayCard>
+        </div>
       )}
 
       {/* Table (desktop) / Cards (mobile) */}

@@ -1,109 +1,78 @@
 # 项目核心知识库
 
+> 本文件只保留稳定索引和高优先级决策。完整细节查 `docs/project-handbook.md` 与 `docs/uiweb/`，不要把长流水重新塞回记忆库。
+
+## 接手顺序
+
+- 先读 `.ai_memory/2_active_task.md`，确认当前任务、阻塞和下一步。
+- 再读本文件，确认稳定约束和长期决策。
+- 涉及 `uiweb`、迁移、部署、SSE/600s、通知、申诉、AI 助手、头像、会员、页面配置时，按 `docs/project-handbook.md` 索引打开对应专题文档。
+- 记忆库只写索引、当前状态和关键决策；可复用细节写入 `docs/`。
+
 ## 项目形态
 
-- new-api 是 Go AI API 网关/代理，后端采用 Gin + GORM，前端包含经典 `web/` 与新建 `uiweb/`。
-- 数据库需同时兼容 SQLite、MySQL、PostgreSQL；生产主要使用 Zeabur MySQL，且 `NODE_TYPE=slave` 会跳过 AutoMigrate。
-- 代码约束：业务代码 JSON 编解码优先使用 `common/json.go` 包装函数；涉及新渠道时要确认 `StreamOptions` 支持情况；涉及表达式计费前先读 `pkg/billingexpr/expr.md`。
+- new-api 是 Go AI API 网关/代理，后端采用 Gin + GORM，聚合 OpenAI、Claude、Gemini、Azure、AWS Bedrock 等多类上游。
+- 数据库必须同时兼容 SQLite、MySQL、PostgreSQL；生产主要使用 Zeabur MySQL，且 `NODE_TYPE=slave` 会跳过 AutoMigrate。
+- 业务代码 JSON 编解码优先使用 `common/json.go` 包装函数。
+- 涉及新渠道时要确认 `StreamOptions` 支持情况。
+- 涉及表达式计费前先读 `pkg/billingexpr/expr.md`。
 
-## 协作偏好
+## 文档体系
 
-- 对功能/界面小迭代，用户通常希望完成后整理 diff，并在合适时提交到当前分支；执行提交/推送前必须先核对 `git status` 与 diff 范围，避免带入无关改动。
-- 前端包管理原则上偏 Bun；当前开发机历史上主要使用 npm/npx，Dockerfile 构建阶段使用 `oven/bun:1`。
-- 记忆文件默认用中文；代码、注释、命令、路径、API 名称保持英文。
+- 总入口：`docs/project-handbook.md`。
+- uiweb 总览：`docs/uiweb/overview.md`。
+- 用户侧功能：`docs/uiweb/features.md`。
+- 管理端与运营：`docs/uiweb/admin.md`。
+- API 契约：`docs/uiweb/api-contracts.md`。
+- 数据库与迁移：`docs/uiweb/database-and-migrations.md`。
+- 部署与排障：`docs/uiweb/deployment-and-troubleshooting.md`。
+- 用户常见报错：`docs/user-error-qa.md`。
+- AI 助手会员知识：`docs/membership-assistant-knowledge.md`。
+- 记忆库迁移指南：`docs/memory-to-docs-migration-guide.md`。
 
-## 部署与运行
+## UI 主次边界
 
-- 生产环境：Zeabur Git 部署，GitHub push 触发自动构建；数据库名 `zeabur`。
+- `/`：用户自己的 `uiweb` 主 UI，承载用户侧和轻运营能力。
+- `/legacy/`：官方 classic UI，作为重管理后台备用。
+- `/default/`：官方新版 default UI，仅保留为备用入口和功能参考，不替换主 UI。
+- `/classic` 与 `/classic/*`：301 到 `/legacy/`。
+- `/u/*`：301 到根路径，兼容旧链接。
+- 三套 UI 是同一个 Go 进程内嵌静态资源，不是三套服务；未访问时几乎无运行时 CPU/DB 负担，主要成本是构建时间、镜像体积和未来合并冲突。
+
+## uiweb 稳定边界
+
+- 技术选型：Vite 5 + React 18 + JSX + Tailwind CSS 3 + 自研 Clay 组件。
+- `uiweb` 管理端定位为轻量“站点运营后台”，不要塞大量渠道、模型、系统设置等重管理功能。
+- 用户端移动端体验优先优化；管理端主要按桌面使用场景维护，只需保持基本可访问。
+- 官方 default UI 当前审美不符合用户偏好，先保留不删除；后续官方 default 更新优先借鉴 API/逻辑，不主动替换主 UI。
+
+## 部署与生产约束
+
+- Zeabur 同一个项目内同时部署数据库服务和应用服务；数据库为 Zeabur MySQL，数据库名 `zeabur`。
+- 正式网站使用本地打包 Docker 镜像并推送到 GHCR 后部署。
+- 调试/验证部署使用 `NODE_TYPE=slave`，每次 GitHub push 后由 Zeabur 自动构建。
 - 海外域名：`newapi.youkies.space`；国内中转域名：`newapi.youkies.cn`。
 - 国内中转服务器：腾讯云 `81.71.120.210`，Nginx 配置在 `/etc/nginx/sites-enabled/newapi.conf`，同机还运行 `lobe.youkies.cn`。
 - SSE/长响应反代关键配置：`proxy_buffering off`，`proxy_read_timeout 1000s`。
-- 生产必须固定 `SESSION_SECRET`，否则重新部署后旧 session cookie 会失效；如需加密签名稳定，可同步固定 `CRYPTO_SECRET`。
-- `NODE_TYPE=slave` 生产不跑迁移：新增表/列要手动执行 SQL，后端模型仍应加入 AutoMigrate 方便本地与非 slave 环境。
+- 生产必须固定 `SESSION_SECRET`；如需加密签名稳定，可同步固定 `CRYPTO_SECRET`。
+- `NODE_TYPE=slave` 不跑迁移；正式站也不能依赖自动迁移，新表/新列上线前必须手动确认或执行 SQL，完整清单查 `docs/uiweb/database-and-migrations.md`。
+- 官方 `v1.0.0-rc.4` 合并后生产需确认 `perf_metrics` 表，以及 `users.created_at`、`users.last_login_at` 两列。
 
-## 路由策略
+## 高风险排障索引
 
-- `/*`：新 `uiweb` 根路由前端。
-- `/legacy`：301 到 `/legacy/`。
-- `/legacy/*`：经典 `web` 前端。
-- `/u/*`：301 到根路径，兼容旧链接。
-- `/v1/*` 与 `/api/*`：API 路由，不受前端 SPA fallback 影响。
-- `FRONTEND_BASE_URL` 在 master 节点被忽略。
+- 600s/SSE：优先查 `docs/uiweb/deployment-and-troubleshooting.md`。2026-05-08 对 `newapi-clay.youkies.space` 900s 无模型 SSE 复测完整返回 `done`，未复现固定 600s；`newapi.youkies.cn` 诊断口当时为 404。
+- 非流请求转上游流式：渠道级 `non_stream_to_stream_enabled`，用户侧非流、上游强制流式、服务端聚合为 OpenAI 非流 JSON；细节查部署排障文档。
+- Claude extended thinking：OpenAI 格式转 Claude 时需清洗 `temperature`、`top_k`、非法 `top_p`，强制工具调用降级为 `auto`。
+- 头像缓存：User 对象 `_avatar_t` + 头像 URL `?t=` + 服务端 CRC32 ETag + `no-cache`。
+- 定价公式、模型状态 SQL、日志筛选、签到时区、分组签到、通知/申诉/AI 助手等细节均已沉淀到 `docs/uiweb/`。
 
-## uiweb 技术选型
+## 协作偏好
 
-- 前端：Vite 5 + React 18 + JSX；样式：Tailwind CSS 3 + 自研 Clay 组件。
-- 主题：`ThemeProvider` 支持 `system` / `light` / `dark`，本地 key 为 `uiweb.theme.mode`；深色主题为 Moon Clay，通过 `html[data-theme]` 与 CSS 变量驱动。
-- 图标：lucide-react 用于 UI 图标，`@lobehub/icons` v2 用于供应商/模型图标；因间接依赖过重，通过 vite alias stub 掉 `antd`、`antd-style`、`react-layout-kit`、`@lobehub/ui`。
-- Logo/Favicon：`uiweb/public/favicon.png`，导航与认证布局使用 `<img>`。
-- Dev 端口：5174，代理 `^/api(/|$)` 与 `^/v1(/|$)` 到后端 3001，避免 `/api-urls` 这类前端路由被误代理。
-
-## 新 UI 功能概览
-
-- 访客页：Home、Login、Register、Reset、OAuthCallback、Setup、About、UserAgreement、PrivacyPolicy、Pricing、ModelStatus、Forbidden、NotFound。
-- 登录后页：Dashboard、TokenManage、LogList、TopUp、Checkin、PersonalSetting、Chat2Link、ApiUrls、PaymentReturn。
-- 控制台导航：仪表盘、令牌、日志、充值、签到、设置。
-- 业务约束：注册仅 QQ 邮箱；充值为兑换码 + ePay 在线充值；界面主要面向中文；不需要 2FA、Passkey、Turnstile、OAuth 绑定。
-- 移动端适配优先用户端新 UI；管理端主要在电脑上使用，不作为移动端效率优化目标，只需保持基本可访问。
-
-## 新 UI 调试模式
-
-- 启用：`VITE_UI_DEBUG_MODE=true`，或 Vite 开发环境 URL 加 `?debug=1`；关闭可用左下角面板或 `?debug=0`。
-- 能力：注入管理员 mock 用户，axios adapter mock 状态、用户、令牌、日志、充值、公告、申诉、AI 助手、定价、模型状态等接口。
-- AI 助手在调试模式走前端 mock 流式回复，不调用真实 `/api/ui/assistant/chat`，不消耗真实 Token。
-
-## 管理端与公告
-
-- 新 UI 管理端定位为轻量“站点运营后台”，不复刻原版 new-api 管理设置页，降低与上游同步冲突。
-- 页面配置页：`/admin/page-config` 管理 `/api-urls` 的公开地址列表与会员铭牌文案；API 地址存储在 `ui_page_configs.api_urls` JSON 中，会员铭牌存储在 `ui_page_config.membership_badges` option 中，用户侧通过 `GET /api/ui/page-config` 读取。
-- 第一阶段已实现公告系统：公共历史页 `/announcements`，管理页 `/admin/announcements`。
-- 公告确认按 `announcement_id + version` 判断；公告内容更新后递增版本可重新触发确认。
-- 新表：`ui_announcements`、`ui_announcement_acks`；生产 slave 环境需手动建表。
-
-## 空回补偿申诉
-
-- 定位：疑似空回批量提交 + 管理员人工审核，不做自动补偿。
-- 用户入口在新 UI 日志页，静默检测最近 48 小时且晚于 `UI_REFUND_APPEAL_START_AT` 的候选记录。
-- 判定条件：消费日志、`quota > 0`、`completion_tokens = 0`、未出现在申诉明细表。
-- 审核通过后事务内增加 `users.quota`，申诉与明细置为 `approved`，并写 `LogTypeManage`；驳回不改余额。
-- 新表：`ui_refund_appeals`、`ui_refund_appeal_items`，其中 `ui_refund_appeal_items.log_id` 唯一防重复补偿。
-
-## AI 助手
-
-- 挂载点：用户控制台 `ClayConsoleShell`，名称默认 `Youkies 的 AI 分身`。
-- 定位：问题预诊断/提交前整理；支持问题描述、手动上传/粘贴截图、当前页面路径；不承诺退款、不改余额、不代替管理员审核。
-- 管理页：`/admin/assistant`，可配置启用、名称、欢迎语、模型来源、Base URL、Token/API Key、模型名、系统提示词、截图、知识文档、会话摘要、限流等。
-- 推荐模型来源：手动创建站内 `ai-assistant` 用户，给独立分组/额度/专用 Token；也可填外部 OpenAI-compatible Base URL/API Key。
-- 免费次数：每用户 8 次/日；耗尽后用户可确认用余额续聊，走站内 `/pg/chat/completions` 计费链路，记录为 `site_balance`，不占免费次数。
-- 历史：`ui_assistant_conversations` 与 `ui_assistant_conversation_messages` 保存用户侧完整聊天历史；`<think>...</think>` 会拆成 `reasoning` 并默认折叠显示。
-- 余额续聊模型：后端 `GET /api/ui/assistant/models` 返回用户可用分组与模型；前端默认用 `default` 中可用模型，提交 `group` 与 `model_name`，避免身份分组无模型导致无渠道。
-- 生产新表：`ui_assistant_configs`、`ui_assistant_documents`、`ui_assistant_sessions`、`ui_assistant_conversations`、`ui_assistant_conversation_messages`。
-
-## 模型与渠道注意事项
-
-- Claude extended thinking：OpenAI 格式转 Claude 时，thinking 启用必须移除 `temperature`、`top_k`，非法 `top_p`，并把强制工具调用降级为 `auto`。
-- `gpt-5.5` 已加入 OpenAI/Codex 基础模型列表、默认 `ModelRatio` 与 `CacheRatio`；后台模型倍率仍可覆盖实际定价。
-- 渠道级 `non_stream_to_stream_enabled`：用于合适的 OpenAI 格式 chat completions、用户非流、非透传请求；已覆盖 OpenAI/OpenRouter/Xinference、Anthropic、Gemini/Vertex API 类型。上游强制流式，服务端聚合 SSE 后向用户返回标准非流 `chat.completion` JSON。
-- relay 中下游客户端主动断开会归一化为 499，跳过重试和错误日志记录，避免误判为上游失败或触发渠道禁用逻辑。
-
-## 头像与会员展示
-
-- 头像存储：User 表 `avatar` LONGBLOB + `avatar_type` VARCHAR(32)，前端压缩 JPEG，上限 200KB。
-- 头像 API：`POST/DELETE /api/user/avatar` 需登录；`GET /api/user/avatar/:id` 公开，ETag 使用 CRC32(data)，`Cache-Control: no-cache`。
-- cache-bust：user 对象带 `_avatar_t`，头像 URL 加 `?t=`；`setUser` 会保留旧 `_avatar_t`，重新登录且 `has_avatar` 时自动生成时间戳。
-- 会员身份：按 `user.group` 展示普通用户、Standard 优、Pro优、Super优、Ultra优；兼容历史 `spuer` 拼写；升级由外部项目移组，newapi 只展示身份。
-- 签到奖励：`checkin_setting.min_quota` / `max_quota` 仍是默认范围；`checkin_setting.group_quotas` 可按用户 `group` 覆盖签到最小/最大额度，支持精确分组名以及 `standard`/`standard优`、`pro`/`pro优`、`super`/`super优`/`spuer`、`ultra`/`ultra优` 等会员语义 key。
-
-## 关键前端细节
-
-- 余额展示：`quotaToDisplay()` 读取 `localStorage` 中 `quota_per_unit` / `quota_display_type`；令牌创建/编辑用 `displayToQuota()` 反转为内部额度。
-- 日志页筛选使用 draft/applied 双状态，避免输入条件时自动请求；时间选择使用自绘 `ClayDateTimeField`。
-- 定价公式：按量 `model_ratio * 2 * groupRatio`（USD/1M tokens），按次 `model_price * groupRatio`（USD/次）。
-- 定价 API：`res.data` 是模型数组，`res.vendors` / `res.group_ratio` / `res.usable_group` 与 `data` 同级。
-- 模型状态 API：`GET /api/model-status?window=1h|6h|12h|24h`，公开无认证；注意 `LOG_SQL_DSN` 为空时 `LogSqlType` 可能仍为 SQLite，需用 `UsingMySQL`/`UsingPostgreSQL` 判断 SQL。
-
-## 构建与已知问题
-
-- `vendor-icons` 独立 chunk 约 4.2MB，gzip 约 810KB，属于已知体积成本。
-- `uiweb` 最近一次 `npm run build` 可通过；当前环境未安装 `bun` 时可用 npm 作为验证 fallback。
-- 经典 `web` 前端最近一次完整 `npm run build` 被既有依赖解析问题阻断：`@douyinfe/semi-ui/dist/css/semi.css` 缺少 package export；定向 JSX 语法检查可通过。
+- 对功能/界面小迭代，用户通常希望完成后整理 diff，并在合适时提交到当前分支。
+- 功能修改完成后，本地 debug/验收固定流程：关闭旧的测试浏览器和旧 dev server；用 `--host 0.0.0.0 --port 5178` 启动 `uiweb` Vite；选择当前物理局域网 IPv4 作为访问地址；用前台可见浏览器打开并按需调成手机视口；跑完 smoke test 后不要主动关闭浏览器或 dev server，留给用户继续电脑和手机手测。
+- 如果 `uiweb` dev server 已经在跑，UI 微调优先依赖 Vite HMR 热更新：保持前台浏览器和手机页面打开，修改文件后让用户直接看实时效果；只有 HMR 未生效、页面状态异常、依赖/环境/Vite 配置变化时才刷新或重启 dev server。
+- 手机同网验收优先使用形如 `http://<LAN_IP>:5178/logs?debug=1` 的地址；若手机打不开，优先提醒检查 Windows 防火墙是否允许 Node.js/npm 在专用网络访问。
+- 如果前端 debug/mock 模式不足以复现问题，可改用本地完整构建，并按 `NODE_TYPE=slave` 连接现有数据库做联调；本地应通过已被 git 忽略且后端会自动读取的 `.env` 持久保存 `SESSION_SECRET`、`CRYPTO_SECRET`、`SQL_DSN` 等配置，避免每次重复提供，具体 secret 值不写入记忆库、文档或提交。
+- 执行提交/推送前必须先核对 `git status` 与 diff 范围，避免带入无关改动、诊断临时文件或未确认文档。
+- 前端包管理原则上偏 Bun；当前开发机历史上主要使用 npm/npx，Dockerfile 构建阶段使用 `oven/bun:1`。
+- 记忆文件默认用中文；代码、注释、命令、路径、API 名称保持英文。

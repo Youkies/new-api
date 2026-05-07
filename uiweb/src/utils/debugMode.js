@@ -933,8 +933,11 @@ export async function mockApiResponse(config) {
       success: true,
       data: [
         { model_name: 'claude-opus-4-6', vendor_id: 1, model_ratio: 12, completion_ratio: 5, cache_ratio: 0.1, model_price: 0, enable_groups: ['default', 'vip'] },
+        { model_name: 'claude-sonnet-4-6', vendor_id: 1, model_ratio: 6, completion_ratio: 5, cache_ratio: 0.1, model_price: 0, enable_groups: ['default', 'Claude-Antigravity'] },
         { model_name: 'gpt-5.5', vendor_id: 2, model_ratio: 8, completion_ratio: 6, cache_ratio: 0.1, model_price: 0, enable_groups: ['default', 'assistant'] },
+        { model_name: 'gpt-5.4-mini', vendor_id: 2, model_ratio: 2, completion_ratio: 4, cache_ratio: 0.12, model_price: 0, enable_groups: ['default', 'coding'] },
         { model_name: 'gemini-2.5-pro', vendor_id: 3, model_ratio: 4, completion_ratio: 3, cache_ratio: 0.15, model_price: 0, enable_groups: ['default'] },
+        { model_name: 'gemini-coding-pro', vendor_id: 3, model_ratio: 4, completion_ratio: 3, cache_ratio: 0.15, model_price: 0, enable_groups: ['coding', 'ultra'] },
         { model_name: 'image-preview', vendor_id: 2, model_ratio: 0, completion_ratio: 0, model_price: 0.02, enable_groups: ['assistant'] },
       ],
       vendors: [
@@ -942,8 +945,23 @@ export async function mockApiResponse(config) {
         { id: 2, name: 'OpenAI', icon: 'OpenAI.Color' },
         { id: 3, name: 'Google', icon: 'Gemini.Color' },
       ],
-      group_ratio: { default: 1, assistant: 1, vip: 0.8 },
-      usable_group: { default: '默认分组', assistant: 'AI 助手', vip: 'VIP' },
+      group_ratio: { default: 1, assistant: 1, vip: 0.8, 'Claude-Antigravity': 0.72, ultra: 0.62, coding: 0.92 },
+      usable_group: {
+        default: '默认分组',
+        assistant: 'AI 助手',
+        vip: 'VIP',
+        'Claude-Antigravity': 'Pro优专属倍率',
+        ultra: 'Ultra优专属倍率',
+        coding: '编程模型优化分组',
+      },
+      group_details: {
+        default: '标准价格分组，覆盖大部分通用模型，适合偶尔调用和基础测试。',
+        assistant: '适合站内助手、轻量问答和自动化辅助场景，优先保持稳定可用。',
+        vip: '面向高频用户的优惠分组，适合日常大量调用和通用模型使用。',
+        'Claude-Antigravity': 'Pro优用户可享受更低倍率，适合常用高级模型、长对话和生产级调用。',
+        ultra: 'Ultra优用户的旗舰分组，适合最高阶模型、编程代理和高并发任务。',
+        coding: '编程模型优化分组，优先覆盖 Claude、Gemini 和 GPT 的 coding 场景。',
+      },
     })
   }
   if (path === '/api/model-status' && method === 'GET') {

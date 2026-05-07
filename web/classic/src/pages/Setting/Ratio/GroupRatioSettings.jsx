@@ -53,6 +53,7 @@ const { Text, Title, Paragraph } = Typography;
 const OPTION_KEYS = [
   'GroupRatio',
   'UserUsableGroups',
+  'UserUsableGroupDetails',
   'GroupGroupRatio',
   'group_ratio_setting.group_special_usable_group',
   'AutoGroups',
@@ -77,6 +78,7 @@ export default function GroupRatioSettings(props) {
   const [inputs, setInputs] = useState({
     GroupRatio: '',
     UserUsableGroups: '',
+    UserUsableGroupDetails: '',
     GroupGroupRatio: '',
     'group_ratio_setting.group_special_usable_group': '',
     AutoGroups: '',
@@ -155,8 +157,13 @@ export default function GroupRatioSettings(props) {
   }, [props.options]);
 
   const handleGroupTableChange = useCallback(
-    ({ GroupRatio, UserUsableGroups }) => {
-      setInputs((prev) => ({ ...prev, GroupRatio, UserUsableGroups }));
+    ({ GroupRatio, UserUsableGroups, UserUsableGroupDetails }) => {
+      setInputs((prev) => ({
+        ...prev,
+        GroupRatio,
+        UserUsableGroups,
+        UserUsableGroupDetails,
+      }));
     },
     [],
   );
@@ -188,6 +195,7 @@ export default function GroupRatioSettings(props) {
           key={`gt_${dv}`}
           groupRatio={inputs.GroupRatio}
           userUsableGroups={inputs.UserUsableGroups}
+          userUsableGroupDetails={inputs.UserUsableGroupDetails}
           onChange={handleGroupTableChange}
         />
       </Form.Section>
@@ -313,6 +321,35 @@ export default function GroupRatioSettings(props) {
               ]}
               onChange={(value) =>
                 setInputs((prev) => ({ ...prev, UserUsableGroups: value }))
+              }
+            />
+          </Col>
+        </Row>
+        <Row gutter={16}>
+          <Col xs={24} sm={16}>
+            <Form.TextArea
+              label={t('分组详细介绍')}
+              placeholder={t(
+                '为一个 JSON 文本，键为分组名称，值为价格页展示的详细介绍',
+              )}
+              extraText={t(
+                '价格页中用户选中某个分组后展示的详细介绍，格式为 JSON 字符串，例如：{"vip": "适合高频调用和高级模型使用，享受更低倍率。"}',
+              )}
+              field={'UserUsableGroupDetails'}
+              autosize={{ minRows: 6, maxRows: 12 }}
+              trigger='blur'
+              stopValidateWithError
+              rules={[
+                {
+                  validator: (rule, value) => verifyJSON(value),
+                  message: t('不是合法的 JSON 字符串'),
+                },
+              ]}
+              onChange={(value) =>
+                setInputs((prev) => ({
+                  ...prev,
+                  UserUsableGroupDetails: value,
+                }))
               }
             />
           </Col>
@@ -590,6 +627,10 @@ export default function GroupRatioSettings(props) {
                 <Text strong code>UserUsableGroups</Text>{' — '}{t('用户可选分组的名称和描述（只包含勾选了用户可选的分组）')}
               </Paragraph>
               <CodeBlock>{`{"standard": "${t('标准价格')}", "premium": "${t('高级套餐，半价优惠')}"}`}</CodeBlock>
+              <Paragraph size='small' style={{ marginBottom: 4, marginTop: 8 }}>
+                <Text strong code>UserUsableGroupDetails</Text>{' — '}{t('价格页展示的分组详细介绍')}
+              </Paragraph>
+              <CodeBlock>{`{"premium": "${t('适合高频调用和高级模型使用，享受更低倍率。')}"}`}</CodeBlock>
             </GuideSection>
           </div>
         </Tabs.TabPane>

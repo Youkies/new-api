@@ -235,6 +235,27 @@ body {
 }
 
 @layer utilities {
+  .clay-scrollbar-none {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .clay-scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+
+  body.log-filter-dialog-open .assistant-widget-toggle {
+    display: none;
+  }
+
+  body.pricing-group-dialog-open .assistant-widget-toggle {
+    display: none;
+  }
+
+  body.pricing-group-dialog-open .ui-debug-panel {
+    display: none;
+  }
+
   html[data-theme='dark'] .text-\[\#8a4860\],
   html[data-theme='dark'] .text-\[\#a04668\] {
     color: rgb(var(--clay-pink-ink));

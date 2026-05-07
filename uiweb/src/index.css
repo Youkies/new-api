@@ -248,6 +248,10 @@ body {
     display: none;
   }
 
+  body.log-filter-dialog-open .ui-debug-panel {
+    display: none;
+  }
+
   body.pricing-group-dialog-open .assistant-widget-toggle {
     display: none;
   }

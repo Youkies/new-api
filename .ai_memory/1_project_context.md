@@ -74,5 +74,6 @@
 - 手机同网验收优先使用形如 `http://<LAN_IP>:5178/logs?debug=1` 的地址；若手机打不开，优先提醒检查 Windows 防火墙是否允许 Node.js/npm 在专用网络访问。
 - 如果前端 debug/mock 模式不足以复现问题，可改用本地完整构建，并按 `NODE_TYPE=slave` 连接现有数据库做联调；本地应通过已被 git 忽略且后端会自动读取的 `.env` 持久保存 `SESSION_SECRET`、`CRYPTO_SECRET`、`SQL_DSN` 等配置，避免每次重复提供，具体 secret 值不写入记忆库、文档或提交。
 - 执行提交/推送前必须先核对 `git status` 与 diff 范围，避免带入无关改动、诊断临时文件或未确认文档。
+- 本地临时诊断、截图、trace 和临时日志统一放在 git 忽略的 `.tmp/` 目录，不要散落在仓库根目录。
 - 前端包管理原则上偏 Bun；当前开发机历史上主要使用 npm/npx，Dockerfile 构建阶段使用 `oven/bun:1`。
 - 记忆文件默认用中文；代码、注释、命令、路径、API 名称保持英文。

@@ -40,3 +40,8 @@ skills-lock.json
 *.exe~
 uiweb-dist/
 参考html/
+
+# Local temporary diagnostics and browser automation artifacts
+.tmp/
+.playwright-cli/
+.tmp_stream_diag_*

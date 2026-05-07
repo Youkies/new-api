@@ -534,7 +534,7 @@ function LogSummary({ log }) {
   )
 }
 
-function ClayDateTimeField({ label, value, onChange }) {
+function ClayDateTimeField({ label, value, onChange, align = 'left' }) {
   const [open, setOpen] = useState(false)
   const isMobile = useIsMobile()
   const selectedDate = useMemo(() => parseLocalDateTime(value), [value])
@@ -604,8 +604,8 @@ function ClayDateTimeField({ label, value, onChange }) {
   const selectedHour = pad(selectedDate.getHours())
   const selectedMinute = pad(selectedDate.getMinutes())
   const panelClassName = isMobile
-    ? 'fixed inset-x-3 top-1/2 z-[10000] mx-auto max-w-[340px] max-h-[calc(100dvh-1rem)] -translate-y-1/2 overflow-y-auto rounded-[26px] bg-clay-bg p-2.5 shadow-clay border-2 border-white/30'
-    : 'absolute left-0 top-full z-[80] mt-3 w-full min-w-[320px] max-w-[calc(100vw-2rem)] rounded-clay-lg bg-clay-bg p-4 shadow-clay border-2 border-white/30'
+    ? 'clay-scrollbar-none fixed inset-x-3 top-1/2 z-[10000] mx-auto max-w-[340px] max-h-[calc(100dvh-1rem)] -translate-y-1/2 overflow-y-auto rounded-[26px] bg-clay-bg p-2.5 shadow-clay border-2 border-white/30'
+    : `absolute ${align === 'right' ? 'right-0' : 'left-0'} top-full z-[120] mt-3 w-[380px] max-w-[calc(100vw-2rem)] rounded-[28px] bg-clay-bg p-4 shadow-clay border-2 border-white/30`
 
   return (
     <div ref={rootRef} className="relative">
@@ -1129,8 +1129,8 @@ export default function LogList() {
   const refundRecordCount = Math.max(refundAppealsTotal, refundAppeals.length)
   const hasRefundRecords = refundRecordCount > 0 || (refundSummary?.pending_count ?? 0) > 0
   const filterDialogClassName = isMobile
-    ? 'relative w-full max-w-[360px] max-h-[calc(100dvh-1.5rem)] overflow-y-auto rounded-[30px] bg-clay-bg p-4 shadow-clay border-2 border-white/30'
-    : 'relative w-full max-w-4xl max-h-[calc(100dvh-3rem)] overflow-y-auto rounded-clay-lg bg-clay-bg p-6 shadow-clay border-2 border-white/30'
+    ? 'clay-scrollbar-none relative w-full max-w-[360px] max-h-[calc(100dvh-1.5rem)] overflow-y-auto rounded-[30px] bg-clay-bg p-4 shadow-clay border-2 border-white/30'
+    : 'relative w-full max-w-5xl overflow-visible rounded-[32px] bg-clay-bg p-7 shadow-clay border-2 border-white/30'
 
   return (
     <ClayConsoleShell
@@ -1215,7 +1215,7 @@ export default function LogList() {
       {/* Filter Dialog */}
       {showFilter && (
         <div
-          className="fixed inset-0 z-[90] flex items-center justify-center bg-clay-bg/55 px-4 py-4 backdrop-blur-sm"
+          className="clay-scrollbar-none fixed inset-0 z-[90] flex items-start justify-center overflow-y-auto bg-clay-bg/55 px-4 py-5 backdrop-blur-sm md:items-start md:px-6 md:pb-10 md:pt-[12vh]"
           role="dialog"
           aria-modal="true"
           aria-label="筛选日志"
@@ -1224,7 +1224,7 @@ export default function LogList() {
           }}
         >
           <div className={filterDialogClassName} onMouseDown={(event) => event.stopPropagation()}>
-            <div className="mb-4 flex items-center justify-between gap-3">
+            <div className="mb-4 flex items-center justify-between gap-3 md:mb-6">
               <div className="flex min-w-0 items-center gap-2">
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-clay-blue-50 shadow-clay">
                   <Filter className="h-4 w-4 text-[#43658b]" />
@@ -1241,34 +1241,34 @@ export default function LogList() {
               </button>
             </div>
 
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-3 md:gap-4">
-              <div className="mb-3 md:mb-5">
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-3 md:gap-5">
+              <div className="mb-3 md:mb-0">
                 <label className="block ml-4 mb-2 font-bold text-sm text-clay-ink">类型</label>
                 <ClaySelect
                   value={filter.type}
                   onChange={(v) => setFilter((current) => ({ ...current, type: v }))}
                   options={TYPE_OPTIONS}
-                  className="[&>button]:!px-5 [&>button]:!py-3 md:[&>button]:!px-6 md:[&>button]:!py-4"
+                  className="[&>button]:!px-5 [&>button]:!py-3 md:[&>button]:!px-6 md:[&>button]:!py-3.5"
                 />
               </div>
               <ClayField
                 label="模型"
-                className="!mb-3 md:!mb-5"
-                inputClassName="!px-5 !py-3 md:!px-6 md:!py-4"
+                className="!mb-3 md:!mb-0"
+                inputClassName="!px-5 !py-3 md:!px-6 md:!py-3.5"
                 value={filter.model_name}
                 onChange={(e) => setFilter((current) => ({ ...current, model_name: e.target.value }))}
                 placeholder="如 gpt-4o"
               />
               <ClayField
                 label="令牌名称"
-                className="!mb-3 md:!mb-5"
-                inputClassName="!px-5 !py-3 md:!px-6 md:!py-4"
+                className="!mb-3 md:!mb-0"
+                inputClassName="!px-5 !py-3 md:!px-6 md:!py-3.5"
                 value={filter.token_name}
                 onChange={(e) => setFilter((current) => ({ ...current, token_name: e.target.value }))}
                 placeholder="令牌名称"
               />
             </div>
-            <div className="mt-1 grid grid-cols-1 gap-3 md:mt-4 md:grid-cols-2 md:gap-4">
+            <div className="mt-1 grid grid-cols-1 gap-3 md:mt-5 md:grid-cols-2 md:gap-5">
               <ClayDateTimeField
                 label="开始时间"
                 value={filter.start_timestamp}
@@ -1278,13 +1278,14 @@ export default function LogList() {
                 label="结束时间"
                 value={filter.end_timestamp}
                 onChange={(value) => setFilter((current) => ({ ...current, end_timestamp: value }))}
+                align="right"
               />
             </div>
-            <div className="mt-4 flex flex-col gap-2.5 md:mt-5 md:flex-row md:gap-3">
-              <ClayButton variant="primary" onClick={onApply} className="!py-3 md:!w-auto">
+            <div className="mt-4 flex flex-col gap-2.5 md:mt-6 md:flex-row md:justify-end md:gap-3">
+              <ClayButton variant="primary" onClick={onApply} className="!py-3 md:!h-11 md:!w-40 md:!py-0">
                 <Search className="w-4 h-4" /> 应用筛选
               </ClayButton>
-              <ClayButton variant="ghost" onClick={onReset} className="!py-3 md:!w-auto">重置</ClayButton>
+              <ClayButton variant="ghost" onClick={onReset} className="!py-3 md:!h-11 md:!w-28 md:!py-0">重置</ClayButton>
             </div>
           </div>
         </div>

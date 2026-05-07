@@ -17,6 +17,7 @@ import ClayInput from '../components/clay/ClayInput.jsx'
 import ClayAlert from '../components/clay/ClayAlert.jsx'
 import ClayPageShell from '../components/layout/ClayPageShell.jsx'
 import { useStatus } from '../context/StatusContext.jsx'
+import { useUser } from '../context/UserContext.jsx'
 import { getPricing } from '../services/pricing.js'
 import { getLobeHubIcon } from '../utils/vendorIcon.jsx'
 
@@ -113,8 +114,48 @@ function formatRatioValue(value) {
   return `${Number.isInteger(ratio) ? ratio : ratio.toFixed(2).replace(/0+$/, '').replace(/\.$/, '')}x`
 }
 
+function normalizeGroupText(value) {
+  return String(value || '').trim().toLowerCase().replace(/\s+/g, '')
+}
+
+function getUserGroupTokens(userGroup) {
+  const normalized = normalizeGroupText(userGroup)
+  if (!normalized) return []
+
+  const tokens = new Set([normalized])
+  if (normalized.includes('pro')) {
+    tokens.add('pro')
+    tokens.add('pro优')
+  }
+  if (normalized.includes('ultra')) {
+    tokens.add('ultra')
+    tokens.add('ultra优')
+  }
+  if (normalized.includes('super') || normalized.includes('spuer')) {
+    tokens.add('super')
+    tokens.add('super优')
+    tokens.add('spuer')
+    tokens.add('spuer优')
+  }
+  if (normalized.includes('standard')) {
+    tokens.add('standard')
+    tokens.add('standard优')
+  }
+  if (normalized.includes('vip')) tokens.add('vip')
+
+  return Array.from(tokens).filter(Boolean)
+}
+
+function getGroupHighlightTone(option) {
+  const text = normalizeGroupText(`${option.key} ${option.name} ${option.description} ${option.detail}`)
+  if (text.includes('ultra')) return 'amber'
+  if (text.includes('pro') || text.includes('vip')) return 'blue'
+  return 'blue'
+}
+
 export default function Pricing() {
   const { status } = useStatus()
+  const { user } = useUser()
   const [models, setModels] = useState([])
   const [vendorsMap, setVendorsMap] = useState({})
   const [groupRatio, setGroupRatio] = useState({})
@@ -211,6 +252,33 @@ export default function Pricing() {
       ratio: null,
     }
   ), [groupOptions, models.length, selectedGroup])
+
+  const userGroup = user?.group || ''
+  const groupHighlights = useMemo(() => {
+    const normalizedUserGroup = normalizeGroupText(userGroup)
+    const tokens = getUserGroupTokens(userGroup)
+    if (!normalizedUserGroup || tokens.length === 0) return []
+
+    return groupOptions
+      .filter((option) => option.key !== 'all')
+      .map((option, index) => {
+        const normalizedKey = normalizeGroupText(option.key)
+        const text = normalizeGroupText(`${option.key} ${option.name} ${option.description} ${option.detail}`)
+        const exact = normalizedKey === normalizedUserGroup
+        const related = exact || tokens.some((token) => text.includes(token))
+        if (!related) return null
+        return {
+          option,
+          exact,
+          index,
+          tone: getGroupHighlightTone(option),
+          score: exact ? 2 : 1,
+        }
+      })
+      .filter(Boolean)
+      .sort((a, b) => b.score - a.score || a.index - b.index)
+      .slice(0, 2)
+  }, [groupOptions, userGroup])
 
   const filtered = useMemo(() => {
     let result = models
@@ -403,22 +471,34 @@ export default function Pricing() {
                   </button>
                 </div>
 
-                <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  <div className="rounded-clay bg-clay-blue-100/65 shadow-clay-inset px-4 py-3 flex items-center gap-3 text-[#43658b]">
-                    <Sparkles className="w-5 h-5 shrink-0" strokeWidth={2.5} />
-                    <div className="min-w-0">
-                      <div className="font-black leading-tight">Pro优专属倍率</div>
-                      <div className="text-[11px] font-bold opacity-70">常用高级模型更优价格</div>
-                    </div>
+                {groupHighlights.length > 0 && (
+                  <div className={`mt-4 grid grid-cols-1 gap-2 ${groupHighlights.length > 1 ? 'sm:grid-cols-2' : ''}`}>
+                    {groupHighlights.map(({ option, exact, tone }) => {
+                      const HighlightIcon = tone === 'amber' ? Gem : Sparkles
+                      const toneClass = tone === 'amber'
+                        ? 'bg-clay-yellow-100/70 text-[#8a6a32]'
+                        : 'bg-clay-blue-100/65 text-[#43658b]'
+                      return (
+                        <div
+                          key={option.key}
+                          className={`rounded-clay shadow-clay-inset px-4 py-3 flex items-center gap-3 ${toneClass}`}
+                        >
+                          <HighlightIcon className="w-5 h-5 shrink-0" strokeWidth={2.5} />
+                          <div className="min-w-0">
+                            <div className="font-black leading-tight break-words">
+                              {option.description || option.name}
+                            </div>
+                            <div className="text-[11px] font-bold opacity-75 leading-relaxed">
+                              {exact ? '当前用户分组' : option.name}
+                              {option.count != null ? ` · ${option.count} 个模型` : ''}
+                              {option.ratio != null ? ` · ${formatRatioValue(option.ratio)}` : ''}
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    })}
                   </div>
-                  <div className="rounded-clay bg-clay-yellow-100/70 shadow-clay-inset px-4 py-3 flex items-center gap-3 text-[#8a6a32]">
-                    <Gem className="w-5 h-5 shrink-0" strokeWidth={2.5} />
-                    <div className="min-w-0">
-                      <div className="font-black leading-tight">Ultra优专属倍率</div>
-                      <div className="text-[11px] font-bold opacity-70">旗舰模型与高阶权益档位</div>
-                    </div>
-                  </div>
-                </div>
+                )}
               </div>
 
               <div className="max-h-[58vh] overflow-y-auto clay-scrollbar-none px-4 sm:px-6 pt-4 pb-12 space-y-2">

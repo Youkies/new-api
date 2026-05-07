@@ -36,7 +36,7 @@ export default function ClaySelect({
         />
       </button>
       {open && (
-        <div className="absolute z-30 mt-2 w-full rounded-clay bg-clay-bg shadow-clay p-2 max-h-72 overflow-y-auto">
+        <div className="clay-scrollbar-none absolute z-30 mt-2 w-full rounded-clay bg-clay-bg shadow-clay p-2 max-h-72 overflow-y-auto">
           {options.map((o) => {
             const active = o.value === value
             return (

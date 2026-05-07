@@ -110,6 +110,7 @@ When working on the project-owned `uiweb` frontend:
 - For local visible verification, run `uiweb` with `--host 0.0.0.0 --port 5178`, choose the physical LAN IPv4 address, and provide a phone URL such as `http://<LAN_IP>:5178/...`.
 - Use a headed browser for smoke tests and leave the browser plus dev server running after verification so the user can continue manual testing.
 - If full local backend verification is needed, use the git-ignored repo-root `.env` for `NODE_TYPE=slave`, `SESSION_SECRET`, `CRYPTO_SECRET`, `SQL_DSN`, and related local settings. Never write actual secret values into docs, memory, commits, or responses.
+- Put local temporary diagnostics, screenshots, traces, and ad-hoc logs under the git-ignored `.tmp/` directory. Do not leave temporary files directly in the repository root.
 
 ### Rule 4: New Channel StreamOptions Support
 

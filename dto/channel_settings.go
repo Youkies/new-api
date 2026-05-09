@@ -3,6 +3,8 @@ package dto
 type ChannelSettings struct {
 	ForceFormat              bool   `json:"force_format,omitempty"`
 	ThinkingToContent        bool   `json:"thinking_to_content,omitempty"`
+	StripNativeReasoning     bool   `json:"strip_native_reasoning,omitempty"`
+	StripContentThinkTags    bool   `json:"strip_content_think_tags,omitempty"`
 	Proxy                    string `json:"proxy"`
 	PassThroughBodyEnabled   bool   `json:"pass_through_body_enabled,omitempty"`
 	NonStreamToStreamEnabled bool   `json:"non_stream_to_stream_enabled,omitempty"`

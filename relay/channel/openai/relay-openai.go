@@ -30,7 +30,7 @@ func sendStreamData(c *gin.Context, info *relaycommon.RelayInfo, data string, fo
 		return nil
 	}
 
-	if !forceFormat && !thinkToContent {
+	if !forceFormat && !thinkToContent && !reasoningOutputPolicyEnabled(info) {
 		return helper.StringData(c, data)
 	}
 
@@ -39,7 +39,10 @@ func sendStreamData(c *gin.Context, info *relaycommon.RelayInfo, data string, fo
 		return err
 	}
 
+	stripNativeReasoningFromStreamResponse(info, &lastStreamResponse)
+
 	if !thinkToContent {
+		stripContentThinkTagsFromStreamResponse(info, &lastStreamResponse)
 		return helper.ObjectData(c, lastStreamResponse)
 	}
 
@@ -68,11 +71,13 @@ func sendStreamData(c *gin.Context, info *relaycommon.RelayInfo, data string, fo
 			}
 			info.ThinkingContentInfo.IsFirstThinkingContent = false
 			info.ThinkingContentInfo.HasSentThinkingContent = true
+			stripContentThinkTagsFromStreamResponse(info, response)
 			return helper.ObjectData(c, response)
 		}
 	}
 
 	if lastStreamResponse.Choices == nil || len(lastStreamResponse.Choices) == 0 {
+		stripContentThinkTagsFromStreamResponse(info, &lastStreamResponse)
 		return helper.ObjectData(c, lastStreamResponse)
 	}
 
@@ -88,6 +93,7 @@ func sendStreamData(c *gin.Context, info *relaycommon.RelayInfo, data string, fo
 				response.Choices[j].Delta.Reasoning = nil
 			}
 			info.ThinkingContentInfo.SendLastThinkingContent = true
+			stripContentThinkTagsFromStreamResponse(info, response)
 			helper.ObjectData(c, response)
 		}
 
@@ -103,6 +109,7 @@ func sendStreamData(c *gin.Context, info *relaycommon.RelayInfo, data string, fo
 		}
 	}
 
+	stripContentThinkTagsFromStreamResponse(info, &lastStreamResponse)
 	return helper.ObjectData(c, lastStreamResponse)
 }
 
@@ -238,6 +245,7 @@ func OaiStreamToNonStreamHandler(c *gin.Context, info *relaycommon.RelayInfo, re
 	if responseErr != nil {
 		return nil, responseErr
 	}
+	applyReasoningOutputPolicyToTextResponse(info, response)
 
 	responseBody, err := common.Marshal(response)
 	if err != nil {
@@ -608,16 +616,20 @@ func OpenaiHandler(c *gin.Context, info *relaycommon.RelayInfo, resp *http.Respo
 	}
 
 	applyUsagePostProcessing(info, &simpleResponse.Usage, responseBody)
+	reasoningOutputModified := applyReasoningOutputPolicyToTextResponse(info, &simpleResponse)
 
 	switch info.RelayFormat {
 	case types.RelayFormatOpenAI:
-		if usageModified {
+		if usageModified || reasoningOutputModified {
 			var bodyMap map[string]interface{}
 			err = common.Unmarshal(responseBody, &bodyMap)
 			if err != nil {
 				return nil, types.NewOpenAIError(err, types.ErrorCodeBadResponseBody, http.StatusInternalServerError)
 			}
-			bodyMap["usage"] = simpleResponse.Usage
+			if usageModified {
+				bodyMap["usage"] = simpleResponse.Usage
+			}
+			applyReasoningOutputPolicyToOpenAIBodyMap(info, bodyMap)
 			responseBody, _ = common.Marshal(bodyMap)
 		}
 		if forceFormat {

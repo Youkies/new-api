@@ -22,6 +22,14 @@
 
 重管理优先走 `/legacy/` classic UI。
 
+## 渠道高级设置
+
+渠道编辑页支持思维链输出兼容选项：
+
+- `thinking_to_content`：将上游 `reasoning_content` 转成正文中的 `<think>...</think>`，适合需要在客户端展示思考过程的场景。
+- `strip_native_reasoning`：返回前移除 `reasoning_content` 和 `reasoning` 字段，适合 SillyTavern 等已有角色卡预设思维链的客户端，避免模型原生思维链与预设内容冲突。
+- `strip_content_think_tags`：进一步移除正文 `content` 中的 `<think>...</think>` 内容块。该选项会影响角色卡主动要求输出的预设思维链，默认不要开启。
+
 ## 经典控制台保留能力
 
 `/legacy/` classic UI 继续承担复杂计费与分组配置。

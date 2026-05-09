@@ -42,6 +42,8 @@ func handleClaudeFormat(c *gin.Context, data string, info *relaycommon.RelayInfo
 	if streamResponse.Usage != nil {
 		info.ClaudeConvertInfo.Usage = streamResponse.Usage
 	}
+	stripNativeReasoningFromStreamResponse(info, &streamResponse)
+	stripContentThinkTagsFromStreamResponse(info, &streamResponse)
 	claudeResponses := service.StreamResponseOpenAI2Claude(&streamResponse, info)
 	for _, resp := range claudeResponses {
 		helper.ClaudeData(c, *resp)
@@ -56,6 +58,8 @@ func handleGeminiFormat(c *gin.Context, data string, info *relaycommon.RelayInfo
 		return err
 	}
 
+	stripNativeReasoningFromStreamResponse(info, &streamResponse)
+	stripContentThinkTagsFromStreamResponse(info, &streamResponse)
 	geminiResponse := service.StreamResponseOpenAI2Gemini(&streamResponse, info)
 
 	// 如果返回 nil，表示没有实际内容，跳过发送

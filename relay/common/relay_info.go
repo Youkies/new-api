@@ -26,6 +26,15 @@ type ThinkingContentInfo struct {
 	HasSentThinkingContent  bool
 }
 
+type ThinkTagFilterState struct {
+	InThink bool
+	Pending string
+}
+
+type ReasoningFilterInfo struct {
+	ContentThinkTagStates map[int]*ThinkTagFilterState
+}
+
 const (
 	LastMessageTypeNone     = "none"
 	LastMessageTypeText     = "text"
@@ -173,6 +182,7 @@ type RelayInfo struct {
 	StreamStatus *StreamStatus
 
 	ThinkingContentInfo
+	ReasoningFilterInfo
 	TokenCountMeta
 	*ClaudeConvertInfo
 	*RerankerInfo

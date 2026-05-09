@@ -1,70 +1,45 @@
 # 当前任务
 
-## 当前可接手状态：首页未登录导航与 CTA 优化（2026-05-08）
+## 当前可接手状态：渠道思维链输出拦截（2026-05-10）
 
 ### 已完成
 
-- 日志页桌面端筛选弹窗已改为更宽的 Clay 弹窗，桌面不再使用弹窗内部滚动。
-- 桌面端时间选择器改为从输入框浮出显示，开始时间左对齐、结束时间右对齐，避免面板撑出内部滚动条或挡住底部按钮。
-- 筛选弹窗打开时隐藏 AI 助手与 UI DEBUG 悬浮控件，减少遮挡。
-- 已为本地临时文件新增 `.tmp/` 统一落点规则，根目录散落的 Playwright/诊断临时产物已清理。
-- 文档补充：`docs/uiweb/features.md` 已记录日志筛选桌面弹窗行为。
-- 价格页移动端“查看分组”弹窗顶部倍率提示已改为跟随当前 `user.group` 与实际可用分组动态显示，普通用户不再固定看到 `Pro优` / `Ultra优` 提示。
-- 首页已区分登录态和未登录态：
-  - 已登录用户保留顶部右侧头像入口；
-  - 未登录用户首页顶部导航不显示“登录/注册”，登录和注册按钮放在 `Youkies API` 品牌与 `AI Gateway · Clay Edition` 小标题之间，高度与品牌胶囊一致。
-
-### 近期已完成的上一阶段工作
-
-- 已为定价接口新增分组详细介绍配置链路：`UserUsableGroupDetails` 作为独立 option 保存，不改变既有 `UserUsableGroups` 短描述结构。
-- `/api/pricing` 继续返回 `usable_group` 短描述，并新增 `group_details`，只暴露当前用户可用分组的详细介绍。
-- `/legacy/` 经典控制台的分组相关设置已增加“详细介绍”编辑：
-  - 可视化分组表新增“详细介绍”列；
-  - 手动 JSON 模式新增 `UserUsableGroupDetails` 输入区。
-- `uiweb` 价格页已把移动端分组按钮墙改为“查看分组”弹窗：
-  - 页面默认显示全部模型；
-  - 主页面显示当前分组、模型数量、倍率和详细介绍；
-  - 弹窗顶部显示 `Pro优专属倍率`、`Ultra优专属倍率` 及对应图标；
-  - 弹窗列表显示分组名、简介、模型数量和倍率，选择后关闭弹窗并筛选模型。
-- debug mock 已补充分组详情、更多分组和模型，用于本地移动端验收。
-- 文档索引已更新：`docs/uiweb/api-contracts.md` 与 `docs/uiweb/features.md` 记录 `group_details` 与移动端分组弹窗语义。
-- 按用户验收反馈压缩价格页顶部筛选区：
-  - “查看分组”按钮改为小号胶囊；
-  - 当前分组改为单行紧凑状态条；
-  - 移除“全部供应商”下拉筛选，只保留模型搜索。
-- 桌面端价格页保留原有分组胶囊墙审美，移除“全部供应商”下拉筛选；鼠标悬浮或键盘聚焦到分组时展示悬浮详情，包含分组简介、模型数量、倍率和详细介绍。
+- 针对 SillyTavern 角色卡“预设思维链”和模型原生思维链冲突问题，实测 `「按量」claude-opus-4-6-渠道2`：
+  - 实际上游模型为 `claude-opus-4-6-thinking`。
+  - 非流式响应会同时返回 `message.content` 和 `message.reasoning_content`。
+  - 流式响应会先返回 `delta.reasoning_content`，再返回 `delta.content`。
+  - 正文里由预设要求输出的 `<think>...</think>` 会落在 `content` 中，和原生 `reasoning_content` 可区分。
+- 后端新增渠道设置：
+  - `strip_native_reasoning`：返回前移除 `reasoning_content` / `reasoning` 字段。
+  - `strip_content_think_tags`：可选移除正文 `content` 中的 `<think>...</think>` 内容块。
+- OpenAI relay 已覆盖：
+  - 原生 OpenAI 流式输出。
+  - 非流式 OpenAI 输出。
+  - 上游流式转下游非流式聚合。
+  - OpenAI 转 Claude / Gemini 格式前的流式清理。
+- 正文 `<think>` 清理使用流式状态机，能处理 `<think>` / `</think>` 跨 chunk 拆分。
+- default UI 和 classic UI 的渠道编辑高级设置已增加两个开关，并补齐 default 六语言 i18n 与 classic 中英翻译。
+- 文档已更新：
+  - `docs/channel/other_setting.md`
+  - `docs/uiweb/admin.md`
 
 ### 验证结果
 
-- `npm run build` 于 `uiweb/` 通过。
-- `git diff --check` 于当前相关文件通过。
-- 已用前台可见 Playwright Chrome 打开 `http://192.168.2.108:5178/logs?debug=1`，桌面视口 `1440x900` 验证：
-  - 筛选弹窗无内部滚动条；
-  - 开始时间与结束时间选择器均可完整展开；
-  - 应用筛选和重置按钮保持可见。
-- `go test ./setting ./controller ./model -count=1` 通过。
-- `npm run build` 于 `uiweb/` 通过。
-- `npm run build` 于 `web/classic/` 通过。
-- `git diff --check` 于本次相关文件通过。
-- 已用前台可见 Playwright Chrome 打开 `http://192.168.2.108:5178/pricing?debug=1`，移动视口 `390x720` 验证：
-  - “查看分组”按钮可打开弹窗；
-  - 弹窗展示会员倍率提示、分组简介、模型数量、倍率；
-  - 选择 `pro` 后弹窗关闭，页面显示详细介绍并只剩 1 个模型。
-- 顶部筛选区压缩后再次执行 `npm run build` 于 `uiweb/` 通过，并用 Playwright 快照确认“全部供应商”已移除。
-- 按用户反馈将“查看分组”按钮移动到当前分组状态条右侧；debug mock 改用 `Claude-Antigravity` 长分组名，并压缩状态条的数量/倍率标签后验证完整显示。
-- 再次按用户反馈调整为：当前分组与详细介绍合并成一个完整信息框；搜索框与“查看分组”按钮并排成工具条。选中 `Claude-Antigravity` 后已验证分组名完整显示。
-- 桌面端方案调整后，`uiweb npm run build` 与 `git diff --check` 通过；Playwright 桌面视口 `1440x900` 验证供应商筛选已移除，分组胶囊墙可正常显示，悬浮 `Claude-Antigravity` 可出现简介与详细介绍弹窗。
-- 价格页分组弹窗动态提示调整后，`uiweb npm run build` 通过；前台可见 Chrome 打开 `http://192.168.2.108:5178/pricing?debug=1`，移动端弹窗顶部显示 `默认分组 / 当前用户分组 · 5 个模型 · 1x`，不再显示固定 `Pro优` / `Ultra优` 提示卡。
-- 首页导航调整后，`uiweb npm run build` 通过；前台可见 Chrome 移动视口验证：
-  - 未登录首页 header 仅显示品牌与主题按钮，登录/注册位于品牌和 `AI Gateway · Clay Edition` 之间；
-  - debug 登录态 header 右侧仍显示头像入口。
+- `go test ./relay/... -count=1` 通过。
+- `go test ./relay/channel/openai ./relay/common ./dto -count=1` 通过。
+- `npm run i18n:sync` 于 `web/default/` 通过；报告 missingCount 均为 0。
+- `npm run build` 于 `web/default/` 通过。
+- `npm run build` 于 `web/classic/` 通过；仍有既有大 chunk / circular chunk 警告，但构建成功。
+- `git diff --check` 通过。
 
 ### 下一步
 
-- 等用户在本地浏览器中手动验收首页未登录与登录态移动端布局。
-- 若验收通过，再按用户指令决定是否提交/推送；提交前必须重新核对 `git status`，避免带入无关历史改动和临时诊断文件。
+- 如需上线给酒馆用户使用，优先在对应渠道开启 `strip_native_reasoning`。
+- `strip_content_think_tags` 默认不要开；只有用户明确希望连角色卡预设 `<think>...</think>` 也清理时再开启。
+- 若用户要求提交，先重新核对 `git status` 和 diff 范围。
 
 ### 注意事项
 
-- 本次不涉及数据库迁移；新增配置走 `options` 表，生产如果已有 `NODE_TYPE=slave` 也不会依赖 AutoMigrate。
-- 不要把 `.env`、数据库凭据、secret 或调试日志内容写入提交、文档或记忆。
+- 本次不涉及数据库迁移；新增项保存在渠道 `setting` JSON。
+- `strip_native_reasoning` 只拦截输出字段，不会减少上游 native thinking 已经产生的 token 消耗，也不会改变上游模型是否启用 thinking。
+- 测试 key 只用于本轮接口验证，未写入文件、文档或记忆。

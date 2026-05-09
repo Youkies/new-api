@@ -944,6 +944,7 @@ func HandleStreamResponseData(c *gin.Context, info *relaycommon.RelayInfo, claud
 			return nil
 		}
 
+		openai.ApplyReasoningOutputPolicyToStreamResponse(info, response)
 		err = helper.ObjectData(c, response)
 		if err != nil {
 			logger.LogError(c, "send_stream_response_failed: "+err.Error())
@@ -1078,6 +1079,7 @@ func ClaudeStreamToNonStreamHandler(c *gin.Context, resp *http.Response, info *r
 	if responseErr != nil {
 		return nil, responseErr
 	}
+	openai.ApplyReasoningOutputPolicyToTextResponse(info, response)
 
 	responseBody, err := common.Marshal(response)
 	if err != nil {
@@ -1263,6 +1265,7 @@ func HandleClaudeResponseData(c *gin.Context, info *relaycommon.RelayInfo, claud
 	case types.RelayFormatOpenAI:
 		openaiResponse := ResponseClaude2OpenAI(&claudeResponse)
 		openaiResponse.Usage = buildOpenAIStyleUsageFromClaudeUsage(claudeInfo.Usage)
+		openai.ApplyReasoningOutputPolicyToTextResponse(info, openaiResponse)
 		responseData, err = json.Marshal(openaiResponse)
 		if err != nil {
 			return types.NewError(err, types.ErrorCodeBadResponseBody)

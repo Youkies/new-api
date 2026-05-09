@@ -67,6 +67,16 @@ func stripContentThinkTagsFromStreamResponse(info *relaycommon.RelayInfo, respon
 	return modified
 }
 
+func ApplyReasoningOutputPolicyToStreamResponse(info *relaycommon.RelayInfo, response *dto.ChatCompletionsStreamResponse) bool {
+	nativeModified := stripNativeReasoningFromStreamResponse(info, response)
+	contentModified := stripContentThinkTagsFromStreamResponse(info, response)
+	return nativeModified || contentModified
+}
+
+func ApplyReasoningOutputPolicyToTextResponse(info *relaycommon.RelayInfo, response *dto.OpenAITextResponse) bool {
+	return applyReasoningOutputPolicyToTextResponse(info, response)
+}
+
 func applyReasoningOutputPolicyToTextResponse(info *relaycommon.RelayInfo, response *dto.OpenAITextResponse) bool {
 	if info == nil || response == nil || !reasoningOutputPolicyEnabled(info) {
 		return false

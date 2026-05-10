@@ -60,3 +60,4 @@
 - [2026-05-08 06:31] 价格页移动端分组弹窗顶部提示改为跟随当前 `user.group` 动态显示，并用前台 Chrome 验证普通用户不再固定显示 Pro/Ultra。
 - [2026-05-08 06:50] 调整首页移动端未登录布局：导航隐藏登录/注册，登录/注册放在 `Youkies API` 品牌与 `AI Gateway` 小标题之间且与品牌等高；登录态头像继续在右上角。
 - [2026-05-10 02:15] 完成渠道思维链输出拦截：新增 `strip_native_reasoning` 与 `strip_content_think_tags`，覆盖 OpenAI 流式/非流式/聚合输出，补齐 default 与 classic 设置入口、i18n 和文档。
+- [2026-05-10 19:18] 完成 Youkies 必吃榜第一版：新增模型评价、食评积分、积分兑换额度、后台奖励配置和审核/精选入口；`go test ./... -count=1`、`uiweb npm run build`、`git diff --check` 通过。

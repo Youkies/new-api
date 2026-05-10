@@ -7,6 +7,7 @@ import UserAgreement from './pages/UserAgreement.jsx'
 import PrivacyPolicy from './pages/PrivacyPolicy.jsx'
 import Pricing from './pages/Pricing.jsx'
 import ModelStatus from './pages/ModelStatus.jsx'
+import ModelReviews from './pages/ModelReviews.jsx'
 import Announcements from './pages/Announcements.jsx'
 import Login from './pages/Login.jsx'
 import Register from './pages/Register.jsx'
@@ -32,6 +33,7 @@ import AdminNotifications from './pages/admin/AdminNotifications.jsx'
 import AdminRefundAppeals from './pages/admin/AdminRefundAppeals.jsx'
 import AdminAssistant from './pages/admin/AdminAssistant.jsx'
 import AdminPageConfig from './pages/admin/AdminPageConfig.jsx'
+import AdminModelReviews from './pages/admin/AdminModelReviews.jsx'
 
 export default function App() {
   return (
@@ -39,6 +41,7 @@ export default function App() {
       <Route path="/" element={<Home />} />
       <Route path="/about" element={<About />} />
       <Route path="/pricing" element={<Pricing />} />
+      <Route path="/must-eat" element={<ModelReviews />} />
       <Route path="/status" element={<ModelStatus />} />
       <Route path="/announcements" element={<Announcements />} />
       <Route path="/user-agreement" element={<UserAgreement />} />
@@ -178,6 +181,16 @@ export default function App() {
           <ProtectedRoute>
             <AdminRoute>
               <AdminPageConfig />
+            </AdminRoute>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/model-reviews"
+        element={
+          <ProtectedRoute>
+            <AdminRoute>
+              <AdminModelReviews />
             </AdminRoute>
           </ProtectedRoute>
         }

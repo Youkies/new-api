@@ -95,7 +95,7 @@
 
 回调：
 
-- `POST /api/kpay/notify`：KPay 支付成功回调。服务端校验 `X-KPay-*` 签名头、body hash、时间窗口、订单号、金额和本地订单支付网关后入账。
+- `POST /api/kpay/notify`：KPay 支付成功回调。服务端校验 `X-KPay-*` 签名头、body hash、时间窗口、订单号、金额和本地订单支付网关后入账。为兼容 KPay webhook 协议，接口已到达时统一返回 HTTP 200，body 用 `ok` / `fail` 表示业务处理结果，失败原因写入服务端日志。
 
 语义：
 

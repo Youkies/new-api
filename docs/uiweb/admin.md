@@ -51,7 +51,7 @@
 - KPay 原生直连配置位于 `/legacy/` classic UI 的支付设置页 `KPay 设置` 标签。
 - 必填项：`KPayEnabled=true`、`KPayApiBase`、`KPayApiKey`、`KPayApiSecret`。
 - 默认 API 地址：`https://api.kpay.cc`。
-- 回调地址：`<ServerAddress>/api/kpay/notify`，该域名需要在 KPay API Key 授权域名内完成校验。
+- 回调地址：`<ServerAddress>/api/kpay/notify`，该域名需要在 KPay API Key 授权域名内完成校验；接口接收 JSON POST，请求到达后统一返回 HTTP 200，body 为 `ok` / `fail`。
 - `KPaySelectStrategy` 默认 `lowest_fee`；`KPaySelectedMerchantId=0` 表示由 KPay 自动选商户。
 - KPay 使用 `direct_qr` 模式，用户侧在 `uiweb` 与 classic 充值页展示二维码，不走外部收银台跳转。
 - KPay 支付完成回跳地址为 `<ServerAddress>/topup?show_history=true`；旧 `/console/topup` 回跳也由 `uiweb` 兼容承接。

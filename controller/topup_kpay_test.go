@@ -1,10 +1,12 @@
 package controller
 
 import (
+	"bytes"
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/hex"
 	"net/http"
+	"net/http/httptest"
 	"strconv"
 	"strings"
 	"testing"
@@ -12,6 +14,7 @@ import (
 
 	"github.com/QuantumNous/new-api/setting"
 	"github.com/QuantumNous/new-api/setting/system_setting"
+	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/require"
 )
 
@@ -73,4 +76,40 @@ func TestBuildKPayReturnURLUsesUIWebTopUp(t *testing.T) {
 
 	system_setting.ServerAddress = ""
 	require.Equal(t, "https://callback.example/topup?show_history=true", buildKPayReturnURL("https://callback.example/"))
+}
+
+func TestKPayNotifyAlwaysReturnsOKForRejectedWebhook(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	originalEnabled := setting.KPayEnabled
+	originalApiBase := setting.KPayApiBase
+	originalApiKey := setting.KPayApiKey
+	originalApiSecret := setting.KPayApiSecret
+	t.Cleanup(func() {
+		setting.KPayEnabled = originalEnabled
+		setting.KPayApiBase = originalApiBase
+		setting.KPayApiKey = originalApiKey
+		setting.KPayApiSecret = originalApiSecret
+	})
+
+	router := gin.New()
+	router.POST("/api/kpay/notify", KPayNotify)
+
+	setting.KPayEnabled = false
+	req := httptest.NewRequest(http.MethodPost, "/api/kpay/notify", bytes.NewBufferString(`{"orderNo":"test","status":"paid"}`))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	require.Equal(t, http.StatusOK, rec.Code)
+	require.Equal(t, kpayNotifyFail, rec.Body.String())
+
+	setting.KPayEnabled = true
+	setting.KPayApiBase = "https://api.kpay.cc"
+	setting.KPayApiKey = "test-key"
+	setting.KPayApiSecret = "test-secret"
+	req = httptest.NewRequest(http.MethodPost, "/api/kpay/notify", bytes.NewBufferString(`{"orderNo":"test","status":"paid"}`))
+	req.Header.Set("Content-Type", "application/json")
+	rec = httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	require.Equal(t, http.StatusOK, rec.Code)
+	require.Equal(t, kpayNotifyFail, rec.Body.String())
 }

@@ -33,6 +33,8 @@ const (
 	kpayDefaultApiBase     = "https://api.kpay.cc"
 	kpayDirectMode         = "direct_qr"
 	kpayStatusPaid         = "paid"
+	kpayNotifyOK           = "ok"
+	kpayNotifyFail         = "fail"
 	kpayWebhookMaxSkew     = 10 * time.Minute
 	kpayHTTPTimeout        = 15 * time.Second
 	kpayQRCodeFetchTimeout = 8 * time.Second
@@ -540,32 +542,32 @@ func CheckKPayTopUp(c *gin.Context) {
 func KPayNotify(c *gin.Context) {
 	if !isKPayWebhookEnabled() {
 		logger.LogWarn(c.Request.Context(), fmt.Sprintf("KPay webhook 被拒绝 reason=webhook_disabled path=%q client_ip=%s", c.Request.RequestURI, c.ClientIP()))
-		c.String(http.StatusForbidden, "fail")
+		c.String(http.StatusOK, kpayNotifyFail)
 		return
 	}
 
 	body, err := io.ReadAll(io.LimitReader(c.Request.Body, 2*1024*1024))
 	if err != nil {
 		logger.LogError(c.Request.Context(), fmt.Sprintf("KPay webhook 读取请求体失败 path=%q client_ip=%s error=%q", c.Request.RequestURI, c.ClientIP(), err.Error()))
-		c.String(http.StatusBadRequest, "fail")
+		c.String(http.StatusOK, kpayNotifyFail)
 		return
 	}
 	if err := verifyKPaySignature(c.Request.Header, body); err != nil {
 		logger.LogWarn(c.Request.Context(), fmt.Sprintf("KPay webhook 验签失败 path=%q client_ip=%s error=%q body=%q", c.Request.RequestURI, c.ClientIP(), err.Error(), string(body)))
-		c.String(http.StatusBadRequest, "fail")
+		c.String(http.StatusOK, kpayNotifyFail)
 		return
 	}
 
 	var payload kpayWebhookPayload
 	if err := common.Unmarshal(body, &payload); err != nil {
 		logger.LogError(c.Request.Context(), fmt.Sprintf("KPay webhook 解析失败 path=%q client_ip=%s error=%q body=%q", c.Request.RequestURI, c.ClientIP(), err.Error(), string(body)))
-		c.String(http.StatusBadRequest, "fail")
+		c.String(http.StatusOK, kpayNotifyFail)
 		return
 	}
 	logger.LogInfo(c.Request.Context(), fmt.Sprintf("KPay webhook 验签成功 trade_no=%s provider_order_no=%s status=%s pay_method=%s amount=%.2f actual_amount=%.2f client_ip=%s", payload.MerchantOrderNo, payload.OrderNo, payload.Status, payload.PayMethod, payload.Amount, payload.ActualAmount, c.ClientIP()))
 
 	if strings.ToLower(payload.Status) != kpayStatusPaid {
-		c.String(http.StatusOK, "success")
+		c.String(http.StatusOK, kpayNotifyOK)
 		return
 	}
 
@@ -579,10 +581,10 @@ func KPayNotify(c *gin.Context) {
 		} else {
 			logger.LogError(c.Request.Context(), fmt.Sprintf("KPay webhook 入账失败 trade_no=%s provider_order_no=%s client_ip=%s error=%q", payload.MerchantOrderNo, payload.OrderNo, c.ClientIP(), err.Error()))
 		}
-		c.String(http.StatusOK, "fail")
+		c.String(http.StatusOK, kpayNotifyFail)
 		return
 	}
-	c.String(http.StatusOK, "success")
+	c.String(http.StatusOK, kpayNotifyOK)
 }
 
 func verifyKPaySignature(headers http.Header, body []byte) error {

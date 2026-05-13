@@ -30,6 +30,11 @@ export async function checkKpayPay(payload) {
   return res.data
 }
 
+export async function listTopups(params = {}) {
+  const res = await api.get('/api/user/topup/self', { params })
+  return res.data
+}
+
 export async function affInfo() {
   const res = await api.get('/api/user/aff')
   return res.data

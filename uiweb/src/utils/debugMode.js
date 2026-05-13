@@ -386,6 +386,34 @@ function createInitialState() {
         created_time: daysAgo(5),
       },
     ],
+    topups: [
+      {
+        id: 1001,
+        user_id: DEBUG_USER.id,
+        amount: 5,
+        money: 5,
+        trade_no: 'DEBUG-KPAY-PENDING',
+        provider_order_no: 'C2C-DEBUG-PENDING',
+        payment_method: 'wechat',
+        payment_provider: 'kpay',
+        create_time: daysAgo(0, 18, 20),
+        complete_time: 0,
+        status: 'pending',
+      },
+      {
+        id: 1000,
+        user_id: DEBUG_USER.id,
+        amount: 20,
+        money: 20,
+        trade_no: 'DEBUG-KPAY-SUCCESS',
+        provider_order_no: 'C2C-DEBUG-SUCCESS',
+        payment_method: 'alipay',
+        payment_provider: 'kpay',
+        create_time: daysAgo(1, 12, 30),
+        complete_time: daysAgo(1, 12, 35),
+        status: 'success',
+      },
+    ],
     logs,
     refundAppeals,
     announcements,
@@ -559,7 +587,13 @@ function nextId(items, fallback = 1) {
 
 function paginate(items, url) {
   const p = Math.max(1, Number(url.searchParams.get('p')) || 1)
-  const size = Math.max(1, Number(url.searchParams.get('size')) || items.length || 20)
+  const size = Math.max(
+    1,
+    Number(url.searchParams.get('page_size')) ||
+      Number(url.searchParams.get('size')) ||
+      items.length ||
+      20,
+  )
   return items.slice((p - 1) * size, p * size)
 }
 
@@ -886,14 +920,36 @@ export async function mockApiResponse(config) {
   }
   if (path === '/api/user/amount' && method === 'POST') return plain({ message: 'success', data: String((Number(body.amount) || 0).toFixed(2)) })
   if (path === '/api/user/pay' && method === 'POST') return plain({ message: 'success', url: '#debug-pay', data: { amount: body.amount || 0, payment_method: body.payment_method || 'alipay' } })
+  if (path === '/api/user/topup/self' && method === 'GET') {
+    let items = filterKeyword([...debugState.topups], url, ['trade_no', 'provider_order_no'])
+    items = items.sort((a, b) => Number(b.id) - Number(a.id))
+    return page(paginate(items, url), items.length)
+  }
   if (path === '/api/user/kpay/pay' && method === 'POST') {
+    const tradeNo = `DEBUG-KPAY-${Date.now()}`
+    const providerOrderNo = `C2C-DEBUG-${Date.now()}`
+    const amount = Number(body.amount) || 0
+    const paymentMethod = body.payment_method || 'alipay'
+    debugState.topups.unshift({
+      id: nextId(debugState.topups, 1000),
+      user_id: DEBUG_USER.id,
+      amount,
+      money: amount,
+      trade_no: tradeNo,
+      provider_order_no: providerOrderNo,
+      payment_method: paymentMethod,
+      payment_provider: 'kpay',
+      create_time: nowSec(),
+      complete_time: 0,
+      status: 'pending',
+    })
     return plain({
       message: 'success',
       data: {
-        trade_no: `DEBUG-KPAY-${Date.now()}`,
-        provider_order_no: `C2C-DEBUG-${Date.now()}`,
-        amount: Number(body.amount) || 0,
-        payment_method: body.payment_method || 'alipay',
+        trade_no: tradeNo,
+        provider_order_no: providerOrderNo,
+        amount,
+        payment_method: paymentMethod,
         status: 'pending',
         qr_code_data_uri: '',
         qr_code_image_url: '',
@@ -901,7 +957,14 @@ export async function mockApiResponse(config) {
       },
     })
   }
-  if (path === '/api/user/kpay/check' && method === 'POST') return plain({ message: 'success', data: { status: 'success' } })
+  if (path === '/api/user/kpay/check' && method === 'POST') {
+    const item = debugState.topups.find((topup) => topup.trade_no === body.trade_no)
+    if (item) {
+      item.status = 'success'
+      item.complete_time = nowSec()
+    }
+    return plain({ message: 'success', data: { status: 'success' } })
+  }
   if (path === '/api/user/topup' && method === 'POST') {
     if (debugState.notificationSettings.billing_enabled) {
       debugState.notifications.unshift({

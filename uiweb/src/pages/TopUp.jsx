@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   Gift,
   Wallet,
@@ -7,6 +7,9 @@ import {
   CreditCard,
   QrCode,
   Tag,
+  History,
+  RefreshCw,
+  Clock3,
 } from 'lucide-react'
 import ClayCard from '../components/clay/ClayCard.jsx'
 import ClayStat from '../components/clay/ClayStat.jsx'
@@ -26,6 +29,7 @@ import {
   requestPay,
   requestKpayPay,
   checkKpayPay,
+  listTopups,
 } from '../services/topup.js'
 import { quotaToDisplay } from '../utils/quota.js'
 
@@ -61,6 +65,13 @@ const PAY_NAME = {
   wechat: '微信支付',
   kpay_alipay: '支付宝',
   kpay_wechat: '微信支付',
+}
+
+const TOPUP_STATUS = {
+  success: { label: '已到账', cls: 'bg-clay-green-100 text-[#3d6b4f]' },
+  pending: { label: '待确认', cls: 'bg-clay-yellow-100 text-[#8a6a32]' },
+  failed: { label: '失败', cls: 'bg-clay-pink-100 text-[#8a4860]' },
+  expired: { label: '已过期', cls: 'bg-clay-pink-100 text-[#8a4860]' },
 }
 
 const isKpayMethod = (type) => String(type || '').startsWith('kpay_')
@@ -122,6 +133,38 @@ const clearPendingKpayOrder = () => {
   } catch (_) {}
 }
 
+const formatTopupTime = (value) => {
+  const ts = Number(value) || 0
+  if (!ts) return '-'
+  return new Date(ts * 1000).toLocaleString('zh-CN', {
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
+
+const getTopupStatusMeta = (status) =>
+  TOPUP_STATUS[status] || { label: status || '未知', cls: 'bg-clay-bg text-clay-faint' }
+
+const getTopupProviderName = (order) => {
+  const provider = String(order?.payment_provider || '').toLowerCase()
+  if (provider === 'kpay') return 'KPay'
+  if (provider === 'epay') return '易支付'
+  if (provider === 'stripe') return 'Stripe'
+  if (provider === 'creem') return 'Creem'
+  if (provider === 'waffo') return 'Waffo'
+  if (provider === 'waffo_pancake') return 'Waffo Pancake'
+  return provider || '兑换码'
+}
+
+const isKpayTopupOrder = (order) =>
+  String(order?.payment_provider || '').toLowerCase() === 'kpay' ||
+  String(order?.trade_no || '').startsWith('KPAY')
+
+const canCheckTopupOrder = (order) =>
+  isKpayTopupOrder(order) && String(order?.status || '').toLowerCase() === 'pending'
+
 export default function TopUp() {
   const { user, setUser } = useUser()
   const { status } = useStatus()
@@ -142,6 +185,12 @@ export default function TopUp() {
   const [payMsg, setPayMsg] = useState(null)
   const [kpayOrder, setKpayOrder] = useState(null)
   const [, setKpayChecking] = useState(false)
+  const [topupOrders, setTopupOrders] = useState([])
+  const [topupTotal, setTopupTotal] = useState(0)
+  const [ordersLoading, setOrdersLoading] = useState(false)
+  const [historyMsg, setHistoryMsg] = useState(null)
+  const [checkingTradeNo, setCheckingTradeNo] = useState('')
+  const autoCheckedKpayTradeRef = useRef('')
 
   const priceRatio = Number(status?.price) || 1
   const minTopUp = Number(info?.min_topup) || 1
@@ -175,11 +224,78 @@ export default function TopUp() {
     return multipliers.map((m) => ({ value: minTopUp * m, discount: 1 }))
   }, [amountOptions, discountMap, minTopUp])
 
+  const refreshUser = useCallback(async () => {
+    const r = await self()
+    if (r?.data) setUser(r.data)
+  }, [setUser])
+
+  const fetchTopupOrders = useCallback(async ({ silent = false } = {}) => {
+    if (!silent) setOrdersLoading(true)
+    try {
+      const res = await listTopups({ p: 1, page_size: 10, size: 10 })
+      if (res?.success && res.data) {
+        setTopupOrders(Array.isArray(res.data.items) ? res.data.items : [])
+        setTopupTotal(Number(res.data.total) || 0)
+        if (!silent) setHistoryMsg(null)
+      } else if (!silent) {
+        setHistoryMsg({ tone: 'error', text: res?.message || '订单加载失败' })
+      }
+    } catch (err) {
+      if (!silent) {
+        setHistoryMsg({
+          tone: 'error',
+          text: err?.response?.data?.message ?? err.message ?? '订单加载失败',
+        })
+      }
+    } finally {
+      if (!silent) setOrdersLoading(false)
+    }
+  }, [])
+
+  const checkRestoredKpayOrder = useCallback(
+    async (order) => {
+      if (!order?.trade_no) return
+      setKpayChecking(true)
+      try {
+        const res = await checkKpayPay({
+          trade_no: order.trade_no,
+          provider_order_no: order.provider_order_no || '',
+        })
+        const nextStatus = res?.data?.status
+        if (res?.message === 'success' && nextStatus === 'success') {
+          clearPendingKpayOrder()
+          setKpayOrder((prev) =>
+            prev?.trade_no === order.trade_no ? { ...prev, status: 'success' } : prev,
+          )
+          setPayMsg({ tone: 'success', text: '上一笔支付已到账' })
+          try {
+            await refreshUser()
+            fetchTopupOrders({ silent: true })
+          } catch (_) {}
+          return
+        }
+        setPayMsg((prev) =>
+          prev?.tone === 'success'
+            ? prev
+            : { tone: 'info', text: '上一笔订单仍在等待支付确认' },
+        )
+      } catch (_) {
+        setPayMsg((prev) =>
+          prev?.tone === 'success'
+            ? prev
+            : { tone: 'info', text: '已恢复上一笔订单，稍后会继续自动检查到账' },
+        )
+      } finally {
+        setKpayChecking(false)
+      }
+    },
+    [fetchTopupOrders, refreshUser],
+  )
+
   useEffect(() => {
     ;(async () => {
       try {
-        const r = await self()
-        if (r?.data) setUser(r.data)
+        await refreshUser()
       } catch (_) {}
       try {
         const res = await topupInfo()
@@ -193,9 +309,10 @@ export default function TopUp() {
           }
         }
       } catch (_) {}
+      fetchTopupOrders({ silent: true })
     })()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [fetchTopupOrders, refreshUser])
 
   useEffect(() => {
     if (!onlineMethods.length) {
@@ -215,6 +332,10 @@ export default function TopUp() {
           ? prev
           : { tone: 'info', text: '正在检查上一笔支付结果' },
       )
+      if (autoCheckedKpayTradeRef.current !== pendingOrder.trade_no) {
+        autoCheckedKpayTradeRef.current = pendingOrder.trade_no
+        window.setTimeout(() => checkRestoredKpayOrder(pendingOrder), 0)
+      }
     }
 
     restorePendingOrder()
@@ -229,7 +350,7 @@ export default function TopUp() {
       window.removeEventListener('focus', restorePendingOrder)
       document.removeEventListener('visibilitychange', onVisibilityChange)
     }
-  }, [])
+  }, [checkRestoredKpayOrder])
 
   const fetchAmount = async (value) => {
     const v = Number(value ?? topUpCount)
@@ -333,6 +454,7 @@ export default function TopUp() {
           setConfirmOpen(false)
           setPayMsg(null)
           setKpayOrder(nextOrder)
+          fetchTopupOrders({ silent: true })
           if (kpayMethod === 'alipay' && isMobilePaymentContext() && nextOrder.direct_pay_url) {
             window.location.assign(nextOrder.direct_pay_url)
             return
@@ -398,8 +520,8 @@ export default function TopUp() {
         setKpayOrder((prev) => ({ ...prev, status: 'success' }))
         setPayMsg({ tone: 'success', text: '支付已到账' })
         try {
-          const r = await self()
-          if (r?.data) setUser(r.data)
+          await refreshUser()
+          fetchTopupOrders({ silent: true })
         } catch (_) {}
         return
       }
@@ -427,6 +549,43 @@ export default function TopUp() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [kpayOrder?.trade_no, kpayOrder?.status])
 
+  const checkTopupOrder = async (order) => {
+    if (!order?.trade_no || !canCheckTopupOrder(order)) return
+    setCheckingTradeNo(order.trade_no)
+    setHistoryMsg(null)
+    try {
+      const res = await checkKpayPay({
+        trade_no: order.trade_no,
+        provider_order_no: order.provider_order_no || '',
+      })
+      const nextStatus = res?.data?.status
+      if (res?.message === 'success' && nextStatus === 'success') {
+        clearPendingKpayOrder()
+        setHistoryMsg({ tone: 'success', text: '支付已到账，余额已刷新' })
+        setKpayOrder((prev) =>
+          prev?.trade_no === order.trade_no ? { ...prev, status: 'success' } : prev,
+        )
+        await refreshUser()
+        await fetchTopupOrders({ silent: true })
+      } else if (res?.message === 'success') {
+        setHistoryMsg({ tone: 'info', text: '订单仍在等待支付确认' })
+        await fetchTopupOrders({ silent: true })
+      } else {
+        setHistoryMsg({
+          tone: 'error',
+          text: typeof res?.data === 'string' ? res.data : res?.message || '检查失败',
+        })
+      }
+    } catch (err) {
+      setHistoryMsg({
+        tone: 'error',
+        text: err?.response?.data?.message ?? err.message ?? '检查失败',
+      })
+    } finally {
+      setCheckingTradeNo('')
+    }
+  }
+
   const onRedeem = async (e) => {
     e.preventDefault()
     if (!code.trim()) return
@@ -441,8 +600,8 @@ export default function TopUp() {
         })
         setCode('')
         try {
-          const r = await self()
-          if (r?.data) setUser(r.data)
+          await refreshUser()
+          fetchTopupOrders({ silent: true })
         } catch (_) {}
       } else {
         setRedeemMsg({ tone: 'error', text: res?.message ?? '兑换失败' })
@@ -641,6 +800,108 @@ export default function TopUp() {
           </form>
         </ClayCard>
       </div>
+
+      <ClayCard className="mt-5">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+          <div className="flex items-center gap-2">
+            <History className="w-5 h-5 text-clay-blue-300" />
+            <h2 className="text-xl font-black">充值订单</h2>
+            {topupTotal > 0 && (
+              <span className="text-xs font-bold text-clay-faint">最近 {Math.min(topupOrders.length, topupTotal)} / {topupTotal}</span>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={() => fetchTopupOrders()}
+            disabled={ordersLoading}
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-clay-pill bg-clay-bg px-4 text-xs font-black text-clay-ink shadow-clay transition-all active:scale-95 disabled:opacity-60"
+          >
+            <RefreshCw className={`w-4 h-4 ${ordersLoading ? 'animate-spin' : ''}`} />
+            刷新
+          </button>
+        </div>
+
+        {historyMsg && (
+          <ClayAlert tone={historyMsg.tone} className="mb-4">
+            {historyMsg.text}
+          </ClayAlert>
+        )}
+
+        <div className="space-y-3">
+          {ordersLoading ? (
+            <div className="rounded-2xl shadow-clay-inset bg-clay-bg px-4 py-6 text-sm font-bold text-clay-faint text-center">
+              正在加载订单…
+            </div>
+          ) : topupOrders.length === 0 ? (
+            <div className="rounded-2xl shadow-clay-inset bg-clay-bg px-4 py-6 text-sm font-bold text-clay-faint text-center">
+              暂无充值订单
+            </div>
+          ) : (
+            topupOrders.map((order) => {
+              const statusMeta = getTopupStatusMeta(order.status)
+              const checking = checkingTradeNo === order.trade_no
+              return (
+                <div
+                  key={order.id || order.trade_no}
+                  className="rounded-2xl shadow-clay-inset bg-clay-bg px-4 py-3 grid gap-3 lg:grid-cols-[minmax(0,1.6fr)_minmax(120px,0.7fr)_minmax(110px,0.65fr)_minmax(90px,0.55fr)_auto] lg:items-center"
+                >
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 text-xs font-bold text-clay-faint mb-1">
+                      <Clock3 className="w-3.5 h-3.5" />
+                      {formatTopupTime(order.create_time)}
+                    </div>
+                    <div className="font-mono text-xs font-black break-all text-clay-ink">
+                      {order.trade_no || '-'}
+                    </div>
+                    {order.provider_order_no ? (
+                      <div className="mt-1 font-mono text-[11px] text-clay-faint break-all">
+                        {order.provider_order_no}
+                      </div>
+                    ) : null}
+                  </div>
+
+                  <div className="flex items-center justify-between gap-3 lg:block">
+                    <span className="text-xs font-bold text-clay-faint lg:block">支付方式</span>
+                    <div className="inline-flex items-center gap-2 font-black text-sm">
+                      <PayMethodIcon type={order.payment_method} className="w-5 h-5" />
+                      <span>{getTopupProviderName(order)} · {getPayMethodName(order.payment_method)}</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between gap-3 lg:block">
+                    <span className="text-xs font-bold text-clay-faint lg:block">充值数量</span>
+                    <div className="font-black text-sm">{Number(order.amount || 0)} 额度</div>
+                  </div>
+
+                  <div className="flex items-center justify-between gap-3 lg:block">
+                    <span className="text-xs font-bold text-clay-faint lg:block">实付金额</span>
+                    <div className="font-black text-rose-500 text-sm">
+                      {(Number(order.money) || 0).toFixed(2)} 元
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between gap-3 lg:justify-end">
+                    <span className={`inline-flex items-center justify-center min-w-[76px] h-8 rounded-clay-pill px-3 text-xs font-black shadow-clay-sm ${statusMeta.cls}`}>
+                      {statusMeta.label}
+                    </span>
+                    {canCheckTopupOrder(order) ? (
+                      <button
+                        type="button"
+                        onClick={() => checkTopupOrder(order)}
+                        disabled={checking}
+                        className="inline-flex h-9 items-center justify-center gap-1.5 rounded-clay-pill bg-clay-blue-100 px-3 text-xs font-black text-[#43658b] shadow-clay transition-all active:scale-95 disabled:opacity-60"
+                      >
+                        <RefreshCw className={`w-3.5 h-3.5 ${checking ? 'animate-spin' : ''}`} />
+                        {checking ? '检查中' : '检查到账'}
+                      </button>
+                    ) : null}
+                  </div>
+                </div>
+              )
+            })
+          )}
+        </div>
+      </ClayCard>
 
       <ClayModal
         open={confirmOpen}

@@ -42,6 +42,7 @@ const (
 	kpayHTTPTimeout        = 15 * time.Second
 	kpayQRCodeFetchTimeout = 8 * time.Second
 	kpayQRCodeMaxBytes     = 1024 * 1024
+	kpayFallbackExpire     = 15 * time.Minute
 )
 
 type KPayRequest struct {
@@ -259,6 +260,19 @@ func mapKPayOrderStatus(order kpayOrderData) string {
 		return common.TopUpStatusExpired
 	}
 	return common.TopUpStatusPending
+}
+
+func isKPayLocalFallbackExpired(topUp *model.TopUp) bool {
+	if topUp == nil || topUp.Status != common.TopUpStatusPending {
+		return false
+	}
+	if strings.TrimSpace(topUp.ProviderOrderNo) != "" {
+		return false
+	}
+	if topUp.CreateTime <= 0 {
+		return false
+	}
+	return time.Since(time.Unix(topUp.CreateTime, 0)) >= kpayFallbackExpire
 }
 
 func kpayPayMethods() []map[string]string {
@@ -626,6 +640,16 @@ func CheckKPayTopUp(c *gin.Context) {
 		providerOrderNo = strings.TrimSpace(topUp.ProviderOrderNo)
 	}
 	if providerOrderNo == "" {
+		if isKPayLocalFallbackExpired(topUp) {
+			if err := model.UpdatePendingTopUpStatus(req.TradeNo, model.PaymentProviderKPay, common.TopUpStatusExpired); err != nil && err != model.ErrTopUpStatusInvalid {
+				logger.LogWarn(c.Request.Context(), fmt.Sprintf("KPay 无平台订单号过期兜底失败 trade_no=%s user_id=%d create_time=%d error=%q", req.TradeNo, c.GetInt("id"), topUp.CreateTime, err.Error()))
+				c.JSON(http.StatusOK, gin.H{"message": "success", "data": gin.H{"status": common.TopUpStatusPending, "reason": "missing_provider_order_no"}})
+				return
+			}
+			logger.LogInfo(c.Request.Context(), fmt.Sprintf("KPay 无平台订单号过期兜底 trade_no=%s user_id=%d create_time=%d", req.TradeNo, c.GetInt("id"), topUp.CreateTime))
+			c.JSON(http.StatusOK, gin.H{"message": "success", "data": gin.H{"status": common.TopUpStatusExpired, "reason": "missing_provider_order_no"}})
+			return
+		}
 		c.JSON(http.StatusOK, gin.H{"message": "success", "data": gin.H{"status": common.TopUpStatusPending}})
 		return
 	}

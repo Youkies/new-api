@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/QuantumNous/new-api/common"
+	"github.com/QuantumNous/new-api/model"
 	"github.com/QuantumNous/new-api/setting"
 	"github.com/QuantumNous/new-api/setting/system_setting"
 	"github.com/gin-gonic/gin"
@@ -93,6 +94,22 @@ func TestMapKPayOrderStatus(t *testing.T) {
 	require.Equal(t, common.TopUpStatusPending, mapKPayOrderStatus(kpayOrderData{
 		Status:     "pending",
 		ExpireTime: time.Now().Add(time.Minute).Format(time.RFC3339),
+	}))
+}
+
+func TestKPayLocalFallbackExpired(t *testing.T) {
+	require.False(t, isKPayLocalFallbackExpired(&model.TopUp{
+		Status:     common.TopUpStatusPending,
+		CreateTime: time.Now().Add(-10 * time.Minute).Unix(),
+	}))
+	require.False(t, isKPayLocalFallbackExpired(&model.TopUp{
+		Status:          common.TopUpStatusPending,
+		ProviderOrderNo: "C2C1",
+		CreateTime:      time.Now().Add(-20 * time.Minute).Unix(),
+	}))
+	require.True(t, isKPayLocalFallbackExpired(&model.TopUp{
+		Status:     common.TopUpStatusPending,
+		CreateTime: time.Now().Add(-20 * time.Minute).Unix(),
 	}))
 }
 

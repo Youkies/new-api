@@ -98,7 +98,9 @@ func UpdatePendingTopUpStatus(tradeNo string, expectedPaymentProvider string, ta
 		if expectedPaymentProvider != "" && topUp.PaymentProvider != expectedPaymentProvider {
 			return ErrPaymentMethodMismatch
 		}
-		if topUp.Status != common.TopUpStatusPending {
+		if topUp.Status != common.TopUpStatusPending &&
+			topUp.Status != common.TopUpStatusFailed &&
+			topUp.Status != common.TopUpStatusExpired {
 			return ErrTopUpStatusInvalid
 		}
 

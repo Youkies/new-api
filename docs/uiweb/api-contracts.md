@@ -91,7 +91,7 @@
 - `GET /api/user/topup/self`：返回当前用户充值订单分页列表；`uiweb` 充值页会展示最近订单，并允许用户对 KPay 待支付/待到账订单手动查单。
 - `POST /api/user/amount`：按当前充值数量估算实付金额，KPay 与易支付共用现有本币计价逻辑。
 - `POST /api/user/kpay/pay`：创建 KPay `direct_qr` 充值订单，返回 `trade_no`、`provider_order_no`、二维码图片地址或 data URI、`direct_pay_url`、金额和过期时间。
-- `POST /api/user/kpay/check`：用户侧检查本次 KPay 订单状态；如果传入 `provider_order_no` 或本地 `top_ups.provider_order_no` 已保存，且 KPay 顶层订单状态或 `channels[].status` / `channels[].providerStatus` 已支付，会按本地 `trade_no` 补偿入账；如果 KPay 明确返回失败、取消或过期，会同步本地订单为 `failed` / `expired`。
+- `POST /api/user/kpay/check`：用户侧检查本次 KPay 订单状态；如果传入 `provider_order_no` 或本地 `top_ups.provider_order_no` 已保存，且 KPay 顶层订单状态或 `channels[].status` / `channels[].providerStatus` 已支付，会按本地 `trade_no` 补偿入账；如果 KPay 明确返回失败、取消或过期，会同步本地订单为 `failed` / `expired`。对早期没有保存 `provider_order_no` 的 KPay 待支付单，超过 15 分钟后会按 `expired` 返回。
 - KPay 下单传给平台的 `returnUrl` 指向主 UI `/topup?show_history=true`；`uiweb` 也兼容旧的 `/console/topup` 回跳，避免移动端支付后无法恢复查单。
 
 回调：

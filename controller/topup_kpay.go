@@ -243,6 +243,13 @@ func getKPaySelectedMerchantID() *int {
 	return &id
 }
 
+func formatKPaySelectedMerchantID(id *int) int {
+	if id == nil {
+		return 0
+	}
+	return *id
+}
+
 func getKPaySelectStrategy() string {
 	strategy := strings.TrimSpace(setting.KPaySelectStrategy)
 	if strategy == "" {
@@ -407,6 +414,7 @@ func RequestKPay(c *gin.Context) {
 	if strings.TrimSpace(returnURL) == "/console/topup?show_history=true" {
 		returnURL = callbackAddress + "/console/topup?show_history=true"
 	}
+	selectedMerchantID := getKPaySelectedMerchantID()
 
 	orderReq := &kpayCreateOrderRequest{
 		MerchantOrderNo:    tradeNo,
@@ -418,11 +426,11 @@ func RequestKPay(c *gin.Context) {
 		NotifyUrl:          notifyURL,
 		ReturnUrl:          returnURL,
 		SelectStrategy:     getKPaySelectStrategy(),
-		SelectedMerchantId: getKPaySelectedMerchantID(),
+		SelectedMerchantId: selectedMerchantID,
 	}
 	orderData, err := createKPayOrder(c.Request.Context(), orderReq)
 	if err != nil {
-		logger.LogError(c.Request.Context(), fmt.Sprintf("KPay 创建平台订单失败 user_id=%d trade_no=%s payment_method=%s amount=%d money=%.2f notify_url=%q return_url=%q select_strategy=%q selected_merchant_id=%v error=%q", id, tradeNo, payMethod, req.Amount, payMoney, notifyURL, returnURL, getKPaySelectStrategy(), getKPaySelectedMerchantID(), err.Error()))
+		logger.LogError(c.Request.Context(), fmt.Sprintf("KPay 创建平台订单失败 user_id=%d trade_no=%s payment_method=%s amount=%d money=%.2f notify_url=%q return_url=%q select_strategy=%q selected_merchant_id=%d error=%q", id, tradeNo, payMethod, req.Amount, payMoney, notifyURL, returnURL, getKPaySelectStrategy(), formatKPaySelectedMerchantID(selectedMerchantID), err.Error()))
 		topUp.Status = common.TopUpStatusFailed
 		_ = topUp.Update()
 		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "拉起支付失败：" + err.Error()})

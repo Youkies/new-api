@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/setting"
 	"github.com/QuantumNous/new-api/setting/system_setting"
 	"github.com/gin-gonic/gin"
@@ -63,6 +64,24 @@ func TestResolveKPayURL(t *testing.T) {
 	require.Equal(t, "https://api.kpay.cc/qrcode/1.png", resolveKPayURL("/qrcode/1.png"))
 	require.Equal(t, "https://cdn.kpay.cc/qrcode/1.png", resolveKPayURL("//cdn.kpay.cc/qrcode/1.png"))
 	require.Equal(t, "alipays://platformapi/startapp", resolveKPayURL("alipays://platformapi/startapp"))
+}
+
+func TestMapKPayOrderStatus(t *testing.T) {
+	require.Equal(t, common.TopUpStatusSuccess, mapKPayOrderStatus(kpayOrderData{Status: "paid"}))
+	require.Equal(t, common.TopUpStatusSuccess, mapKPayOrderStatus(kpayOrderData{Status: "TRADE_SUCCESS"}))
+	require.Equal(t, common.TopUpStatusFailed, mapKPayOrderStatus(kpayOrderData{Status: "failed"}))
+	require.Equal(t, common.TopUpStatusFailed, mapKPayOrderStatus(kpayOrderData{Status: "cancelled"}))
+	require.Equal(t, common.TopUpStatusExpired, mapKPayOrderStatus(kpayOrderData{Status: "expired"}))
+	require.Equal(t, common.TopUpStatusPending, mapKPayOrderStatus(kpayOrderData{Status: "WAIT_BUYER_PAY"}))
+
+	require.Equal(t, common.TopUpStatusExpired, mapKPayOrderStatus(kpayOrderData{
+		Status:     "pending",
+		ExpireTime: time.Now().Add(-time.Minute).Format(time.RFC3339),
+	}))
+	require.Equal(t, common.TopUpStatusPending, mapKPayOrderStatus(kpayOrderData{
+		Status:     "pending",
+		ExpireTime: time.Now().Add(time.Minute).Format(time.RFC3339),
+	}))
 }
 
 func TestBuildKPayReturnURLUsesUIWebTopUp(t *testing.T) {

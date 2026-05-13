@@ -69,7 +69,7 @@ const PAY_NAME = {
 
 const TOPUP_STATUS = {
   success: { label: '已到账', cls: 'bg-clay-green-100 text-[#3d6b4f]' },
-  pending: { label: '待确认', cls: 'bg-clay-yellow-100 text-[#8a6a32]' },
+  pending: { label: '待支付/待到账', cls: 'bg-clay-yellow-100 text-[#8a6a32]' },
   failed: { label: '失败', cls: 'bg-clay-pink-100 text-[#8a4860]' },
   expired: { label: '已过期', cls: 'bg-clay-pink-100 text-[#8a4860]' },
 }
@@ -144,8 +144,12 @@ const formatTopupTime = (value) => {
   })
 }
 
-const getTopupStatusMeta = (status) =>
-  TOPUP_STATUS[status] || { label: status || '未知', cls: 'bg-clay-bg text-clay-faint' }
+const normalizeTopupStatus = (status) => String(status || '').toLowerCase()
+
+const getTopupStatusMeta = (status) => {
+  const normalized = normalizeTopupStatus(status)
+  return TOPUP_STATUS[normalized] || { label: status || '未知', cls: 'bg-clay-bg text-clay-faint' }
+}
 
 const getTopupProviderName = (order) => {
   const provider = String(order?.payment_provider || '').toLowerCase()
@@ -163,7 +167,23 @@ const isKpayTopupOrder = (order) =>
   String(order?.trade_no || '').startsWith('KPAY')
 
 const canCheckTopupOrder = (order) =>
-  isKpayTopupOrder(order) && String(order?.status || '').toLowerCase() === 'pending'
+  isKpayTopupOrder(order) && normalizeTopupStatus(order?.status) === 'pending'
+
+const isKpayFinalStatus = (status) =>
+  ['success', 'failed', 'expired'].includes(normalizeTopupStatus(status))
+
+const getKpayFinalMessage = (status, prefix = '订单') => {
+  switch (normalizeTopupStatus(status)) {
+    case 'success':
+      return `${prefix}已到账`
+    case 'failed':
+      return `${prefix}支付失败`
+    case 'expired':
+      return `${prefix}已过期`
+    default:
+      return `${prefix}仍待支付或待到账`
+  }
+}
 
 export default function TopUp() {
   const { user, setUser } = useUser()
@@ -262,22 +282,28 @@ export default function TopUp() {
           provider_order_no: order.provider_order_no || '',
         })
         const nextStatus = res?.data?.status
-        if (res?.message === 'success' && nextStatus === 'success') {
+        if (res?.message === 'success' && isKpayFinalStatus(nextStatus)) {
+          const normalizedStatus = normalizeTopupStatus(nextStatus)
           clearPendingKpayOrder()
           setKpayOrder((prev) =>
-            prev?.trade_no === order.trade_no ? { ...prev, status: 'success' } : prev,
+            prev?.trade_no === order.trade_no ? { ...prev, status: normalizedStatus } : prev,
           )
-          setPayMsg({ tone: 'success', text: '上一笔支付已到账' })
-          try {
-            await refreshUser()
-            fetchTopupOrders({ silent: true })
-          } catch (_) {}
+          setPayMsg({
+            tone: normalizedStatus === 'success' ? 'success' : 'error',
+            text: getKpayFinalMessage(normalizedStatus, '上一笔订单'),
+          })
+          if (normalizedStatus === 'success') {
+            try {
+              await refreshUser()
+            } catch (_) {}
+          }
+          fetchTopupOrders({ silent: true })
           return
         }
         setPayMsg((prev) =>
           prev?.tone === 'success'
             ? prev
-            : { tone: 'info', text: '上一笔订单仍在等待支付确认' },
+            : { tone: 'info', text: '上一笔订单仍待支付或待到账' },
         )
       } catch (_) {
         setPayMsg((prev) =>
@@ -515,18 +541,24 @@ export default function TopUp() {
         provider_order_no: kpayOrder.provider_order_no || '',
       })
       const nextStatus = res?.data?.status
-      if (res?.message === 'success' && nextStatus === 'success') {
+      if (res?.message === 'success' && isKpayFinalStatus(nextStatus)) {
+        const normalizedStatus = normalizeTopupStatus(nextStatus)
         clearPendingKpayOrder()
-        setKpayOrder((prev) => ({ ...prev, status: 'success' }))
-        setPayMsg({ tone: 'success', text: '支付已到账' })
-        try {
-          await refreshUser()
-          fetchTopupOrders({ silent: true })
-        } catch (_) {}
+        setKpayOrder((prev) => ({ ...prev, status: normalizedStatus }))
+        setPayMsg({
+          tone: normalizedStatus === 'success' ? 'success' : 'error',
+          text: getKpayFinalMessage(normalizedStatus),
+        })
+        if (normalizedStatus === 'success') {
+          try {
+            await refreshUser()
+          } catch (_) {}
+        }
+        fetchTopupOrders({ silent: true })
         return
       }
       if (!silent) {
-        setPayMsg({ tone: 'info', text: '订单仍在等待支付确认' })
+        setPayMsg({ tone: 'info', text: '订单仍待支付或待到账' })
       }
     } catch (err) {
       if (!silent) {
@@ -541,7 +573,7 @@ export default function TopUp() {
   }
 
   useEffect(() => {
-    if (!kpayOrder?.trade_no || kpayOrder.status === 'success') return undefined
+    if (!kpayOrder?.trade_no || isKpayFinalStatus(kpayOrder.status)) return undefined
     const timer = setInterval(() => {
       checkKpayStatus(true)
     }, 5000)
@@ -559,16 +591,25 @@ export default function TopUp() {
         provider_order_no: order.provider_order_no || '',
       })
       const nextStatus = res?.data?.status
-      if (res?.message === 'success' && nextStatus === 'success') {
+      if (res?.message === 'success' && isKpayFinalStatus(nextStatus)) {
+        const normalizedStatus = normalizeTopupStatus(nextStatus)
         clearPendingKpayOrder()
-        setHistoryMsg({ tone: 'success', text: '支付已到账，余额已刷新' })
+        setHistoryMsg({
+          tone: normalizedStatus === 'success' ? 'success' : 'error',
+          text:
+            normalizedStatus === 'success'
+              ? '支付已到账，余额已刷新'
+              : getKpayFinalMessage(normalizedStatus),
+        })
         setKpayOrder((prev) =>
-          prev?.trade_no === order.trade_no ? { ...prev, status: 'success' } : prev,
+          prev?.trade_no === order.trade_no ? { ...prev, status: normalizedStatus } : prev,
         )
-        await refreshUser()
+        if (normalizedStatus === 'success') {
+          await refreshUser()
+        }
         await fetchTopupOrders({ silent: true })
       } else if (res?.message === 'success') {
-        setHistoryMsg({ tone: 'info', text: '订单仍在等待支付确认' })
+        setHistoryMsg({ tone: 'info', text: '订单仍待支付或待到账' })
         await fetchTopupOrders({ silent: true })
       } else {
         setHistoryMsg({
@@ -623,6 +664,8 @@ export default function TopUp() {
   const hasDiscount = currentDiscount > 0 && currentDiscount < 1 && amount > 0
   const originalAmount = hasDiscount ? amount / currentDiscount : 0
   const kpayPaymentMethod = kpayOrder?.payment_method || toKpayMethod(payWay)
+  const kpayStatus = normalizeTopupStatus(kpayOrder?.status || 'pending')
+  const kpayStatusMeta = getTopupStatusMeta(kpayStatus)
   const kpayTip =
     isMobilePaymentContext() && kpayPaymentMethod === 'wechat'
       ? '请保存二维码或截图后，打开微信支付完成付款。'
@@ -963,10 +1006,13 @@ export default function TopUp() {
         size="sm"
       >
         <div className="space-y-4">
-          {kpayOrder?.status === 'success' ? (
+          {kpayStatus === 'success' ? (
             <ClayAlert tone="success">支付已到账</ClayAlert>
           ) : null}
-          {kpayOrder?.status !== 'success' ? (
+          {kpayStatus === 'failed' || kpayStatus === 'expired' ? (
+            <ClayAlert tone="error">{getKpayFinalMessage(kpayStatus)}</ClayAlert>
+          ) : null}
+          {!isKpayFinalStatus(kpayStatus) ? (
             <ClayAlert tone="info">{kpayTip}</ClayAlert>
           ) : null}
           <div className="mx-auto w-56 h-56 rounded-2xl shadow-clay-inset bg-white flex items-center justify-center p-3">
@@ -993,9 +1039,7 @@ export default function TopUp() {
             </div>
             <div className="flex justify-between">
               <span className="text-clay-faint">状态</span>
-              <span className="font-bold">
-                {kpayOrder?.status === 'success' ? '已到账' : '待支付'}
-              </span>
+              <span className="font-bold">{kpayStatusMeta.label}</span>
             </div>
           </div>
         </div>

@@ -33,6 +33,9 @@ const (
 	kpayDefaultApiBase     = "https://api.kpay.cc"
 	kpayDirectMode         = "direct_qr"
 	kpayStatusPaid         = "paid"
+	kpayStatusSuccess      = "success"
+	kpayStatusSucceeded    = "succeeded"
+	kpayStatusTradeSuccess = "trade_success"
 	kpayNotifyOK           = "ok"
 	kpayNotifyFail         = "fail"
 	kpayWebhookMaxSkew     = 10 * time.Minute
@@ -145,6 +148,57 @@ func normalizeKPayMethod(method string) string {
 	default:
 		return ""
 	}
+}
+
+func normalizeKPayStatus(status string) string {
+	status = strings.ToLower(strings.TrimSpace(status))
+	status = strings.ReplaceAll(status, "-", "_")
+	status = strings.ReplaceAll(status, " ", "_")
+	return status
+}
+
+func parseKPayTime(value string) (time.Time, bool) {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return time.Time{}, false
+	}
+	if ts, err := strconv.ParseInt(value, 10, 64); err == nil {
+		if ts > 1_000_000_000_000 {
+			return time.UnixMilli(ts), true
+		}
+		if ts > 0 {
+			return time.Unix(ts, 0), true
+		}
+	}
+	layouts := []string{
+		time.RFC3339Nano,
+		time.RFC3339,
+		"2006-01-02 15:04:05",
+		"2006-01-02T15:04:05",
+		"2006/01/02 15:04:05",
+		"2006-01-02",
+	}
+	for _, layout := range layouts {
+		if t, err := time.ParseInLocation(layout, value, time.Local); err == nil {
+			return t, true
+		}
+	}
+	return time.Time{}, false
+}
+
+func mapKPayOrderStatus(order kpayOrderData) string {
+	switch normalizeKPayStatus(order.Status) {
+	case kpayStatusPaid, kpayStatusSuccess, kpayStatusSucceeded, kpayStatusTradeSuccess:
+		return common.TopUpStatusSuccess
+	case "expired", "expire", "timeout", "timed_out", "order_expired":
+		return common.TopUpStatusExpired
+	case "failed", "fail", "failure", "error", "pay_failed", "payment_failed", "cancel", "canceled", "cancelled", "closed", "order_closed":
+		return common.TopUpStatusFailed
+	}
+	if expireTime, ok := parseKPayTime(order.ExpireTime); ok && !expireTime.After(time.Now()) {
+		return common.TopUpStatusExpired
+	}
+	return common.TopUpStatusPending
 }
 
 func kpayPayMethods() []map[string]string {
@@ -526,7 +580,8 @@ func CheckKPayTopUp(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"message": "success", "data": gin.H{"status": common.TopUpStatusPending}})
 		return
 	}
-	if strings.ToLower(orderData.Status) == kpayStatusPaid {
+	nextStatus := mapKPayOrderStatus(*orderData)
+	if nextStatus == common.TopUpStatusSuccess {
 		if err := model.RechargeKPay(orderData.MerchantOrderNo, normalizeKPayMethod(orderData.PayMethod), c.ClientIP(), getKPayPaidAmount(orderData)); err != nil {
 			logger.LogError(c.Request.Context(), fmt.Sprintf("KPay 查单补偿入账失败 trade_no=%s provider_order_no=%s error=%q", req.TradeNo, providerOrderNo, err.Error()))
 			c.JSON(http.StatusOK, gin.H{"message": "error", "data": "订单入账失败"})
@@ -535,8 +590,18 @@ func CheckKPayTopUp(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"message": "success", "data": gin.H{"status": common.TopUpStatusSuccess}})
 		return
 	}
+	if nextStatus == common.TopUpStatusFailed || nextStatus == common.TopUpStatusExpired {
+		if err := model.UpdatePendingTopUpStatus(req.TradeNo, model.PaymentProviderKPay, nextStatus); err != nil && err != model.ErrTopUpStatusInvalid {
+			logger.LogWarn(c.Request.Context(), fmt.Sprintf("KPay 查单更新终态失败 trade_no=%s provider_order_no=%s provider_status=%s target_status=%s error=%q", req.TradeNo, providerOrderNo, orderData.Status, nextStatus, err.Error()))
+			c.JSON(http.StatusOK, gin.H{"message": "success", "data": gin.H{"status": common.TopUpStatusPending, "provider_status": orderData.Status}})
+			return
+		}
+		logger.LogInfo(c.Request.Context(), fmt.Sprintf("KPay 查单确认订单终态 trade_no=%s provider_order_no=%s provider_status=%s local_status=%s", req.TradeNo, providerOrderNo, orderData.Status, nextStatus))
+		c.JSON(http.StatusOK, gin.H{"message": "success", "data": gin.H{"status": nextStatus, "provider_status": orderData.Status}})
+		return
+	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "success", "data": gin.H{"status": common.TopUpStatusPending}})
+	c.JSON(http.StatusOK, gin.H{"message": "success", "data": gin.H{"status": common.TopUpStatusPending, "provider_status": orderData.Status}})
 }
 
 func KPayNotify(c *gin.Context) {
@@ -566,7 +631,18 @@ func KPayNotify(c *gin.Context) {
 	}
 	logger.LogInfo(c.Request.Context(), fmt.Sprintf("KPay webhook 验签成功 trade_no=%s provider_order_no=%s status=%s pay_method=%s amount=%.2f actual_amount=%.2f client_ip=%s", payload.MerchantOrderNo, payload.OrderNo, payload.Status, payload.PayMethod, payload.Amount, payload.ActualAmount, c.ClientIP()))
 
-	if strings.ToLower(payload.Status) != kpayStatusPaid {
+	payloadStatus := mapKPayOrderStatus(kpayOrderData{Status: payload.Status})
+	if payloadStatus == common.TopUpStatusFailed || payloadStatus == common.TopUpStatusExpired {
+		if err := model.UpdatePendingTopUpStatus(payload.MerchantOrderNo, model.PaymentProviderKPay, payloadStatus); err != nil && err != model.ErrTopUpStatusInvalid && err != model.ErrTopUpNotFound {
+			logger.LogWarn(c.Request.Context(), fmt.Sprintf("KPay webhook 更新终态失败 trade_no=%s provider_order_no=%s provider_status=%s target_status=%s error=%q", payload.MerchantOrderNo, payload.OrderNo, payload.Status, payloadStatus, err.Error()))
+			c.String(http.StatusOK, kpayNotifyFail)
+			return
+		}
+		logger.LogInfo(c.Request.Context(), fmt.Sprintf("KPay webhook 确认订单终态 trade_no=%s provider_order_no=%s provider_status=%s local_status=%s", payload.MerchantOrderNo, payload.OrderNo, payload.Status, payloadStatus))
+		c.String(http.StatusOK, kpayNotifyOK)
+		return
+	}
+	if payloadStatus != common.TopUpStatusSuccess {
 		c.String(http.StatusOK, kpayNotifyOK)
 		return
 	}

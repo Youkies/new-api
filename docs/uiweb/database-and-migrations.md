@@ -30,11 +30,6 @@ uiweb 相关表：
 - `ui_assistant_sessions`
 - `ui_assistant_conversations`
 - `ui_assistant_conversation_messages`
-- `ui_model_reviews`
-- `ui_model_review_helpful`
-- `ui_model_review_point_accounts`
-- `ui_model_review_point_ledgers`
-- `ui_model_review_settings`
 
 用户表扩展：
 
@@ -203,60 +198,6 @@ uiweb 相关表：
 - role、content、reasoning。
 - 截图数量、创建时间。
 
-## Youkies 必吃榜表
-
-`ui_model_reviews`：
-
-- 用户、用户名、模型名。
-- `rating` 五星评分。
-- 使用场景、标签 JSON、优点、不足、评价正文。
-- `anonymous` 控制前台匿名展示。
-- `hide_usage` 控制是否隐藏真实使用次数。
-- 使用次数、token、quota 和最后使用时间快照。
-- 质量分、有帮助数、精选状态、展示状态。
-- 首次评价、质量、有帮助、精选、总计奖励积分。
-
-唯一约束：
-
-- `user_id + model_name`
-
-`ui_model_review_helpful`：
-
-- `review_id`
-- 点有帮助的 `user_id`
-- 评价作者 `author_id`
-- 创建时间
-
-唯一约束：
-
-- `review_id + user_id`
-
-`ui_model_review_point_accounts`：
-
-- 固定按 `user_id` 聚合。
-- 累计获得积分、可用积分、已兑换积分。
-
-`ui_model_review_point_ledgers`：
-
-- 积分流水。
-- 类型：首次评价、高质量评价、有帮助、精选、兑换额度。
-- 正数表示获得积分，负数表示兑换消耗。
-- `quota_awarded` 记录兑换得到的内部 quota。
-
-`ui_model_review_settings`：
-
-- 固定 `id=1`。
-- 是否开启必吃榜、是否评价先审后显。
-- 积分兑换比例、最低起兑。
-- 首次评价、高质量、有帮助、精选奖励。
-- 每日积分封顶、每周积分封顶。
-- 开榜倍率，百分比保存。
-
-缺表行为：
-
-- 用户侧读取设置时返回默认值。
-- 保存设置、提交评价、兑换积分都需要表存在，否则应先完成迁移。
-
 ## 用户头像字段
 
 `users.avatar`：
@@ -331,11 +272,6 @@ uiweb 相关表：
 - `ui_assistant_sessions`
 - `ui_assistant_conversations`
 - `ui_assistant_conversation_messages`
-- `ui_model_reviews`
-- `ui_model_review_helpful`
-- `ui_model_review_point_accounts`
-- `ui_model_review_point_ledgers`
-- `ui_model_review_settings`
 - `perf_metrics`
 - `users.avatar`
 - `users.avatar_type`

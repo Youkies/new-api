@@ -64,15 +64,7 @@
 - 非流请求转上游流式：渠道级 `non_stream_to_stream_enabled`，用户侧非流、上游强制流式、服务端聚合为 OpenAI 非流 JSON；细节查部署排障文档。
 - Claude extended thinking：OpenAI 格式转 Claude 时需清洗 `temperature`、`top_k`、非法 `top_p`，强制工具调用降级为 `auto`。
 - 头像缓存：User 对象 `_avatar_t` + 头像 URL `?t=` + 服务端 CRC32 ETag + `no-cache`。
-- 定价公式、模型状态 SQL、日志筛选、签到时区、分组签到、通知/申诉/AI 助手、Youkies 必吃榜等细节均已沉淀到 `docs/uiweb/`。
-
-## Youkies 必吃榜
-
-- 用户侧入口 `/must-eat`，后台入口 `/admin/model-reviews`。
-- 评价门槛是对应模型至少一次成功消费日志；同一用户同一模型只保留一条评价。
-- 食评积分可兑换额度，默认 `1000` 积分兑换 `¥1` 等值额度；每日/每周封顶、开榜倍率和各项奖励均由后台配置。
-- 相关表：`ui_model_reviews`、`ui_model_review_helpful`、`ui_model_review_point_accounts`、`ui_model_review_point_ledgers`、`ui_model_review_settings`。
-- 生产 `NODE_TYPE=slave` 不自动迁移，上线前需确认上述表。
+- 定价公式、模型状态 SQL、日志筛选、签到时区、分组签到、通知/申诉/AI 助手等细节均已沉淀到 `docs/uiweb/`。
 
 ## 协作偏好
 

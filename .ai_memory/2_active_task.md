@@ -1,73 +1,45 @@
 # 当前任务
 
-## 当前可接手状态：Youkies 必吃榜第一版（2026-05-10）
+## 当前可接手状态：渠道思维链输出拦截（2026-05-10）
 
 ### 已完成
 
-- 新增用户侧 `Youkies 必吃榜` 页面：
-  - 路由：`/must-eat`
-  - 文件：`uiweb/src/pages/ModelReviews.jsx`
-  - 顶部导航和控制台导航均已加入入口。
-- 新增模型评价能力：
-  - 用户对某模型有至少一次成功消费日志后即可评价。
-  - 同一用户同一模型只保留一条评价，可修改。
-  - 支持五星、场景、标签、优点、不足、一句话评价。
-  - 支持匿名评价。
-  - 支持隐藏真实使用次数；不隐藏时显示“已使用 N 次”，隐藏时显示“已验证使用”。
-  - 其他用户可点“有帮助”。
-- 新增食评积分体系：
-  - 首次有效评价奖励。
-  - 高质量评价补差额奖励。
-  - 有帮助追加奖励。
-  - 管理员精选奖励。
-  - 每日/每周积分封顶。
-  - 食评积分可兑换用户余额额度。
-- 新增后台管理页：
-  - 路由：`/admin/model-reviews`
-  - 文件：`uiweb/src/pages/admin/AdminModelReviews.jsx`
-  - 可配置开关、先审后显、兑换比例、最低起兑、各类奖励、每日封顶、每周封顶、开榜倍率。
-  - 可隐藏/公开评价，可精选评价。
-- 新增后端模型/API：
-  - `model/ui_model_review.go`
-  - `controller/ui_model_review.go`
-  - 路由挂载在 `/api/ui/model-reviews*` 与 `/api/ui/admin/model-reviews*`。
-  - 新表加入 `migrateDB()` 与 `migrateDBFast()`。
-- 已更新调试模式 mock：
-  - `uiweb/src/utils/debugMode.js`
-  - `?debug=1` 下可查看必吃榜、提交评价、后台调整设置。
-- 已更新文档：
-  - `docs/uiweb/features.md`
+- 针对 SillyTavern 角色卡“预设思维链”和模型原生思维链冲突问题，实测 `「按量」claude-opus-4-6-渠道2`：
+  - 实际上游模型为 `claude-opus-4-6-thinking`。
+  - 非流式响应会同时返回 `message.content` 和 `message.reasoning_content`。
+  - 流式响应会先返回 `delta.reasoning_content`，再返回 `delta.content`。
+  - 正文里由预设要求输出的 `<think>...</think>` 会落在 `content` 中，和原生 `reasoning_content` 可区分。
+- 后端新增渠道设置：
+  - `strip_native_reasoning`：返回前移除 `reasoning_content` / `reasoning` 字段。
+  - `strip_content_think_tags`：可选移除正文 `content` 中的 `<think>...</think>` 内容块。
+- OpenAI relay 已覆盖：
+  - 原生 OpenAI 流式输出。
+  - 非流式 OpenAI 输出。
+  - 上游流式转下游非流式聚合。
+  - OpenAI 转 Claude / Gemini 格式前的流式清理。
+- 正文 `<think>` 清理使用流式状态机，能处理 `<think>` / `</think>` 跨 chunk 拆分。
+- default UI 和 classic UI 的渠道编辑高级设置已增加两个开关，并补齐 default 六语言 i18n 与 classic 中英翻译。
+- 文档已更新：
+  - `docs/channel/other_setting.md`
   - `docs/uiweb/admin.md`
-  - `docs/uiweb/api-contracts.md`
-  - `docs/uiweb/database-and-migrations.md`
-
-### 默认奖励参数
-
-- `1000` 食评积分兑换 `¥1` 等值额度。
-- 首次有效评价：`500` 积分。
-- 高质量评价最高：`1500` 积分。
-- 有帮助：`20` 积分/次。
-- 单条评价有帮助奖励上限：`500` 积分。
-- 管理员精选：`3000` 积分。
-- 每日封顶：`3000` 积分。
-- 每周封顶：`10000` 积分。
-- 开榜倍率：默认 `100%`，后台可调高到开榜期倍率。
 
 ### 验证结果
 
-- `go test ./model ./controller ./router -count=1` 通过。
-- `go test ./... -count=1` 通过。
-- `npm run build` 于 `uiweb/` 通过；仍有既有大 chunk 警告。
+- `go test ./relay/... -count=1` 通过。
+- `go test ./relay/channel/openai ./relay/common ./dto -count=1` 通过。
+- `npm run i18n:sync` 于 `web/default/` 通过；报告 missingCount 均为 0。
+- `npm run build` 于 `web/default/` 通过。
+- `npm run build` 于 `web/classic/` 通过；仍有既有大 chunk / circular chunk 警告，但构建成功。
 - `git diff --check` 通过。
 
 ### 下一步
 
-- 生产上线前必须手动确认新增表存在；正式 `NODE_TYPE=slave` 不会自动迁移。
-- 如要开榜期奖励更大，优先在 `/admin/model-reviews` 调整 `开榜倍率` 或单项积分，不需要改代码。
+- 如需上线给酒馆用户使用，优先在对应渠道开启 `strip_native_reasoning`。
+- `strip_content_think_tags` 默认不要开；只有用户明确希望连角色卡预设 `<think>...</think>` 也清理时再开启。
 - 若用户要求提交，先重新核对 `git status` 和 diff 范围。
 
 ### 注意事项
 
-- 积分奖励不按五星正负倾向发放，只按评价是否有效、内容质量、被点有帮助和管理员精选发放。
-- 匿名只影响前台展示，后台仍能看到真实用户，便于风控和撤下评价。
-- 兑换额度时会增加 `users.quota` 并写积分流水和系统日志。
+- 本次不涉及数据库迁移；新增项保存在渠道 `setting` JSON。
+- `strip_native_reasoning` 只拦截输出字段，不会减少上游 native thinking 已经产生的 token 消耗，也不会改变上游模型是否启用 thinking。
+- 测试 key 只用于本轮接口验证，未写入文件、文档或记忆。

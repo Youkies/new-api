@@ -13,7 +13,6 @@ import {
   CalendarCheck2,
   Link2,
   Bell,
-  Trophy,
 } from 'lucide-react'
 import ClayCard from '../clay/ClayCard.jsx'
 import ClayFooter from './ClayFooter.jsx'
@@ -31,7 +30,6 @@ const NAV = [
   { to: '/dashboard', label: '仪表盘', icon: LayoutDashboard },
   { to: '/tokens', label: '令牌', icon: KeyRound },
   { to: '/api-urls', label: 'URL', icon: Link2 },
-  { to: '/must-eat', label: '榜单', icon: Trophy },
   { to: '/logs', label: '日志', icon: FileText },
   { to: '/topup', label: '充值', icon: Wallet },
   { to: '/checkin', label: '签到', icon: CalendarCheck2 },

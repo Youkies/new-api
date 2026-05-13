@@ -7,7 +7,6 @@
 - `GET /api/status`：站点状态、配置信息、额度展示配置等。
 - `GET /api/pricing`：定价数据。`data` 是模型数组，`vendors`、`group_ratio`、`usable_group`、`group_details` 与 `data` 同级；`usable_group` 是分组短描述，`group_details` 是价格页选中分组后展示的详细介绍。
 - `GET /api/model-status?window=1h|6h|12h|24h`：模型可用性状态，公开访问。
-- `GET /api/ui/model-reviews/rankings`：Youkies 必吃榜，公开访问；登录时附带当前用户使用记录、本人评价和食评积分账户。
 - `GET /api/ui/page-config`：页面配置，包含 API 地址与会员铭牌配置。
 
 ## 公告
@@ -133,39 +132,6 @@
 - `usable_group` 只暴露当前用户可见分组。
 - `group_details` 会按 `usable_group` 过滤，避免把不可见分组的详细介绍暴露给用户。
 - 没有详细介绍时前端允许为空，并使用默认提示兜底。
-
-## Youkies 必吃榜
-
-用户侧：
-
-- `GET /api/ui/model-reviews/rankings`
-- `GET /api/ui/model-reviews?model_name=xxx`
-- `GET /api/ui/model-reviews/eligibility?model_name=xxx`
-- `POST /api/ui/model-reviews`
-- `POST /api/ui/model-reviews/:id/helpful`
-- `GET /api/ui/model-reviews/points`
-- `POST /api/ui/model-reviews/points/redeem`
-
-管理侧：
-
-- `GET /api/ui/admin/model-reviews/settings`
-- `PUT /api/ui/admin/model-reviews/settings`
-- `GET /api/ui/admin/model-reviews`
-- `PATCH /api/ui/admin/model-reviews/:id`
-
-评价提交语义：
-
-- `model_name` 必填，必须存在该用户对应模型的成功消费日志。
-- `rating` 为 1 到 5。
-- `scenario`、`tags`、`pros`、`cons`、`content` 用于质量分和展示。
-- `anonymous` 只控制前台显示名。
-- `hide_usage` 控制前台是否显示真实使用次数。
-
-积分语义：
-
-- 首次有效评价、高质量评价、有帮助、管理员精选均写入积分账户与积分流水。
-- 积分兑换额度时按后台 `points_per_quota` 换算为站内 quota。
-- 每日/每周积分封顶由后台设置控制。
 
 ## 页面配置
 

@@ -34,9 +34,6 @@ export default function ClayNav({ hideGuestActions = false, compactBottom = fals
         <NavLink to="/pricing" className={({ isActive }) => `${linkBase} ${isActive ? linkActive : ''}`}>
           定价
         </NavLink>
-        <NavLink to="/must-eat" className={({ isActive }) => `${linkBase} ${isActive ? linkActive : ''}`}>
-          必吃榜
-        </NavLink>
         <NavLink to="/status" className={({ isActive }) => `${linkBase} ${isActive ? linkActive : ''}`}>
           状态
         </NavLink>

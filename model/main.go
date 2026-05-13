@@ -293,11 +293,6 @@ func migrateDB() error {
 		&UIAssistantSession{},
 		&UIAssistantConversation{},
 		&UIAssistantConversationMessage{},
-		&UIModelReview{},
-		&UIModelReviewHelpful{},
-		&UIModelReviewPointAccount{},
-		&UIModelReviewPointLedger{},
-		&UIModelReviewSetting{},
 		&PerfMetric{},
 	)
 	if err != nil {
@@ -360,11 +355,6 @@ func migrateDBFast() error {
 		{&UIAssistantSession{}, "UIAssistantSession"},
 		{&UIAssistantConversation{}, "UIAssistantConversation"},
 		{&UIAssistantConversationMessage{}, "UIAssistantConversationMessage"},
-		{&UIModelReview{}, "UIModelReview"},
-		{&UIModelReviewHelpful{}, "UIModelReviewHelpful"},
-		{&UIModelReviewPointAccount{}, "UIModelReviewPointAccount"},
-		{&UIModelReviewPointLedger{}, "UIModelReviewPointLedger"},
-		{&UIModelReviewSetting{}, "UIModelReviewSetting"},
 		{&PerfMetric{}, "PerfMetric"},
 	}
 	// 动态计算migration数量，确保errChan缓冲区足够大

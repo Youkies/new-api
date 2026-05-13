@@ -164,3 +164,28 @@ func TestEpayWebhookEnabledRequiresTopUpAndWebhookConfig(t *testing.T) {
 	operation_setting.PayMethods = nil
 	require.False(t, isEpayWebhookEnabled())
 }
+
+func TestKPayWebhookEnabledRequiresTopUpAndWebhookConfig(t *testing.T) {
+	originalEnabled := setting.KPayEnabled
+	originalApiBase := setting.KPayApiBase
+	originalApiKey := setting.KPayApiKey
+	originalApiSecret := setting.KPayApiSecret
+	t.Cleanup(func() {
+		setting.KPayEnabled = originalEnabled
+		setting.KPayApiBase = originalApiBase
+		setting.KPayApiKey = originalApiKey
+		setting.KPayApiSecret = originalApiSecret
+	})
+
+	setting.KPayEnabled = true
+	setting.KPayApiBase = "https://api.kpay.cc"
+	setting.KPayApiKey = "pk_live_test"
+	setting.KPayApiSecret = ""
+	require.False(t, isKPayWebhookEnabled())
+
+	setting.KPayApiSecret = "sk_live_test"
+	require.True(t, isKPayWebhookEnabled())
+
+	setting.KPayEnabled = false
+	require.False(t, isKPayWebhookEnabled())
+}

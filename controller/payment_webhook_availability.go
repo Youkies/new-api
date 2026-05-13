@@ -98,3 +98,17 @@ func isEpayWebhookConfigured() bool {
 func isEpayWebhookEnabled() bool {
 	return isEpayTopUpEnabled()
 }
+
+func isKPayTopUpEnabled() bool {
+	return setting.KPayEnabled && isKPayWebhookConfigured()
+}
+
+func isKPayWebhookConfigured() bool {
+	return strings.TrimSpace(setting.KPayApiBase) != "" &&
+		strings.TrimSpace(setting.KPayApiKey) != "" &&
+		strings.TrimSpace(setting.KPayApiSecret) != ""
+}
+
+func isKPayWebhookEnabled() bool {
+	return isKPayTopUpEnabled()
+}

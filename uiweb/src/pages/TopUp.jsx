@@ -5,6 +5,9 @@ import {
   Sparkles,
   CheckCircle2,
   CreditCard,
+  ExternalLink,
+  QrCode,
+  RefreshCcw,
   Tag,
 } from 'lucide-react'
 import ClayCard from '../components/clay/ClayCard.jsx'
@@ -18,11 +21,18 @@ import ClayConsoleShell from '../components/layout/ClayConsoleShell.jsx'
 import { useUser } from '../context/UserContext.jsx'
 import { useStatus } from '../context/StatusContext.jsx'
 import { self } from '../services/user.js'
-import { redeem, topupInfo, quoteAmount, requestPay } from '../services/topup.js'
+import {
+  redeem,
+  topupInfo,
+  quoteAmount,
+  requestPay,
+  requestKpayPay,
+  checkKpayPay,
+} from '../services/topup.js'
 import { quotaToDisplay } from '../utils/quota.js'
 
 function PayMethodIcon({ type, className = 'w-7 h-7' }) {
-  if (type === 'alipay') {
+  if (type === 'alipay' || type === 'kpay_alipay') {
     return (
       <span
         className={`${className} inline-flex items-center justify-center rounded-full text-white font-black text-xs shadow-clay`}
@@ -33,7 +43,7 @@ function PayMethodIcon({ type, className = 'w-7 h-7' }) {
       </span>
     )
   }
-  if (type === 'wxpay') {
+  if (type === 'wxpay' || type === 'wechat' || type === 'kpay_wechat') {
     return (
       <span
         className={`${className} inline-flex items-center justify-center rounded-full text-white font-black text-xs shadow-clay`}
@@ -47,7 +57,16 @@ function PayMethodIcon({ type, className = 'w-7 h-7' }) {
   return <CreditCard className={className} />
 }
 
-const PAY_NAME = { alipay: '支付宝', wxpay: '微信支付' }
+const PAY_NAME = {
+  alipay: '支付宝',
+  wxpay: '微信支付',
+  wechat: '微信支付',
+  kpay_alipay: 'KPay 支付宝',
+  kpay_wechat: 'KPay 微信支付',
+}
+
+const isKpayMethod = (type) => String(type || '').startsWith('kpay_')
+const toKpayMethod = (type) => (type === 'kpay_wechat' ? 'wechat' : 'alipay')
 
 export default function TopUp() {
   const { user, setUser } = useUser()
@@ -67,13 +86,27 @@ export default function TopUp() {
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [paying, setPaying] = useState(false)
   const [payMsg, setPayMsg] = useState(null)
+  const [kpayOrder, setKpayOrder] = useState(null)
+  const [kpayChecking, setKpayChecking] = useState(false)
 
   const priceRatio = Number(status?.price) || 1
   const minTopUp = Number(info?.min_topup) || 1
   const enableOnline = !!info?.enable_online_topup
+  const enableKpay = !!info?.enable_kpay_topup
   const epayMethods = useMemo(
     () => (info?.pay_methods || []).filter((m) => m.type === 'alipay' || m.type === 'wxpay'),
     [info],
+  )
+  const kpayMethods = useMemo(
+    () => (info?.kpay_pay_methods || []).filter((m) => m.type === 'kpay_alipay' || m.type === 'kpay_wechat'),
+    [info],
+  )
+  const onlineMethods = useMemo(
+    () => [
+      ...(enableOnline ? epayMethods.map((m) => ({ ...m, provider: 'epay' })) : []),
+      ...(enableKpay ? kpayMethods.map((m) => ({ ...m, provider: 'kpay' })) : []),
+    ],
+    [enableOnline, epayMethods, enableKpay, kpayMethods],
   )
   const amountOptions = info?.amount_options || []
   const discountMap = info?.discount || {}
@@ -109,12 +142,12 @@ export default function TopUp() {
   }, [])
 
   useEffect(() => {
-    if (!epayMethods.length) {
+    if (!onlineMethods.length) {
       setPayWay('')
-    } else if (!epayMethods.find((m) => m.type === payWay)) {
-      setPayWay(epayMethods[0].type)
+    } else if (!onlineMethods.find((m) => m.type === payWay)) {
+      setPayWay(onlineMethods[0].type)
     }
-  }, [epayMethods, payWay])
+  }, [onlineMethods, payWay])
 
   const fetchAmount = async (value) => {
     const v = Number(value ?? topUpCount)
@@ -185,12 +218,8 @@ export default function TopUp() {
 
   const openConfirm = () => {
     setPayMsg(null)
-    if (!enableOnline) {
+    if (!onlineMethods.length) {
       setPayMsg({ tone: 'error', text: '管理员未开启在线充值' })
-      return
-    }
-    if (!epayMethods.length) {
-      setPayMsg({ tone: 'error', text: '管理员未配置支付方式' })
       return
     }
     if (!payWay) {
@@ -207,6 +236,22 @@ export default function TopUp() {
   const submitPay = async () => {
     setPaying(true)
     try {
+      if (isKpayMethod(payWay)) {
+        const res = await requestKpayPay({
+          amount: parseInt(topUpCount, 10),
+          payment_method: toKpayMethod(payWay),
+        })
+        if (res?.message === 'success' && res.data) {
+          setKpayOrder(res.data)
+          setConfirmOpen(false)
+          setPayMsg(null)
+        } else {
+          const errText =
+            typeof res?.data === 'string' ? res.data : res?.message || '支付请求失败'
+          setPayMsg({ tone: 'error', text: errText })
+        }
+        return
+      }
       const res = await requestPay({
         amount: parseInt(topUpCount, 10),
         payment_method: payWay,
@@ -246,6 +291,48 @@ export default function TopUp() {
       setPaying(false)
     }
   }
+
+  const checkKpayStatus = async (silent = false) => {
+    if (!kpayOrder?.trade_no) return
+    setKpayChecking(true)
+    try {
+      const res = await checkKpayPay({
+        trade_no: kpayOrder.trade_no,
+        provider_order_no: kpayOrder.provider_order_no || '',
+      })
+      const nextStatus = res?.data?.status
+      if (res?.message === 'success' && nextStatus === 'success') {
+        setKpayOrder((prev) => ({ ...prev, status: 'success' }))
+        setPayMsg({ tone: 'success', text: '支付已到账' })
+        try {
+          const r = await self()
+          if (r?.data) setUser(r.data)
+        } catch (_) {}
+        return
+      }
+      if (!silent) {
+        setPayMsg({ tone: 'info', text: '订单仍在等待支付确认' })
+      }
+    } catch (err) {
+      if (!silent) {
+        setPayMsg({
+          tone: 'error',
+          text: err?.response?.data?.message ?? err.message ?? '检查失败',
+        })
+      }
+    } finally {
+      setKpayChecking(false)
+    }
+  }
+
+  useEffect(() => {
+    if (!kpayOrder?.trade_no || kpayOrder.status === 'success') return undefined
+    const timer = setInterval(() => {
+      checkKpayStatus(true)
+    }, 5000)
+    return () => clearInterval(timer)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [kpayOrder?.trade_no, kpayOrder?.status])
 
   const onRedeem = async (e) => {
     e.preventDefault()
@@ -294,7 +381,7 @@ export default function TopUp() {
         </div>
 
         {/* 右上:在线充值,跨两行 */}
-        {enableOnline && epayMethods.length > 0 ? (
+        {onlineMethods.length > 0 ? (
           <ClayCard className="lg:row-span-2">
             <div className="flex items-center gap-2 mb-4">
               <CreditCard className="w-5 h-5 text-clay-blue-300" />
@@ -358,7 +445,7 @@ export default function TopUp() {
                 支付方式
               </label>
               <div className="grid grid-cols-2 gap-3">
-                {epayMethods.map((m) => {
+                {onlineMethods.map((m) => {
                   const active = payWay === m.type
                   return (
                     <button
@@ -468,7 +555,7 @@ export default function TopUp() {
               取消
             </ClayButton>
             <ClayButton variant="primary" disabled={paying} onClick={submitPay}>
-              {paying ? '跳转中…' : '确认支付'}
+              {paying ? '处理中…' : '确认支付'}
             </ClayButton>
           </>
         }
@@ -504,8 +591,65 @@ export default function TopUp() {
             <span className="text-clay-faint">支付方式</span>
             <span className="inline-flex items-center gap-2 font-bold">
               <PayMethodIcon type={payWay} className="w-4 h-4" />
-              {epayMethods.find((m) => m.type === payWay)?.name || PAY_NAME[payWay] || payWay}
+              {onlineMethods.find((m) => m.type === payWay)?.name || PAY_NAME[payWay] || payWay}
             </span>
+          </div>
+        </div>
+      </ClayModal>
+
+      <ClayModal
+        open={!!kpayOrder}
+        onClose={() => setKpayOrder(null)}
+        title="扫码支付"
+        size="sm"
+        footer={
+          <>
+            {kpayOrder?.direct_pay_url && (
+              <ClayButton
+                variant="secondary"
+                onClick={() => window.open(kpayOrder.direct_pay_url, '_blank', 'noopener,noreferrer')}
+              >
+                <ExternalLink className="w-4 h-4" /> 打开支付
+              </ClayButton>
+            )}
+            <ClayButton variant="primary" disabled={kpayChecking} onClick={() => checkKpayStatus(false)}>
+              {kpayChecking ? '检查中…' : (<><RefreshCcw className="w-4 h-4" /> 检查到账</>)}
+            </ClayButton>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          {kpayOrder?.status === 'success' ? (
+            <ClayAlert tone="success">支付已到账</ClayAlert>
+          ) : null}
+          <div className="mx-auto w-56 h-56 rounded-2xl shadow-clay-inset bg-white flex items-center justify-center p-3">
+            {kpayOrder?.qr_code_data_uri || kpayOrder?.qr_code_image_url ? (
+              <img
+                src={kpayOrder.qr_code_data_uri || kpayOrder.qr_code_image_url}
+                alt="KPay QR code"
+                className="w-full h-full object-contain"
+              />
+            ) : (
+              <QrCode className="w-20 h-20 text-clay-faint" />
+            )}
+          </div>
+          <div className="space-y-2 px-4 py-3 rounded-2xl shadow-clay-inset bg-clay-bg text-sm">
+            <div className="flex justify-between">
+              <span className="text-clay-faint">订单号</span>
+              <span className="font-mono text-xs break-all text-right">{kpayOrder?.trade_no}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-clay-faint">实付金额</span>
+              <span className="font-black text-rose-500">
+                {(Number(kpayOrder?.amount) || amount || 0).toFixed(2)} 元
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-clay-faint">状态</span>
+              <span className="font-bold">
+                {kpayOrder?.status === 'success' ? '已到账' : '待支付'}
+              </span>
+            </div>
           </div>
         </div>
       </ClayModal>

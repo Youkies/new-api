@@ -83,6 +83,25 @@
 - approve 会补余额并写管理日志。
 - reject 不改余额。
 
+## 充值
+
+用户侧：
+
+- `GET /api/user/topup/info`：返回充值配置。KPay 开启时包含 `enable_kpay_topup` 与 `kpay_pay_methods`。
+- `POST /api/user/amount`：按当前充值数量估算实付金额，KPay 与易支付共用现有本币计价逻辑。
+- `POST /api/user/kpay/pay`：创建 KPay `direct_qr` 充值订单，返回 `trade_no`、`provider_order_no`、二维码图片地址或 data URI、`direct_pay_url`、金额和过期时间。
+- `POST /api/user/kpay/check`：用户侧检查本次 KPay 订单状态；如果传入 `provider_order_no` 且 KPay 已支付，会按本地 `trade_no` 补偿入账。
+
+回调：
+
+- `POST /api/kpay/notify`：KPay 支付成功回调。服务端校验 `X-KPay-*` 签名头、body hash、时间窗口、订单号、金额和本地订单支付网关后入账。
+
+语义：
+
+- KPay 前端支付方式使用 `kpay_alipay` / `kpay_wechat`，服务端下单时映射为 KPay 的 `alipay` / `wechat`。
+- 本地订单号是 `merchantOrderNo`，KPay 平台订单号只用于查单兜底，不作为本地入账主键。
+- 仍保留 `/api/user/pay` 易支付兼容链路，方便回滚或继续使用旧供应商。
+
 ## AI 助手
 
 用户侧：

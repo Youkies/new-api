@@ -3,6 +3,7 @@ package model
 import (
 	"errors"
 	"fmt"
+	"math"
 
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/logger"
@@ -37,6 +38,7 @@ const (
 	PaymentProviderCreem        = "creem"
 	PaymentProviderWaffo        = "waffo"
 	PaymentProviderWaffoPancake = "waffo_pancake"
+	PaymentProviderKPay         = "kpay"
 )
 
 var (
@@ -598,6 +600,79 @@ func RechargeWaffoPancake(tradeNo string) (err error) {
 		RecordLog(topUp.UserId, LogTypeTopup, fmt.Sprintf("Waffo Pancake充值成功，充值额度: %v，支付金额: %.2f", logger.FormatQuota(quotaToAdd), topUp.Money))
 		if err := NotifyUITopUpSuccess(topUp, quotaToAdd, PaymentProviderWaffoPancake); err != nil {
 			common.SysLog("failed to create topup notification: " + err.Error())
+		}
+	}
+
+	return nil
+}
+
+func RechargeKPay(tradeNo string, actualPaymentMethod string, callerIp string, paidAmount float64) (err error) {
+	if tradeNo == "" {
+		return errors.New("未提供支付单号")
+	}
+
+	var quotaToAdd int
+	topUp := &TopUp{}
+
+	refCol := "`trade_no`"
+	if common.UsingPostgreSQL {
+		refCol = `"trade_no"`
+	}
+
+	err = DB.Transaction(func(tx *gorm.DB) error {
+		err = tx.Set("gorm:query_option", "FOR UPDATE").Where(refCol+" = ?", tradeNo).First(topUp).Error
+		if err != nil {
+			return ErrTopUpNotFound
+		}
+
+		if topUp.PaymentProvider != PaymentProviderKPay {
+			return ErrPaymentMethodMismatch
+		}
+
+		if topUp.Status == common.TopUpStatusSuccess {
+			return nil
+		}
+
+		if topUp.Status != common.TopUpStatusPending {
+			return ErrTopUpStatusInvalid
+		}
+
+		if paidAmount > 0 && math.Abs(paidAmount-topUp.Money) > 0.01 {
+			return errors.New("支付金额不匹配")
+		}
+
+		dAmount := decimal.NewFromInt(topUp.Amount)
+		dQuotaPerUnit := decimal.NewFromFloat(common.QuotaPerUnit)
+		quotaToAdd = int(dAmount.Mul(dQuotaPerUnit).IntPart())
+		if quotaToAdd <= 0 {
+			return errors.New("无效的充值额度")
+		}
+
+		if actualPaymentMethod != "" && topUp.PaymentMethod != actualPaymentMethod {
+			topUp.PaymentMethod = actualPaymentMethod
+		}
+		topUp.CompleteTime = common.GetTimestamp()
+		topUp.Status = common.TopUpStatusSuccess
+		if err := tx.Save(topUp).Error; err != nil {
+			return err
+		}
+
+		if err := tx.Model(&User{}).Where("id = ?", topUp.UserId).Update("quota", gorm.Expr("quota + ?", quotaToAdd)).Error; err != nil {
+			return err
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		common.SysError("kpay topup failed: " + err.Error())
+		return err
+	}
+
+	if quotaToAdd > 0 {
+		RecordTopupLog(topUp.UserId, fmt.Sprintf("KPay充值成功，充值额度: %v，支付金额: %.2f", logger.FormatQuota(quotaToAdd), topUp.Money), callerIp, topUp.PaymentMethod, PaymentProviderKPay)
+		if err := NotifyUITopUpSuccess(topUp, quotaToAdd, PaymentProviderKPay); err != nil {
+			common.SysLog("failed to create kpay topup notification: " + err.Error())
 		}
 	}
 

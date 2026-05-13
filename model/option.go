@@ -90,6 +90,12 @@ func InitOptionMap() {
 	common.OptionMap["CreemProducts"] = setting.CreemProducts
 	common.OptionMap["CreemTestMode"] = strconv.FormatBool(setting.CreemTestMode)
 	common.OptionMap["CreemWebhookSecret"] = setting.CreemWebhookSecret
+	common.OptionMap["KPayEnabled"] = strconv.FormatBool(setting.KPayEnabled)
+	common.OptionMap["KPayApiBase"] = setting.KPayApiBase
+	common.OptionMap["KPayApiKey"] = setting.KPayApiKey
+	common.OptionMap["KPayApiSecret"] = setting.KPayApiSecret
+	common.OptionMap["KPaySelectStrategy"] = setting.KPaySelectStrategy
+	common.OptionMap["KPaySelectedMerchantId"] = strconv.Itoa(setting.KPaySelectedMerchantId)
 	common.OptionMap["WaffoEnabled"] = strconv.FormatBool(setting.WaffoEnabled)
 	common.OptionMap["WaffoApiKey"] = setting.WaffoApiKey
 	common.OptionMap["WaffoPrivateKey"] = setting.WaffoPrivateKey
@@ -320,6 +326,8 @@ func updateOptionMap(key string, value string) (err error) {
 			setting.ModelRequestRateLimitEnabled = boolValue
 		case "StopOnSensitiveEnabled":
 			setting.StopOnSensitiveEnabled = boolValue
+		case "KPayEnabled":
+			setting.KPayEnabled = boolValue
 		case "SMTPSSLEnabled":
 			common.SMTPSSLEnabled = boolValue
 		case "SMTPForceAuthLogin":
@@ -390,6 +398,16 @@ func updateOptionMap(key string, value string) (err error) {
 		setting.CreemTestMode = value == "true"
 	case "CreemWebhookSecret":
 		setting.CreemWebhookSecret = value
+	case "KPayApiBase":
+		setting.KPayApiBase = value
+	case "KPayApiKey":
+		setting.KPayApiKey = value
+	case "KPayApiSecret":
+		setting.KPayApiSecret = value
+	case "KPaySelectStrategy":
+		setting.KPaySelectStrategy = value
+	case "KPaySelectedMerchantId":
+		setting.KPaySelectedMerchantId, _ = strconv.Atoi(value)
 	case "WaffoEnabled":
 		setting.WaffoEnabled = value == "true"
 	case "WaffoApiKey":

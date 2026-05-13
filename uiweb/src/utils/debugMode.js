@@ -870,6 +870,7 @@ export async function mockApiResponse(config) {
   if (path === '/api/user/topup/info' && method === 'GET') {
     return ok({
       enable_online_topup: true,
+      enable_kpay_topup: true,
       min_topup: 1,
       amount_options: [5, 10, 20, 50, 100],
       discount: { 50: 0.95, 100: 0.9 },
@@ -877,10 +878,30 @@ export async function mockApiResponse(config) {
         { type: 'alipay', name: '支付宝' },
         { type: 'wxpay', name: '微信支付' },
       ],
+      kpay_pay_methods: [
+        { type: 'kpay_alipay', name: 'KPay 支付宝' },
+        { type: 'kpay_wechat', name: 'KPay 微信支付' },
+      ],
     })
   }
   if (path === '/api/user/amount' && method === 'POST') return plain({ message: 'success', data: String((Number(body.amount) || 0).toFixed(2)) })
   if (path === '/api/user/pay' && method === 'POST') return plain({ message: 'success', url: '#debug-pay', data: { amount: body.amount || 0, payment_method: body.payment_method || 'alipay' } })
+  if (path === '/api/user/kpay/pay' && method === 'POST') {
+    return plain({
+      message: 'success',
+      data: {
+        trade_no: `DEBUG-KPAY-${Date.now()}`,
+        provider_order_no: `C2C-DEBUG-${Date.now()}`,
+        amount: Number(body.amount) || 0,
+        payment_method: body.payment_method || 'alipay',
+        status: 'pending',
+        qr_code_data_uri: '',
+        qr_code_image_url: '',
+        direct_pay_url: '#debug-kpay',
+      },
+    })
+  }
+  if (path === '/api/user/kpay/check' && method === 'POST') return plain({ message: 'success', data: { status: 'success' } })
   if (path === '/api/user/topup' && method === 'POST') {
     if (debugState.notificationSettings.billing_enabled) {
       debugState.notifications.unshift({

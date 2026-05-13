@@ -23,6 +23,7 @@ import SettingsGeneralPayment from '../../pages/Setting/Payment/SettingsGeneralP
 import SettingsPaymentGateway from '../../pages/Setting/Payment/SettingsPaymentGateway';
 import SettingsPaymentGatewayStripe from '../../pages/Setting/Payment/SettingsPaymentGatewayStripe';
 import SettingsPaymentGatewayCreem from '../../pages/Setting/Payment/SettingsPaymentGatewayCreem';
+import SettingsPaymentGatewayKPay from '../../pages/Setting/Payment/SettingsPaymentGatewayKPay';
 import SettingsPaymentGatewayWaffo from '../../pages/Setting/Payment/SettingsPaymentGatewayWaffo';
 import SettingsPaymentGatewayWaffoPancake from '../../pages/Setting/Payment/SettingsPaymentGatewayWaffoPancake';
 import { API, showError, toBoolean } from '../../helpers';
@@ -49,6 +50,13 @@ const PaymentSetting = () => {
     StripeUnitPrice: 8.0,
     StripeMinTopUp: 1,
     StripePromotionCodesEnabled: false,
+
+    KPayEnabled: false,
+    KPayApiBase: 'https://api.kpay.cc',
+    KPayApiKey: '',
+    KPayApiSecret: '',
+    KPaySelectStrategy: 'lowest_fee',
+    KPaySelectedMerchantId: 0,
 
     WaffoPancakeEnabled: false,
     WaffoPancakeSandbox: false,
@@ -110,6 +118,7 @@ const PaymentSetting = () => {
           case 'StripeMinTopUp':
           case 'WaffoPancakeUnitPrice':
           case 'WaffoPancakeMinTopUp':
+          case 'KPaySelectedMerchantId':
             newInputs[item.key] = parseFloat(item.value);
             break;
           case 'WaffoPancakeMerchantID':
@@ -186,6 +195,13 @@ const PaymentSetting = () => {
             </Tabs.TabPane>
             <Tabs.TabPane tab={t('Creem 设置')} itemKey='creem'>
               <SettingsPaymentGatewayCreem
+                options={inputs}
+                refresh={onRefresh}
+                hideSectionTitle
+              />
+            </Tabs.TabPane>
+            <Tabs.TabPane tab={t('KPay 设置')} itemKey='kpay'>
+              <SettingsPaymentGatewayKPay
                 options={inputs}
                 refresh={onRefresh}
                 hideSectionTitle

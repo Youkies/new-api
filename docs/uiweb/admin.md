@@ -46,6 +46,15 @@
 - 可视化分组表中的“说明/描述”对应短描述，“详细介绍”对应价格页长文案。
 - 手动 JSON 模式也保留 `UserUsableGroupDetails` 输入区，适合批量粘贴或回滚配置。
 
+支付配置：
+
+- KPay 原生直连配置位于 `/legacy/` classic UI 的支付设置页 `KPay 设置` 标签。
+- 必填项：`KPayEnabled=true`、`KPayApiBase`、`KPayApiKey`、`KPayApiSecret`。
+- 默认 API 地址：`https://api.kpay.cc`。
+- 回调地址：`<ServerAddress>/api/kpay/notify`，该域名需要在 KPay API Key 授权域名内完成校验。
+- `KPaySelectStrategy` 默认 `lowest_fee`；`KPaySelectedMerchantId=0` 表示由 KPay 自动选商户。
+- KPay 使用 `direct_qr` 模式，用户侧在 `uiweb` 充值页展示二维码，不走外部收银台跳转。
+
 ## 公告系统
 
 页面：

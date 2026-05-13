@@ -20,6 +20,16 @@ export async function requestPay(payload) {
   return res.data
 }
 
+export async function requestKpayPay(payload) {
+  const res = await api.post('/api/user/kpay/pay', payload)
+  return res.data
+}
+
+export async function checkKpayPay(payload) {
+  const res = await api.post('/api/user/kpay/check', payload)
+  return res.data
+}
+
 export async function affInfo() {
   const res = await api.get('/api/user/aff')
   return res.data

@@ -77,6 +77,14 @@ export default function App() {
         }
       />
       <Route
+        path="/console/topup"
+        element={
+          <ProtectedRoute>
+            <TopUp />
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/personal"
         element={
           <ProtectedRoute>

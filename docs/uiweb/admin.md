@@ -54,6 +54,7 @@
 - 回调地址：`<ServerAddress>/api/kpay/notify`，该域名需要在 KPay API Key 授权域名内完成校验。
 - `KPaySelectStrategy` 默认 `lowest_fee`；`KPaySelectedMerchantId=0` 表示由 KPay 自动选商户。
 - KPay 使用 `direct_qr` 模式，用户侧在 `uiweb` 与 classic 充值页展示二维码，不走外部收银台跳转。
+- KPay 支付完成回跳地址为 `<ServerAddress>/topup?show_history=true`；旧 `/console/topup` 回跳也由 `uiweb` 兼容承接。
 - 如果 KPay 与易支付同时配置，充值页优先展示 KPay 支付方式，不再把两套支付宝/微信入口同时展示给用户。
 - `uiweb` 移动端发起 KPay 支付时，支付宝会优先直接打开支付链接；微信会展示二维码并提示用户保存二维码或截图后打开微信支付。
 

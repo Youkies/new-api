@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/QuantumNous/new-api/setting"
+	"github.com/QuantumNous/new-api/setting/system_setting"
 	"github.com/stretchr/testify/require"
 )
 
@@ -59,4 +60,17 @@ func TestResolveKPayURL(t *testing.T) {
 	require.Equal(t, "https://api.kpay.cc/qrcode/1.png", resolveKPayURL("/qrcode/1.png"))
 	require.Equal(t, "https://cdn.kpay.cc/qrcode/1.png", resolveKPayURL("//cdn.kpay.cc/qrcode/1.png"))
 	require.Equal(t, "alipays://platformapi/startapp", resolveKPayURL("alipays://platformapi/startapp"))
+}
+
+func TestBuildKPayReturnURLUsesUIWebTopUp(t *testing.T) {
+	originalServerAddress := system_setting.ServerAddress
+	t.Cleanup(func() {
+		system_setting.ServerAddress = originalServerAddress
+	})
+
+	system_setting.ServerAddress = "https://newapi-test.youkies.space/"
+	require.Equal(t, "https://newapi-test.youkies.space/topup?show_history=true", buildKPayReturnURL("https://callback.example"))
+
+	system_setting.ServerAddress = ""
+	require.Equal(t, "https://callback.example/topup?show_history=true", buildKPayReturnURL("https://callback.example/"))
 }

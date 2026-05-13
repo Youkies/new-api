@@ -233,6 +233,23 @@ uiweb 相关表：
 
 如果云端构建成功但 default UI 或性能指标接口报错，优先检查该表是否已迁移。
 
+## KPay 订单字段
+
+KPay 原生充值会把平台订单号保存到：
+
+- `top_ups.provider_order_no`
+
+该字段用于服务端查单兜底：当支付 App 回跳、浏览器本地状态丢失或前端没有携带 `provider_order_no` 时，后端仍可通过本地充值订单找到 KPay 平台单号并调用查单接口。
+
+生产 `NODE_TYPE=slave` 不会自动补齐字段，MySQL 可手动执行：
+
+```sql
+ALTER TABLE top_ups ADD COLUMN provider_order_no varchar(255) DEFAULT '';
+CREATE INDEX idx_top_ups_provider_order_no ON top_ups (provider_order_no);
+```
+
+如果数据库面板提示列已存在，可忽略该 `ALTER TABLE`。
+
 ## 签到分组配置
 
 `checkin_setting.group_quotas` 示例：
@@ -277,5 +294,6 @@ uiweb 相关表：
 - `users.avatar_type`
 - `users.created_at`
 - `users.last_login_at`
+- `top_ups.provider_order_no`
 
 如果数据库面板报多语句 SQL 错误，应拆成单条 `CREATE TABLE` 或单条 `ALTER TABLE` 执行。

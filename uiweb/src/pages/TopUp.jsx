@@ -77,6 +77,50 @@ const isMobilePaymentContext = () => {
     /Android|iPhone|iPad|iPod|Mobile|MicroMessenger/i.test(ua)
   )
 }
+const KPAY_PENDING_ORDER_KEY = 'youkies_pending_kpay_order'
+const KPAY_PENDING_ORDER_TTL_MS = 30 * 60 * 1000
+
+const normalizePendingKpayOrder = (order) => {
+  if (!order?.trade_no) return null
+  const savedAt = Number(order.saved_at) || Date.now()
+  if (Date.now() - savedAt > KPAY_PENDING_ORDER_TTL_MS) return null
+  return { ...order, saved_at: savedAt }
+}
+
+const readPendingKpayOrder = () => {
+  if (typeof window === 'undefined') return null
+  try {
+    const raw = window.localStorage?.getItem(KPAY_PENDING_ORDER_KEY)
+    if (!raw) return null
+    const order = normalizePendingKpayOrder(JSON.parse(raw))
+    if (!order) {
+      window.localStorage?.removeItem(KPAY_PENDING_ORDER_KEY)
+      return null
+    }
+    return order
+  } catch (_) {
+    try {
+      window.localStorage?.removeItem(KPAY_PENDING_ORDER_KEY)
+    } catch (_) {}
+    return null
+  }
+}
+
+const savePendingKpayOrder = (order) => {
+  const nextOrder = normalizePendingKpayOrder({ ...order, saved_at: Date.now() })
+  if (!nextOrder || typeof window === 'undefined') return nextOrder
+  try {
+    window.localStorage?.setItem(KPAY_PENDING_ORDER_KEY, JSON.stringify(nextOrder))
+  } catch (_) {}
+  return nextOrder
+}
+
+const clearPendingKpayOrder = () => {
+  if (typeof window === 'undefined') return
+  try {
+    window.localStorage?.removeItem(KPAY_PENDING_ORDER_KEY)
+  } catch (_) {}
+}
 
 export default function TopUp() {
   const { user, setUser } = useUser()
@@ -160,6 +204,32 @@ export default function TopUp() {
       setPayWay(onlineMethods[0].type)
     }
   }, [onlineMethods, payWay])
+
+  useEffect(() => {
+    const restorePendingOrder = () => {
+      const pendingOrder = readPendingKpayOrder()
+      if (!pendingOrder || pendingOrder.status === 'success') return
+      setKpayOrder((prev) => (prev?.trade_no === pendingOrder.trade_no ? prev : pendingOrder))
+      setPayMsg((prev) =>
+        prev?.tone === 'success'
+          ? prev
+          : { tone: 'info', text: '正在检查上一笔支付结果' },
+      )
+    }
+
+    restorePendingOrder()
+    if (typeof window === 'undefined') return undefined
+
+    const onVisibilityChange = () => {
+      if (!document.hidden) restorePendingOrder()
+    }
+    window.addEventListener('focus', restorePendingOrder)
+    document.addEventListener('visibilitychange', onVisibilityChange)
+    return () => {
+      window.removeEventListener('focus', restorePendingOrder)
+      document.removeEventListener('visibilitychange', onVisibilityChange)
+    }
+  }, [])
 
   const fetchAmount = async (value) => {
     const v = Number(value ?? topUpCount)
@@ -255,17 +325,18 @@ export default function TopUp() {
           payment_method: kpayMethod,
         })
         if (res?.message === 'success' && res.data) {
-          const nextOrder = {
+          const orderPayload = {
             ...res.data,
             payment_method: res.data.payment_method || kpayMethod,
           }
+          const nextOrder = savePendingKpayOrder(orderPayload) || orderPayload
           setConfirmOpen(false)
           setPayMsg(null)
+          setKpayOrder(nextOrder)
           if (kpayMethod === 'alipay' && isMobilePaymentContext() && nextOrder.direct_pay_url) {
             window.location.assign(nextOrder.direct_pay_url)
             return
           }
-          setKpayOrder(nextOrder)
         } else {
           const errText =
             typeof res?.data === 'string' ? res.data : res?.message || '支付请求失败'
@@ -323,6 +394,7 @@ export default function TopUp() {
       })
       const nextStatus = res?.data?.status
       if (res?.message === 'success' && nextStatus === 'success') {
+        clearPendingKpayOrder()
         setKpayOrder((prev) => ({ ...prev, status: 'success' }))
         setPayMsg({ tone: 'success', text: '支付已到账' })
         try {

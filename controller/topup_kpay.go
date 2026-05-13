@@ -350,6 +350,17 @@ func fetchKPayQRCodeDataURI(ctx context.Context, qrURL string) string {
 	return "data:" + mediaType + ";base64," + base64.StdEncoding.EncodeToString(raw)
 }
 
+func buildKPayReturnURL(callbackAddress string) string {
+	base := strings.TrimRight(strings.TrimSpace(system_setting.ServerAddress), "/")
+	if base == "" {
+		base = strings.TrimRight(strings.TrimSpace(callbackAddress), "/")
+	}
+	if base == "" {
+		return "/topup?show_history=true"
+	}
+	return base + "/topup?show_history=true"
+}
+
 func RequestKPay(c *gin.Context) {
 	if !isKPayTopUpEnabled() {
 		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "KPay 支付未启用"})
@@ -410,10 +421,7 @@ func RequestKPay(c *gin.Context) {
 
 	callbackAddress := service.GetCallbackAddress()
 	notifyURL := callbackAddress + "/api/kpay/notify"
-	returnURL := system_setting.ServerAddress + "/console/topup?show_history=true"
-	if strings.TrimSpace(returnURL) == "/console/topup?show_history=true" {
-		returnURL = callbackAddress + "/console/topup?show_history=true"
-	}
+	returnURL := buildKPayReturnURL(callbackAddress)
 	selectedMerchantID := getKPaySelectedMerchantID()
 
 	orderReq := &kpayCreateOrderRequest{
@@ -435,6 +443,14 @@ func RequestKPay(c *gin.Context) {
 		_ = topUp.Update()
 		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "拉起支付失败：" + err.Error()})
 		return
+	}
+
+	providerOrderNo := strings.TrimSpace(orderData.OrderNo)
+	if providerOrderNo != "" {
+		topUp.ProviderOrderNo = providerOrderNo
+		if err := topUp.Update(); err != nil {
+			logger.LogWarn(c.Request.Context(), fmt.Sprintf("KPay 保存平台订单号失败 user_id=%d trade_no=%s provider_order_no=%s error=%q", id, tradeNo, providerOrderNo, err.Error()))
+		}
 	}
 
 	qrURL := getKPayQRCodeURL(orderData)
@@ -490,6 +506,9 @@ func CheckKPayTopUp(c *gin.Context) {
 	}
 
 	providerOrderNo := strings.TrimSpace(req.ProviderOrderNo)
+	if providerOrderNo == "" {
+		providerOrderNo = strings.TrimSpace(topUp.ProviderOrderNo)
+	}
 	if providerOrderNo == "" {
 		c.JSON(http.StatusOK, gin.H{"message": "success", "data": gin.H{"status": common.TopUpStatusPending}})
 		return

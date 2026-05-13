@@ -90,7 +90,8 @@
 - `GET /api/user/topup/info`：返回充值配置。KPay 开启时包含 `enable_kpay_topup` 与 `kpay_pay_methods`。
 - `POST /api/user/amount`：按当前充值数量估算实付金额，KPay 与易支付共用现有本币计价逻辑。
 - `POST /api/user/kpay/pay`：创建 KPay `direct_qr` 充值订单，返回 `trade_no`、`provider_order_no`、二维码图片地址或 data URI、`direct_pay_url`、金额和过期时间。
-- `POST /api/user/kpay/check`：用户侧检查本次 KPay 订单状态；如果传入 `provider_order_no` 且 KPay 已支付，会按本地 `trade_no` 补偿入账。
+- `POST /api/user/kpay/check`：用户侧检查本次 KPay 订单状态；如果传入 `provider_order_no` 或本地 `top_ups.provider_order_no` 已保存，且 KPay 已支付，会按本地 `trade_no` 补偿入账。
+- KPay 下单传给平台的 `returnUrl` 指向主 UI `/topup?show_history=true`；`uiweb` 也兼容旧的 `/console/topup` 回跳，避免移动端支付后无法恢复查单。
 
 回调：
 
@@ -99,7 +100,8 @@
 语义：
 
 - KPay 前端支付方式使用 `kpay_alipay` / `kpay_wechat`，服务端下单时映射为 KPay 的 `alipay` / `wechat`。
-- 本地订单号是 `merchantOrderNo`，KPay 平台订单号只用于查单兜底，不作为本地入账主键。
+- 本地订单号是 `merchantOrderNo`，KPay 平台订单号保存到 `top_ups.provider_order_no`，只用于查单兜底，不作为本地入账主键。
+- `uiweb` 会把待支付 KPay 订单短期保存在浏览器本地，支付 App 回跳或页面重新聚焦后自动调用 `/api/user/kpay/check`。
 - 仍保留 `/api/user/pay` 易支付兼容链路，方便回滚或继续使用旧供应商。
 
 ## AI 助手

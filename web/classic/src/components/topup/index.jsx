@@ -29,7 +29,7 @@ import {
   copy,
   getQuotaPerUnit,
 } from '../../helpers';
-import { Modal, Toast } from '@douyinfe/semi-ui';
+import { Button, Modal, Toast } from '@douyinfe/semi-ui';
 import { useTranslation } from 'react-i18next';
 import { UserContext } from '../../context/User';
 import { StatusContext } from '../../context/Status';
@@ -75,6 +75,9 @@ const TopUp = () => {
   const [waffoMinTopUp, setWaffoMinTopUp] = useState(1);
   const [enableWaffoPancakeTopUp, setEnableWaffoPancakeTopUp] = useState(false);
   const [waffoPancakeMinTopUp, setWaffoPancakeMinTopUp] = useState(1);
+  const [enableKPayTopUp, setEnableKPayTopUp] = useState(false);
+  const [kpayChecking, setKpayChecking] = useState(false);
+  const [kpayOrder, setKpayOrder] = useState(null);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [open, setOpen] = useState(false);
@@ -132,9 +135,18 @@ const TopUp = () => {
       : minTopUp;
   };
 
+  const isKPayMethod = (payment) =>
+    typeof payment === 'string' && payment.startsWith('kpay_');
+
+  const toKPayMethod = (payment) =>
+    payment === 'kpay_wechat' ? 'wechat' : 'alipay';
+
   const requestAmountByPayment = async (payment, value) => {
     if (payment === 'stripe') {
       return getStripeAmount(value);
+    }
+    if (isKPayMethod(payment)) {
+      return getAmount(value);
     }
     if (payment === 'waffo_pancake') {
       return getWaffoPancakeAmount(value);
@@ -205,6 +217,11 @@ const TopUp = () => {
         showError(t('管理员未开启 Waffo 充值！'));
         return;
       }
+    } else if (isKPayMethod(payment)) {
+      if (!enableKPayTopUp) {
+        showError(t('管理员未开启 KPay 充值！'));
+        return;
+      }
     } else {
       if (!enableOnlineTopUp) {
         showError(t('管理员未开启在线充值！'));
@@ -247,6 +264,41 @@ const TopUp = () => {
       setConfirmLoading(true);
       try {
         await waffoTopUp(Number.isFinite(payMethodIndex) ? payMethodIndex : 0);
+      } finally {
+        setOpen(false);
+        setConfirmLoading(false);
+      }
+      return;
+    }
+
+    if (isKPayMethod(payWay)) {
+      if (amount === 0) {
+        await getAmount();
+      }
+      if (topUpCount < minTopUp) {
+        showError('充值数量不能小于' + minTopUp);
+        return;
+      }
+      setConfirmLoading(true);
+      try {
+        const res = await API.post('/api/user/kpay/pay', {
+          amount: parseInt(topUpCount),
+          payment_method: toKPayMethod(payWay),
+        });
+        if (res !== undefined) {
+          const { message, data } = res.data;
+          if (message === 'success') {
+            setKpayOrder(data);
+          } else {
+            const errorMsg =
+              typeof data === 'string' ? data : message || t('支付失败');
+            showError(errorMsg);
+          }
+        } else {
+          showError(res);
+        }
+      } catch (err) {
+        showError(t('支付请求失败'));
       } finally {
         setOpen(false);
         setConfirmLoading(false);
@@ -472,6 +524,41 @@ const TopUp = () => {
     }
   };
 
+  const checkKPayStatus = async (silent = false) => {
+    if (!kpayOrder?.trade_no) return;
+    setKpayChecking(true);
+    try {
+      const res = await API.post('/api/user/kpay/check', {
+        trade_no: kpayOrder.trade_no,
+        provider_order_no: kpayOrder.provider_order_no || '',
+      });
+      const nextStatus = res?.data?.data?.status;
+      if (res?.data?.message === 'success' && nextStatus === 'success') {
+        setKpayOrder((prev) => ({ ...prev, status: 'success' }));
+        showSuccess(t('支付已到账'));
+        await getUserQuota();
+        return;
+      }
+      if (!silent) {
+        showInfo(t('订单仍在等待支付确认'));
+      }
+    } catch (err) {
+      if (!silent) {
+        showError(t('检查失败'));
+      }
+    } finally {
+      setKpayChecking(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!kpayOrder?.trade_no || kpayOrder.status === 'success') return;
+    const timer = setInterval(() => {
+      checkKPayStatus(true);
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [kpayOrder?.trade_no, kpayOrder?.status]);
+
   const getWaffoPancakeAmount = async (value) => {
     if (value === undefined) {
       value = topUpCount;
@@ -582,9 +669,27 @@ const TopUp = () => {
 
         // 处理支付方式
         let payMethods = data.pay_methods || [];
+        let kpayPayMethods = data.kpay_pay_methods || [];
         try {
           if (typeof payMethods === 'string') {
             payMethods = JSON.parse(payMethods);
+          }
+          if (typeof kpayPayMethods === 'string') {
+            kpayPayMethods = JSON.parse(kpayPayMethods);
+          }
+          if (data.enable_kpay_topup && kpayPayMethods?.length > 0) {
+            kpayPayMethods = kpayPayMethods
+              .filter((method) => method.name && method.type)
+              .map((method) => ({
+                ...method,
+                min_topup:
+                  Number(method.min_topup) || Number(data.min_topup) || 1,
+                color:
+                  method.type === 'kpay_alipay'
+                    ? 'rgba(var(--semi-blue-5), 1)'
+                    : 'rgba(var(--semi-green-5), 1)',
+              }));
+            payMethods = [...kpayPayMethods, ...payMethods];
           }
           if (payMethods && payMethods.length > 0) {
             // 检查name和type是否为空
@@ -615,6 +720,10 @@ const TopUp = () => {
                   method.color = 'rgba(var(--semi-blue-5), 1)';
                 } else if (method.type === 'wxpay') {
                   method.color = 'rgba(var(--semi-green-5), 1)';
+                } else if (method.type === 'kpay_alipay') {
+                  method.color = 'rgba(var(--semi-blue-5), 1)';
+                } else if (method.type === 'kpay_wechat') {
+                  method.color = 'rgba(var(--semi-green-5), 1)';
                 } else if (method.type === 'stripe') {
                   method.color = 'rgba(var(--semi-purple-5), 1)';
                 } else {
@@ -633,20 +742,24 @@ const TopUp = () => {
           setPayMethods(payMethods);
           const enableStripeTopUp = data.enable_stripe_topup || false;
           const enableOnlineTopUp = data.enable_online_topup || false;
+          const enableKPayTopUp = data.enable_kpay_topup || false;
           const enableCreemTopUp = data.enable_creem_topup || false;
           const enableWaffoTopUp = data.enable_waffo_topup || false;
           const enableWaffoPancakeTopUp =
             data.enable_waffo_pancake_topup || false;
-          const minTopUpValue = enableOnlineTopUp
+          const minTopUpValue = enableKPayTopUp
             ? data.min_topup
-            : enableStripeTopUp
-              ? data.stripe_min_topup
-              : enableWaffoTopUp
-                ? data.waffo_min_topup
-                : enableWaffoPancakeTopUp
-                  ? data.waffo_pancake_min_topup
-                : 1;
+            : enableOnlineTopUp
+              ? data.min_topup
+              : enableStripeTopUp
+                ? data.stripe_min_topup
+                : enableWaffoTopUp
+                  ? data.waffo_min_topup
+                  : enableWaffoPancakeTopUp
+                    ? data.waffo_pancake_min_topup
+                    : 1;
           setEnableOnlineTopUp(enableOnlineTopUp);
+          setEnableKPayTopUp(enableKPayTopUp);
           setEnableStripeTopUp(enableStripeTopUp);
           setEnableCreemTopUp(enableCreemTopUp);
           setEnableWaffoTopUp(enableWaffoTopUp);
@@ -938,11 +1051,86 @@ const TopUp = () => {
         )}
       </Modal>
 
+      <Modal
+        title={t('KPay 扫码支付')}
+        visible={!!kpayOrder}
+        onCancel={() => setKpayOrder(null)}
+        maskClosable={false}
+        size='small'
+        centered
+        footer={
+          <div className='flex justify-end gap-2'>
+            {kpayOrder?.direct_pay_url && (
+              <Button
+                onClick={() =>
+                  window.open(
+                    kpayOrder.direct_pay_url,
+                    '_blank',
+                    'noopener,noreferrer',
+                  )
+                }
+              >
+                {t('打开支付')}
+              </Button>
+            )}
+            <Button
+              type='primary'
+              loading={kpayChecking}
+              onClick={() => checkKPayStatus(false)}
+            >
+              {t('检查到账')}
+            </Button>
+          </div>
+        }
+      >
+        {kpayOrder && (
+          <div className='space-y-4 text-center'>
+            <div className='mx-auto flex h-56 w-56 items-center justify-center rounded-xl bg-white p-3 shadow-sm'>
+              {kpayOrder.qr_code_data_uri || kpayOrder.qr_code_image_url ? (
+                <img
+                  src={
+                    kpayOrder.qr_code_data_uri || kpayOrder.qr_code_image_url
+                  }
+                  alt='KPay QR code'
+                  className='h-full w-full object-contain'
+                />
+              ) : (
+                <div className='text-sm text-gray-500'>
+                  {t('暂无二维码，请尝试打开支付')}
+                </div>
+              )}
+            </div>
+            <div className='space-y-2 text-left text-sm'>
+              <div className='flex justify-between gap-4'>
+                <span className='text-gray-500'>{t('订单号')}</span>
+                <span className='break-all text-right font-mono'>
+                  {kpayOrder.trade_no}
+                </span>
+              </div>
+              <div className='flex justify-between'>
+                <span className='text-gray-500'>{t('实付金额')}</span>
+                <span className='font-semibold text-red-600'>
+                  {(Number(kpayOrder.amount) || amount || 0).toFixed(2)}
+                  {t('元')}
+                </span>
+              </div>
+              <div className='flex justify-between'>
+                <span className='text-gray-500'>{t('状态')}</span>
+                <span className='font-semibold'>
+                  {kpayOrder.status === 'success' ? t('已到账') : t('待支付')}
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
+      </Modal>
+
       {/* 主布局区域 */}
       <div className='grid grid-cols-1 lg:grid-cols-2 gap-6'>
         <RechargeCard
           t={t}
           enableOnlineTopUp={enableOnlineTopUp}
+          enableKPayTopUp={enableKPayTopUp}
           enableStripeTopUp={enableStripeTopUp}
           enableCreemTopUp={enableCreemTopUp}
           creemProducts={creemProducts}

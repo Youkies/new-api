@@ -53,7 +53,7 @@
 - 默认 API 地址：`https://api.kpay.cc`。
 - 回调地址：`<ServerAddress>/api/kpay/notify`，该域名需要在 KPay API Key 授权域名内完成校验。
 - `KPaySelectStrategy` 默认 `lowest_fee`；`KPaySelectedMerchantId=0` 表示由 KPay 自动选商户。
-- KPay 使用 `direct_qr` 模式，用户侧在 `uiweb` 充值页展示二维码，不走外部收银台跳转。
+- KPay 使用 `direct_qr` 模式，用户侧在 `uiweb` 与 classic 充值页展示二维码，不走外部收银台跳转。
 
 ## 公告系统
 

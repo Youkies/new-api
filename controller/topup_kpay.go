@@ -68,6 +68,20 @@ type kpayAPIResponse struct {
 	Data json.RawMessage `json:"data"`
 }
 
+type kpayAPIError struct {
+	Code int
+	Msg  string
+	Body string
+}
+
+func (e *kpayAPIError) Error() string {
+	msg := strings.TrimSpace(e.Msg)
+	if msg == "" {
+		msg = "KPay API returned non-zero code"
+	}
+	return fmt.Sprintf("KPay code=%d msg=%s", e.Code, msg)
+}
+
 type kpayOrderData struct {
 	OrderNo              string   `json:"orderNo"`
 	MerchantOrderNo      string   `json:"merchantOrderNo"`
@@ -184,10 +198,11 @@ func doKPayAPI(ctx context.Context, method string, path string, body any, out an
 		return err
 	}
 	if apiResp.Code != 0 {
-		if apiResp.Msg == "" {
-			apiResp.Msg = "KPay API returned non-zero code"
+		return &kpayAPIError{
+			Code: apiResp.Code,
+			Msg:  apiResp.Msg,
+			Body: string(respBody),
 		}
-		return errors.New(apiResp.Msg)
 	}
 	if out != nil && len(apiResp.Data) > 0 {
 		if err := common.Unmarshal(apiResp.Data, out); err != nil {
@@ -398,8 +413,8 @@ func RequestKPay(c *gin.Context) {
 		Amount:             payMoney,
 		PaymentMode:        kpayDirectMode,
 		PayMethod:          payMethod,
-		ProductName:        fmt.Sprintf("TUC%d", req.Amount),
-		ProductDesc:        "New API top-up",
+		ProductName:        "额度充值",
+		ProductDesc:        "账户额度充值",
 		NotifyUrl:          notifyURL,
 		ReturnUrl:          returnURL,
 		SelectStrategy:     getKPaySelectStrategy(),
@@ -407,10 +422,10 @@ func RequestKPay(c *gin.Context) {
 	}
 	orderData, err := createKPayOrder(c.Request.Context(), orderReq)
 	if err != nil {
-		logger.LogError(c.Request.Context(), fmt.Sprintf("KPay 创建平台订单失败 user_id=%d trade_no=%s payment_method=%s amount=%d money=%.2f error=%q", id, tradeNo, payMethod, req.Amount, payMoney, err.Error()))
+		logger.LogError(c.Request.Context(), fmt.Sprintf("KPay 创建平台订单失败 user_id=%d trade_no=%s payment_method=%s amount=%d money=%.2f notify_url=%q return_url=%q select_strategy=%q selected_merchant_id=%v error=%q", id, tradeNo, payMethod, req.Amount, payMoney, notifyURL, returnURL, getKPaySelectStrategy(), getKPaySelectedMerchantID(), err.Error()))
 		topUp.Status = common.TopUpStatusFailed
 		_ = topUp.Update()
-		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "拉起支付失败"})
+		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "拉起支付失败：" + err.Error()})
 		return
 	}
 

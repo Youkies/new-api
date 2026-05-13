@@ -88,30 +88,41 @@ func (e *kpayAPIError) Error() string {
 }
 
 type kpayOrderData struct {
-	OrderNo              string   `json:"orderNo"`
-	MerchantOrderNo      string   `json:"merchantOrderNo"`
-	Amount               float64  `json:"amount"`
-	ActualAmount         float64  `json:"actualAmount"`
-	OwnerShouldGet       float64  `json:"ownerShouldGet"`
-	Status               string   `json:"status"`
-	PayMethod            string   `json:"payMethod"`
-	PaymentMode          string   `json:"paymentMode"`
-	PaymentModeOptions   []string `json:"paymentModeOptions"`
-	AvailablePayMethods  []string `json:"availablePayMethods"`
-	CheckoutReady        bool     `json:"checkoutReady"`
-	CheckoutSessionId    string   `json:"checkoutSessionId"`
-	CheckoutUrl          string   `json:"checkoutUrl"`
-	QRCodeImageUrl       string   `json:"qrCodeImageUrl"`
-	DirectQRCodeImageUrl string   `json:"directQrCodeImageUrl"`
-	DirectQrReady        bool     `json:"directQrReady"`
-	DirectPayUrl         string   `json:"directPayUrl"`
-	DirectPayReady       bool     `json:"directPayReady"`
-	DirectPayMethod      string   `json:"directPayMethod"`
-	ExpireTime           string   `json:"expireTime"`
-	NotifyUrl            string   `json:"notifyUrl"`
-	NotifyUrls           []string `json:"notifyUrls"`
-	ReturnUrl            string   `json:"returnUrl"`
-	Warning              string   `json:"warning"`
+	OrderNo              string            `json:"orderNo"`
+	MerchantOrderNo      string            `json:"merchantOrderNo"`
+	Amount               float64           `json:"amount"`
+	ActualAmount         float64           `json:"actualAmount"`
+	OwnerShouldGet       float64           `json:"ownerShouldGet"`
+	Status               string            `json:"status"`
+	PayMethod            string            `json:"payMethod"`
+	PaymentMode          string            `json:"paymentMode"`
+	PaymentModeOptions   []string          `json:"paymentModeOptions"`
+	AvailablePayMethods  []string          `json:"availablePayMethods"`
+	CheckoutReady        bool              `json:"checkoutReady"`
+	CheckoutSessionId    string            `json:"checkoutSessionId"`
+	CheckoutUrl          string            `json:"checkoutUrl"`
+	QRCodeImageUrl       string            `json:"qrCodeImageUrl"`
+	DirectQRCodeImageUrl string            `json:"directQrCodeImageUrl"`
+	DirectQrReady        bool              `json:"directQrReady"`
+	DirectPayUrl         string            `json:"directPayUrl"`
+	DirectPayReady       bool              `json:"directPayReady"`
+	DirectPayMethod      string            `json:"directPayMethod"`
+	ExpireTime           string            `json:"expireTime"`
+	NotifyUrl            string            `json:"notifyUrl"`
+	NotifyUrls           []string          `json:"notifyUrls"`
+	ReturnUrl            string            `json:"returnUrl"`
+	Warning              string            `json:"warning"`
+	Channels             []kpayChannelData `json:"channels"`
+}
+
+type kpayChannelData struct {
+	OrderNo        string  `json:"orderNo"`
+	PayMethod      string  `json:"payMethod"`
+	Provider       string  `json:"provider"`
+	Status         string  `json:"status"`
+	ProviderStatus string  `json:"providerStatus"`
+	PayTime        string  `json:"payTime"`
+	ReceivedAmount float64 `json:"receivedAmount"`
 }
 
 type kpayWebhookPayload struct {
@@ -157,6 +168,33 @@ func normalizeKPayStatus(status string) string {
 	return status
 }
 
+func isKPayPaidStatus(status string) bool {
+	switch normalizeKPayStatus(status) {
+	case kpayStatusPaid, kpayStatusSuccess, kpayStatusSucceeded, kpayStatusTradeSuccess:
+		return true
+	default:
+		return false
+	}
+}
+
+func isKPayFailedStatus(status string) bool {
+	switch normalizeKPayStatus(status) {
+	case "failed", "fail", "failure", "error", "pay_failed", "payment_failed", "pay_cancel", "cancel", "canceled", "cancelled", "closed", "order_closed":
+		return true
+	default:
+		return false
+	}
+}
+
+func isKPayExpiredStatus(status string) bool {
+	switch normalizeKPayStatus(status) {
+	case "expired", "expire", "timeout", "timed_out", "order_expired":
+		return true
+	default:
+		return false
+	}
+}
+
 func parseKPayTime(value string) (time.Time, bool) {
 	value = strings.TrimSpace(value)
 	if value == "" {
@@ -187,13 +225,35 @@ func parseKPayTime(value string) (time.Time, bool) {
 }
 
 func mapKPayOrderStatus(order kpayOrderData) string {
-	switch normalizeKPayStatus(order.Status) {
-	case kpayStatusPaid, kpayStatusSuccess, kpayStatusSucceeded, kpayStatusTradeSuccess:
+	if isKPayPaidStatus(order.Status) {
 		return common.TopUpStatusSuccess
-	case "expired", "expire", "timeout", "timed_out", "order_expired":
+	}
+	if isKPayExpiredStatus(order.Status) {
 		return common.TopUpStatusExpired
-	case "failed", "fail", "failure", "error", "pay_failed", "payment_failed", "cancel", "canceled", "cancelled", "closed", "order_closed":
+	}
+	if isKPayFailedStatus(order.Status) {
 		return common.TopUpStatusFailed
+	}
+	for _, channel := range order.Channels {
+		if isKPayPaidStatus(channel.Status) || isKPayPaidStatus(channel.ProviderStatus) {
+			return common.TopUpStatusSuccess
+		}
+	}
+	if len(order.Channels) > 0 {
+		allExpired := true
+		allFailed := true
+		for _, channel := range order.Channels {
+			expired := isKPayExpiredStatus(channel.Status) || isKPayExpiredStatus(channel.ProviderStatus)
+			failed := isKPayFailedStatus(channel.Status) || isKPayFailedStatus(channel.ProviderStatus)
+			allExpired = allExpired && expired
+			allFailed = allFailed && failed
+		}
+		if allExpired {
+			return common.TopUpStatusExpired
+		}
+		if allFailed {
+			return common.TopUpStatusFailed
+		}
 	}
 	if expireTime, ok := parseKPayTime(order.ExpireTime); ok && !expireTime.After(time.Now()) {
 		return common.TopUpStatusExpired

@@ -211,6 +211,7 @@ export default function TopUp() {
   const [historyMsg, setHistoryMsg] = useState(null)
   const [checkingTradeNo, setCheckingTradeNo] = useState('')
   const autoCheckedKpayTradeRef = useRef('')
+  const autoCheckedHistoryTradesRef = useRef(new Set())
 
   const priceRatio = Number(status?.price) || 1
   const minTopUp = Number(info?.min_topup) || 1
@@ -271,6 +272,11 @@ export default function TopUp() {
       if (!silent) setOrdersLoading(false)
     }
   }, [])
+
+  const refreshTopupOrders = useCallback(() => {
+    autoCheckedHistoryTradesRef.current.clear()
+    fetchTopupOrders()
+  }, [fetchTopupOrders])
 
   const checkRestoredKpayOrder = useCallback(
     async (order) => {
@@ -347,6 +353,51 @@ export default function TopUp() {
       setPayWay(onlineMethods[0].type)
     }
   }, [onlineMethods, payWay])
+
+  useEffect(() => {
+    const pendingOrders = topupOrders
+      .filter((order) => canCheckTopupOrder(order))
+      .filter((order) => !autoCheckedHistoryTradesRef.current.has(order.trade_no))
+      .slice(0, 5)
+    if (!pendingOrders.length) return undefined
+
+    pendingOrders.forEach((order) => autoCheckedHistoryTradesRef.current.add(order.trade_no))
+    let cancelled = false
+    ;(async () => {
+      const results = await Promise.allSettled(
+        pendingOrders.map((order) =>
+          checkKpayPay({
+            trade_no: order.trade_no,
+            provider_order_no: order.provider_order_no || '',
+          }),
+        ),
+      )
+      if (cancelled) return
+      let shouldRefreshOrders = false
+      let shouldRefreshUser = false
+      for (const result of results) {
+        if (result.status !== 'fulfilled') continue
+        const nextStatus = result.value?.data?.status
+        if (!isKpayFinalStatus(nextStatus)) continue
+        shouldRefreshOrders = true
+        if (normalizeTopupStatus(nextStatus) === 'success') {
+          shouldRefreshUser = true
+        }
+      }
+      if (shouldRefreshUser) {
+        try {
+          await refreshUser()
+        } catch (_) {}
+      }
+      if (shouldRefreshOrders) {
+        fetchTopupOrders({ silent: true })
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [fetchTopupOrders, refreshUser, topupOrders])
 
   useEffect(() => {
     const restorePendingOrder = () => {
@@ -855,7 +906,7 @@ export default function TopUp() {
           </div>
           <button
             type="button"
-            onClick={() => fetchTopupOrders()}
+            onClick={refreshTopupOrders}
             disabled={ordersLoading}
             className="inline-flex h-10 items-center justify-center gap-2 rounded-clay-pill bg-clay-bg px-4 text-xs font-black text-clay-ink shadow-clay transition-all active:scale-95 disabled:opacity-60"
           >

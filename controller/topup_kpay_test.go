@@ -73,6 +73,18 @@ func TestMapKPayOrderStatus(t *testing.T) {
 	require.Equal(t, common.TopUpStatusFailed, mapKPayOrderStatus(kpayOrderData{Status: "cancelled"}))
 	require.Equal(t, common.TopUpStatusExpired, mapKPayOrderStatus(kpayOrderData{Status: "expired"}))
 	require.Equal(t, common.TopUpStatusPending, mapKPayOrderStatus(kpayOrderData{Status: "WAIT_BUYER_PAY"}))
+	require.Equal(t, common.TopUpStatusSuccess, mapKPayOrderStatus(kpayOrderData{
+		Status: "pending",
+		Channels: []kpayChannelData{
+			{Status: "pending", ProviderStatus: "paid"},
+		},
+	}))
+	require.Equal(t, common.TopUpStatusPending, mapKPayOrderStatus(kpayOrderData{
+		Status: "pending",
+		Channels: []kpayChannelData{
+			{Status: "pending", ProviderStatus: "unpaid"},
+		},
+	}))
 
 	require.Equal(t, common.TopUpStatusExpired, mapKPayOrderStatus(kpayOrderData{
 		Status:     "pending",

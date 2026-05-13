@@ -879,8 +879,8 @@ export async function mockApiResponse(config) {
         { type: 'wxpay', name: '微信支付' },
       ],
       kpay_pay_methods: [
-        { type: 'kpay_alipay', name: 'KPay 支付宝' },
-        { type: 'kpay_wechat', name: 'KPay 微信支付' },
+        { type: 'kpay_alipay', name: '支付宝' },
+        { type: 'kpay_wechat', name: '微信支付' },
       ],
     })
   }

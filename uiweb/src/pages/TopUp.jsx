@@ -5,9 +5,7 @@ import {
   Sparkles,
   CheckCircle2,
   CreditCard,
-  ExternalLink,
   QrCode,
-  RefreshCcw,
   Tag,
 } from 'lucide-react'
 import ClayCard from '../components/clay/ClayCard.jsx'
@@ -61,12 +59,24 @@ const PAY_NAME = {
   alipay: '支付宝',
   wxpay: '微信支付',
   wechat: '微信支付',
-  kpay_alipay: 'KPay 支付宝',
-  kpay_wechat: 'KPay 微信支付',
+  kpay_alipay: '支付宝',
+  kpay_wechat: '微信支付',
 }
 
 const isKpayMethod = (type) => String(type || '').startsWith('kpay_')
 const toKpayMethod = (type) => (type === 'kpay_wechat' ? 'wechat' : 'alipay')
+const getPayMethodName = (method) => {
+  const type = typeof method === 'string' ? method : method?.type
+  return PAY_NAME[type] || method?.name || type || ''
+}
+const isMobilePaymentContext = () => {
+  if (typeof window === 'undefined') return false
+  const ua = window.navigator?.userAgent || ''
+  return (
+    window.matchMedia?.('(max-width: 767px)').matches ||
+    /Android|iPhone|iPad|iPod|Mobile|MicroMessenger/i.test(ua)
+  )
+}
 
 export default function TopUp() {
   const { user, setUser } = useUser()
@@ -87,7 +97,7 @@ export default function TopUp() {
   const [paying, setPaying] = useState(false)
   const [payMsg, setPayMsg] = useState(null)
   const [kpayOrder, setKpayOrder] = useState(null)
-  const [kpayChecking, setKpayChecking] = useState(false)
+  const [, setKpayChecking] = useState(false)
 
   const priceRatio = Number(status?.price) || 1
   const minTopUp = Number(info?.min_topup) || 1
@@ -101,13 +111,15 @@ export default function TopUp() {
     () => (info?.kpay_pay_methods || []).filter((m) => m.type === 'kpay_alipay' || m.type === 'kpay_wechat'),
     [info],
   )
-  const onlineMethods = useMemo(
-    () => [
-      ...(enableOnline ? epayMethods.map((m) => ({ ...m, provider: 'epay' })) : []),
-      ...(enableKpay ? kpayMethods.map((m) => ({ ...m, provider: 'kpay' })) : []),
-    ],
-    [enableOnline, epayMethods, enableKpay, kpayMethods],
-  )
+  const onlineMethods = useMemo(() => {
+    if (enableKpay && kpayMethods.length > 0) {
+      return kpayMethods.map((m) => ({ ...m, provider: 'kpay', name: getPayMethodName(m) }))
+    }
+    if (enableOnline) {
+      return epayMethods.map((m) => ({ ...m, provider: 'epay', name: getPayMethodName(m) }))
+    }
+    return []
+  }, [enableOnline, epayMethods, enableKpay, kpayMethods])
   const amountOptions = info?.amount_options || []
   const discountMap = info?.discount || {}
 
@@ -237,14 +249,23 @@ export default function TopUp() {
     setPaying(true)
     try {
       if (isKpayMethod(payWay)) {
+        const kpayMethod = toKpayMethod(payWay)
         const res = await requestKpayPay({
           amount: parseInt(topUpCount, 10),
-          payment_method: toKpayMethod(payWay),
+          payment_method: kpayMethod,
         })
         if (res?.message === 'success' && res.data) {
-          setKpayOrder(res.data)
+          const nextOrder = {
+            ...res.data,
+            payment_method: res.data.payment_method || kpayMethod,
+          }
           setConfirmOpen(false)
           setPayMsg(null)
+          if (kpayMethod === 'alipay' && isMobilePaymentContext() && nextOrder.direct_pay_url) {
+            window.location.assign(nextOrder.direct_pay_url)
+            return
+          }
+          setKpayOrder(nextOrder)
         } else {
           const errText =
             typeof res?.data === 'string' ? res.data : res?.message || '支付请求失败'
@@ -370,6 +391,11 @@ export default function TopUp() {
   const currentDiscount = discountMap[topUpCount] || 1
   const hasDiscount = currentDiscount > 0 && currentDiscount < 1 && amount > 0
   const originalAmount = hasDiscount ? amount / currentDiscount : 0
+  const kpayPaymentMethod = kpayOrder?.payment_method || toKpayMethod(payWay)
+  const kpayTip =
+    isMobilePaymentContext() && kpayPaymentMethod === 'wechat'
+      ? '请保存二维码或截图后，打开微信支付完成付款。'
+      : '请使用对应支付 App 扫码，完成后会自动检查到账。'
 
   return (
     <ClayConsoleShell title="充值中心" subtitle="兑换码或在线支付,任你选择">
@@ -459,7 +485,7 @@ export default function TopUp() {
                       }`}
                     >
                       <PayMethodIcon type={m.type} />
-                      <span className="font-bold text-sm">{m.name || PAY_NAME[m.type] || m.type}</span>
+                      <span className="font-bold text-sm">{getPayMethodName(m)}</span>
                     </button>
                   )
                 })}
@@ -591,7 +617,7 @@ export default function TopUp() {
             <span className="text-clay-faint">支付方式</span>
             <span className="inline-flex items-center gap-2 font-bold">
               <PayMethodIcon type={payWay} className="w-4 h-4" />
-              {onlineMethods.find((m) => m.type === payWay)?.name || PAY_NAME[payWay] || payWay}
+              {getPayMethodName(onlineMethods.find((m) => m.type === payWay) || payWay)}
             </span>
           </div>
         </div>
@@ -602,25 +628,13 @@ export default function TopUp() {
         onClose={() => setKpayOrder(null)}
         title="扫码支付"
         size="sm"
-        footer={
-          <>
-            {kpayOrder?.direct_pay_url && (
-              <ClayButton
-                variant="secondary"
-                onClick={() => window.open(kpayOrder.direct_pay_url, '_blank', 'noopener,noreferrer')}
-              >
-                <ExternalLink className="w-4 h-4" /> 打开支付
-              </ClayButton>
-            )}
-            <ClayButton variant="primary" disabled={kpayChecking} onClick={() => checkKpayStatus(false)}>
-              {kpayChecking ? '检查中…' : (<><RefreshCcw className="w-4 h-4" /> 检查到账</>)}
-            </ClayButton>
-          </>
-        }
       >
         <div className="space-y-4">
           {kpayOrder?.status === 'success' ? (
             <ClayAlert tone="success">支付已到账</ClayAlert>
+          ) : null}
+          {kpayOrder?.status !== 'success' ? (
+            <ClayAlert tone="info">{kpayTip}</ClayAlert>
           ) : null}
           <div className="mx-auto w-56 h-56 rounded-2xl shadow-clay-inset bg-white flex items-center justify-center p-3">
             {kpayOrder?.qr_code_data_uri || kpayOrder?.qr_code_image_url ? (

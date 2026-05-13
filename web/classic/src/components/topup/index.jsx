@@ -29,7 +29,7 @@ import {
   copy,
   getQuotaPerUnit,
 } from '../../helpers';
-import { Button, Modal, Toast } from '@douyinfe/semi-ui';
+import { Modal, Toast } from '@douyinfe/semi-ui';
 import { useTranslation } from 'react-i18next';
 import { UserContext } from '../../context/User';
 import { StatusContext } from '../../context/Status';
@@ -76,7 +76,7 @@ const TopUp = () => {
   const [enableWaffoPancakeTopUp, setEnableWaffoPancakeTopUp] = useState(false);
   const [waffoPancakeMinTopUp, setWaffoPancakeMinTopUp] = useState(1);
   const [enableKPayTopUp, setEnableKPayTopUp] = useState(false);
-  const [kpayChecking, setKpayChecking] = useState(false);
+  const [, setKpayChecking] = useState(false);
   const [kpayOrder, setKpayOrder] = useState(null);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -670,6 +670,7 @@ const TopUp = () => {
         // 处理支付方式
         let payMethods = data.pay_methods || [];
         let kpayPayMethods = data.kpay_pay_methods || [];
+        let kpayMethodsActive = false;
         try {
           if (typeof payMethods === 'string') {
             payMethods = JSON.parse(payMethods);
@@ -682,6 +683,12 @@ const TopUp = () => {
               .filter((method) => method.name && method.type)
               .map((method) => ({
                 ...method,
+                name:
+                  method.type === 'kpay_alipay'
+                    ? '支付宝'
+                    : method.type === 'kpay_wechat'
+                      ? '微信支付'
+                      : method.name,
                 min_topup:
                   Number(method.min_topup) || Number(data.min_topup) || 1,
                 color:
@@ -689,7 +696,8 @@ const TopUp = () => {
                     ? 'rgba(var(--semi-blue-5), 1)'
                     : 'rgba(var(--semi-green-5), 1)',
               }));
-            payMethods = [...kpayPayMethods, ...payMethods];
+            kpayMethodsActive = kpayPayMethods.length > 0;
+            payMethods = kpayMethodsActive ? kpayPayMethods : payMethods;
           }
           if (payMethods && payMethods.length > 0) {
             // 检查name和type是否为空
@@ -741,8 +749,10 @@ const TopUp = () => {
 
           setPayMethods(payMethods);
           const enableStripeTopUp = data.enable_stripe_topup || false;
-          const enableOnlineTopUp = data.enable_online_topup || false;
-          const enableKPayTopUp = data.enable_kpay_topup || false;
+          const enableKPayTopUp =
+            Boolean(data.enable_kpay_topup) && kpayMethodsActive;
+          const enableOnlineTopUp =
+            Boolean(data.enable_online_topup) && !enableKPayTopUp;
           const enableCreemTopUp = data.enable_creem_topup || false;
           const enableWaffoTopUp = data.enable_waffo_topup || false;
           const enableWaffoPancakeTopUp =
@@ -1058,30 +1068,7 @@ const TopUp = () => {
         maskClosable={false}
         size='small'
         centered
-        footer={
-          <div className='flex justify-end gap-2'>
-            {kpayOrder?.direct_pay_url && (
-              <Button
-                onClick={() =>
-                  window.open(
-                    kpayOrder.direct_pay_url,
-                    '_blank',
-                    'noopener,noreferrer',
-                  )
-                }
-              >
-                {t('打开支付')}
-              </Button>
-            )}
-            <Button
-              type='primary'
-              loading={kpayChecking}
-              onClick={() => checkKPayStatus(false)}
-            >
-              {t('检查到账')}
-            </Button>
-          </div>
-        }
+        footer={null}
       >
         {kpayOrder && (
           <div className='space-y-4 text-center'>
@@ -1096,7 +1083,7 @@ const TopUp = () => {
                 />
               ) : (
                 <div className='text-sm text-gray-500'>
-                  {t('暂无二维码，请尝试打开支付')}
+                  {t('暂无二维码，请稍后重试')}
                 </div>
               )}
             </div>

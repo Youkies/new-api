@@ -148,11 +148,11 @@ func normalizeKPayMethod(method string) string {
 func kpayPayMethods() []map[string]string {
 	return []map[string]string{
 		{
-			"name": "KPay 支付宝",
+			"name": "支付宝",
 			"type": "kpay_alipay",
 		},
 		{
-			"name": "KPay 微信支付",
+			"name": "微信支付",
 			"type": "kpay_wechat",
 		},
 	}

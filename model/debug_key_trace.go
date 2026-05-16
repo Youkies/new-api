@@ -5,6 +5,7 @@ import (
 
 	"github.com/QuantumNous/new-api/common"
 	"gorm.io/gorm"
+	"gorm.io/gorm/schema"
 )
 
 const (
@@ -13,45 +14,58 @@ const (
 	DebugKeyTraceStatusClientCanceled = "client_canceled"
 )
 
+type DebugTraceText string
+
+func (DebugTraceText) GormDataType() string {
+	return "text"
+}
+
+func (DebugTraceText) GormDBDataType(db *gorm.DB, _ *schema.Field) string {
+	if db != nil && db.Dialector.Name() == "mysql" {
+		return "longtext"
+	}
+	return "text"
+}
+
 type DebugKeyTrace struct {
-	Id                    int64  `json:"id"`
-	RequestId             string `json:"request_id" gorm:"type:varchar(64);index"`
-	CreatedAt             int64  `json:"created_at" gorm:"bigint;index"`
-	UserId                int    `json:"user_id" gorm:"index"`
-	Username              string `json:"username" gorm:"type:varchar(191);index;default:''"`
-	TokenId               int    `json:"token_id" gorm:"index"`
-	TokenName             string `json:"token_name" gorm:"type:varchar(191);index;default:''"`
-	ModelName             string `json:"model_name" gorm:"type:varchar(191);index;default:''"`
-	Group                 string `json:"group" gorm:"type:varchar(191);index;default:''"`
-	RequestMethod         string `json:"request_method" gorm:"type:varchar(16);default:''"`
-	RequestPath           string `json:"request_path" gorm:"type:varchar(512);index;default:''"`
-	RelayFormat           string `json:"relay_format" gorm:"type:varchar(64);default:''"`
-	FinalRelayFormat      string `json:"final_relay_format" gorm:"type:varchar(64);default:''"`
-	RelayMode             int    `json:"relay_mode" gorm:"default:0"`
-	IsStream              bool   `json:"is_stream"`
-	ChannelId             int    `json:"channel_id" gorm:"index;default:0"`
-	ChannelName           string `json:"channel_name" gorm:"type:varchar(191);default:''"`
-	ChannelType           int    `json:"channel_type" gorm:"default:0"`
-	UseChannel            string `json:"use_channel" gorm:"type:text"`
-	Status                string `json:"status" gorm:"type:varchar(32);index;default:''"`
-	HttpStatus            int    `json:"http_status" gorm:"default:0"`
-	UpstreamStatus        int    `json:"upstream_status" gorm:"default:0"`
-	ErrorType             string `json:"error_type" gorm:"type:varchar(64);default:''"`
-	ErrorCode             string `json:"error_code" gorm:"type:varchar(128);default:''"`
-	ErrorMessage          string `json:"error_message" gorm:"type:text"`
-	RequestHeaders        string `json:"request_headers" gorm:"type:text"`
-	RequestBody           string `json:"request_body" gorm:"type:text"`
-	RequestBodyTruncated  bool   `json:"request_body_truncated"`
-	UpstreamUrl           string `json:"upstream_url" gorm:"type:text"`
-	UpstreamHeaders       string `json:"upstream_headers" gorm:"type:text"`
-	UpstreamBody          string `json:"upstream_body" gorm:"type:text"`
-	UpstreamBodyTruncated bool   `json:"upstream_body_truncated"`
-	ResponseHeaders       string `json:"response_headers" gorm:"type:text"`
-	ResponseBody          string `json:"response_body" gorm:"type:text"`
-	ResponseBodyTruncated bool   `json:"response_body_truncated"`
-	ResponseSize          int64  `json:"response_size" gorm:"default:0"`
-	UseTime               int    `json:"use_time" gorm:"default:0"`
-	AdminInfo             string `json:"admin_info" gorm:"type:text"`
+	Id                    int64          `json:"id"`
+	RequestId             string         `json:"request_id" gorm:"type:varchar(64);index"`
+	CreatedAt             int64          `json:"created_at" gorm:"bigint;index"`
+	UserId                int            `json:"user_id" gorm:"index"`
+	Username              string         `json:"username" gorm:"type:varchar(191);index;default:''"`
+	TokenId               int            `json:"token_id" gorm:"index"`
+	TokenName             string         `json:"token_name" gorm:"type:varchar(191);index;default:''"`
+	ModelName             string         `json:"model_name" gorm:"type:varchar(191);index;default:''"`
+	Group                 string         `json:"group" gorm:"type:varchar(191);index;default:''"`
+	RequestMethod         string         `json:"request_method" gorm:"type:varchar(16);default:''"`
+	RequestPath           string         `json:"request_path" gorm:"type:varchar(512);index;default:''"`
+	RelayFormat           string         `json:"relay_format" gorm:"type:varchar(64);default:''"`
+	FinalRelayFormat      string         `json:"final_relay_format" gorm:"type:varchar(64);default:''"`
+	RelayMode             int            `json:"relay_mode" gorm:"default:0"`
+	IsStream              bool           `json:"is_stream"`
+	ChannelId             int            `json:"channel_id" gorm:"index;default:0"`
+	ChannelName           string         `json:"channel_name" gorm:"type:varchar(191);default:''"`
+	ChannelType           int            `json:"channel_type" gorm:"default:0"`
+	UseChannel            DebugTraceText `json:"use_channel"`
+	Status                string         `json:"status" gorm:"type:varchar(32);index;default:''"`
+	HttpStatus            int            `json:"http_status" gorm:"default:0"`
+	UpstreamStatus        int            `json:"upstream_status" gorm:"default:0"`
+	ErrorType             string         `json:"error_type" gorm:"type:varchar(64);default:''"`
+	ErrorCode             string         `json:"error_code" gorm:"type:varchar(128);default:''"`
+	ErrorMessage          DebugTraceText `json:"error_message"`
+	RequestHeaders        DebugTraceText `json:"request_headers"`
+	RequestBody           DebugTraceText `json:"request_body"`
+	RequestBodyTruncated  bool           `json:"request_body_truncated"`
+	UpstreamUrl           DebugTraceText `json:"upstream_url"`
+	UpstreamHeaders       DebugTraceText `json:"upstream_headers"`
+	UpstreamBody          DebugTraceText `json:"upstream_body"`
+	UpstreamBodyTruncated bool           `json:"upstream_body_truncated"`
+	ResponseHeaders       DebugTraceText `json:"response_headers"`
+	ResponseBody          DebugTraceText `json:"response_body"`
+	ResponseBodyTruncated bool           `json:"response_body_truncated"`
+	ResponseSize          int64          `json:"response_size" gorm:"default:0"`
+	UseTime               int            `json:"use_time" gorm:"default:0"`
+	AdminInfo             DebugTraceText `json:"admin_info"`
 }
 
 type DebugKeyTraceQuery struct {

@@ -135,13 +135,13 @@ func StartDebugKeyTrace(c *gin.Context, info *relaycommon.RelayInfo) func(*types
 		if c.Request.URL != nil {
 			trace.RequestPath = c.Request.URL.Path
 		}
-		trace.RequestHeaders = debugTraceJSON(sanitizeDebugHeaders(c.Request.Header))
+		trace.RequestHeaders = model.DebugTraceText(debugTraceJSON(sanitizeDebugHeaders(c.Request.Header)))
 		if storage, err := common.GetBodyStorage(c); err == nil {
 			if data, truncated, readErr := readDebugBodyStorage(storage); readErr == nil {
-				trace.RequestBody = sanitizeDebugBody(data, c.Request.Header.Get("Content-Type"))
+				trace.RequestBody = model.DebugTraceText(sanitizeDebugBody(data, c.Request.Header.Get("Content-Type")))
 				trace.RequestBodyTruncated = truncated
 			} else {
-				trace.RequestBody = fmt.Sprintf("[failed to read request body: %s]", readErr.Error())
+				trace.RequestBody = model.DebugTraceText(fmt.Sprintf("[failed to read request body: %s]", readErr.Error()))
 			}
 			_, _ = storage.Seek(0, io.SeekStart)
 			c.Request.Body = io.NopCloser(storage)
@@ -190,8 +190,8 @@ func WrapDebugTraceUpstreamRequest(c *gin.Context, req *http.Request) {
 	capture := newDebugBodyCapture(debugTraceBodyLimit)
 	state.mu.Lock()
 	state.upstreamCapture = capture
-	state.trace.UpstreamUrl = sanitizeDebugURL(req.URL)
-	state.trace.UpstreamHeaders = debugTraceJSON(sanitizeDebugHeaders(req.Header))
+	state.trace.UpstreamUrl = model.DebugTraceText(sanitizeDebugURL(req.URL))
+	state.trace.UpstreamHeaders = model.DebugTraceText(debugTraceJSON(sanitizeDebugHeaders(req.Header)))
 	state.mu.Unlock()
 	if req.Body != nil {
 		req.Body = &debugCaptureReadCloser{ReadCloser: req.Body, capture: capture}
@@ -226,7 +226,7 @@ func FinishDebugKeyTrace(c *gin.Context, finalErr *types.NewAPIError) {
 	trace.ChannelType = c.GetInt("channel_type")
 	useChannel := c.GetStringSlice("use_channel")
 	if len(useChannel) > 0 {
-		trace.UseChannel = strings.Join(useChannel, "->")
+		trace.UseChannel = model.DebugTraceText(strings.Join(useChannel, "->"))
 	}
 	if trace.Username == "" {
 		trace.Username = c.GetString("username")
@@ -236,7 +236,7 @@ func FinishDebugKeyTrace(c *gin.Context, finalErr *types.NewAPIError) {
 	}
 	if trace.HttpStatus == 0 && c.Writer != nil {
 		trace.HttpStatus = c.Writer.Status()
-		trace.ResponseHeaders = debugTraceJSON(sanitizeDebugHeaders(c.Writer.Header()))
+		trace.ResponseHeaders = model.DebugTraceText(debugTraceJSON(sanitizeDebugHeaders(c.Writer.Header())))
 	}
 	if trace.HttpStatus == 0 {
 		trace.HttpStatus = http.StatusOK
@@ -252,7 +252,7 @@ func FinishDebugKeyTrace(c *gin.Context, finalErr *types.NewAPIError) {
 		}
 		trace.ErrorType = string(finalErr.GetErrorType())
 		trace.ErrorCode = string(finalErr.GetErrorCode())
-		trace.ErrorMessage = finalErr.MaskSensitiveErrorWithStatusCode()
+		trace.ErrorMessage = model.DebugTraceText(finalErr.MaskSensitiveErrorWithStatusCode())
 		if finalErr.StatusCode > 0 {
 			trace.HttpStatus = finalErr.StatusCode
 		}
@@ -274,14 +274,14 @@ func FinishDebugKeyTrace(c *gin.Context, finalErr *types.NewAPIError) {
 		adminInfo["multi_key_index"] = common.GetContextKeyInt(c, constant.ContextKeyChannelMultiKeyIndex)
 	}
 	AppendChannelAffinityAdminInfo(c, adminInfo)
-	trace.AdminInfo = debugTraceJSON(adminInfo)
+	trace.AdminInfo = model.DebugTraceText(debugTraceJSON(adminInfo))
 
 	if upstreamData, truncated, _ := upstreamCapture.snapshot(); len(upstreamData) > 0 || truncated {
-		trace.UpstreamBody = sanitizeDebugBody(upstreamData, "")
+		trace.UpstreamBody = model.DebugTraceText(sanitizeDebugBody(upstreamData, ""))
 		trace.UpstreamBodyTruncated = truncated
 	}
 	if responseData, truncated, total := responseCapture.snapshot(); len(responseData) > 0 || truncated {
-		trace.ResponseBody = sanitizeDebugBody(responseData, trace.ResponseHeaders)
+		trace.ResponseBody = model.DebugTraceText(sanitizeDebugBody(responseData, string(trace.ResponseHeaders)))
 		trace.ResponseBodyTruncated = truncated
 		trace.ResponseSize = total
 	}

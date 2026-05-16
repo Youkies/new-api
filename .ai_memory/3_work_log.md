@@ -99,3 +99,5 @@
 - [2026-05-16 23:06] 补齐 classic `/legacy/` Claude 渠道编辑页的预填充兼容开关，并修正新 UI 中文文案。
 - [2026-05-16 23:33] 从干净上下文构建并推送 GHCR 镜像 `latest` 与 `release-20260516-2331`，digest `sha256:17e6023c673b4e2c1ef7e9fc8c314c7aa28fb9766de52be324f74f13b2c97b96`。
 - [2026-05-16 23:35] 修复 uiweb 签到页自定义 emoji 货币符号导致金额换行，日历小格子改为只显示奖励数字。
+- [2026-05-16 23:49] 从干净上下文构建并推送 GHCR 镜像 `latest` 与 `release-20260516-2347`，digest `sha256:0cd9435202a46e9a9042b50a1493c3a9493f79a8480eacfb1dcb7182e4f5d63e`。
+- [2026-05-16 23:57] 修复 `debug_key_traces` MySQL 自动迁移将大字段降级为 `TEXT` 导致启动 fatal 的问题，改为 MySQL `LONGTEXT`。

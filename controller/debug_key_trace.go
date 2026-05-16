@@ -109,30 +109,30 @@ func formatDebugKeyTraceLog(trace *model.DebugKeyTrace) string {
 	writeTraceLine(&b, "Relay Mode", fmt.Sprintf("%d", trace.RelayMode))
 	writeTraceLine(&b, "Stream", fmt.Sprintf("%t", trace.IsStream))
 	writeTraceLine(&b, "Channel", fmt.Sprintf("%s (#%d, type=%d)", trace.ChannelName, trace.ChannelId, trace.ChannelType))
-	writeTraceLine(&b, "Use Channel", trace.UseChannel)
+	writeTraceLine(&b, "Use Channel", string(trace.UseChannel))
 	writeTraceLine(&b, "Use Time", fmt.Sprintf("%d ms", trace.UseTime))
 	b.WriteString("\n")
 
-	writeTraceSection(&b, "Original Request Headers", trace.RequestHeaders)
-	writeTraceSection(&b, "Original Request Body", trace.RequestBody)
+	writeTraceSection(&b, "Original Request Headers", string(trace.RequestHeaders))
+	writeTraceSection(&b, "Original Request Body", string(trace.RequestBody))
 	if trace.RequestBodyTruncated {
 		b.WriteString("[original request body truncated]\n\n")
 	}
-	writeTraceSection(&b, "Upstream URL", trace.UpstreamUrl)
-	writeTraceSection(&b, "Upstream Headers", trace.UpstreamHeaders)
-	writeTraceSection(&b, "Upstream Body", trace.UpstreamBody)
+	writeTraceSection(&b, "Upstream URL", string(trace.UpstreamUrl))
+	writeTraceSection(&b, "Upstream Headers", string(trace.UpstreamHeaders))
+	writeTraceSection(&b, "Upstream Body", string(trace.UpstreamBody))
 	if trace.UpstreamBodyTruncated {
 		b.WriteString("[upstream body truncated]\n\n")
 	}
-	writeTraceSection(&b, "Response Headers", trace.ResponseHeaders)
-	writeTraceSection(&b, "Response Body", trace.ResponseBody)
+	writeTraceSection(&b, "Response Headers", string(trace.ResponseHeaders))
+	writeTraceSection(&b, "Response Body", string(trace.ResponseBody))
 	if trace.ResponseBodyTruncated {
 		b.WriteString("[response body truncated]\n\n")
 	}
 	writeTraceSection(&b, "Error Type", trace.ErrorType)
 	writeTraceSection(&b, "Error Code", trace.ErrorCode)
-	writeTraceSection(&b, "Error Message", trace.ErrorMessage)
-	writeTraceSection(&b, "Admin Info", trace.AdminInfo)
+	writeTraceSection(&b, "Error Message", string(trace.ErrorMessage))
+	writeTraceSection(&b, "Admin Info", string(trace.AdminInfo))
 	return b.String()
 }
 

@@ -265,6 +265,24 @@ CREATE TABLE debug_key_traces (
 
 如果数据库面板提示字段、表或索引已存在，可忽略对应语句。
 
+如果升级前已存在 `debug_key_traces`，且启动日志出现 `Data too long for column 'request_body'` 或 `ALTER TABLE debug_key_traces MODIFY COLUMN request_body text`，说明旧版本自动迁移正在尝试把大字段降级为 `TEXT`。先在 `debug_key_traces` 所在数据库执行：
+
+```sql
+ALTER TABLE debug_key_traces
+  MODIFY COLUMN request_body LONGTEXT,
+  MODIFY COLUMN response_body LONGTEXT,
+  MODIFY COLUMN upstream_body LONGTEXT,
+  MODIFY COLUMN request_headers LONGTEXT,
+  MODIFY COLUMN response_headers LONGTEXT,
+  MODIFY COLUMN upstream_headers LONGTEXT,
+  MODIFY COLUMN upstream_url LONGTEXT,
+  MODIFY COLUMN error_message LONGTEXT,
+  MODIFY COLUMN admin_info LONGTEXT,
+  MODIFY COLUMN use_channel LONGTEXT;
+```
+
+`debug_key_traces` 跟随 `LOG_SQL_DSN`：配置了日志库就在日志库执行；未配置日志库则在主库执行。
+
 ## AI 助手表
 
 `ui_assistant_configs`：

@@ -38,6 +38,22 @@
 
 - `npm run build` 于 `uiweb/` 通过，仅有既有大 chunk 警告。
 - `git diff --check` 通过。
+- 2026-05-16 已从干净 `git archive` 上下文构建并推送 GHCR 镜像 `ghcr.io/youkies/new-api:latest` 与 `:release-20260516-2347`，对应提交 `cd367384`，平台 `linux/amd64`，digest `sha256:0cd9435202a46e9a9042b50a1493c3a9493f79a8480eacfb1dcb7182e4f5d63e`。
+
+## 当前可接手状态：debug_key_traces MySQL 大字段迁移崩溃修复（2026-05-16）
+
+### 已完成
+
+- 线上崩溃原因：`DebugKeyTrace` 模型将请求/响应调试内容字段标记为 `gorm:"type:text"`，MySQL 自动迁移尝试执行 `ALTER TABLE debug_key_traces MODIFY COLUMN request_body text`，已有调试记录超过 64KB 时触发 `Error 1406 Data too long for column 'request_body'`，应用启动 fatal。
+- 新增 `model.DebugTraceText` 自定义 GORM 类型：MySQL 使用 `longtext`，PostgreSQL / SQLite 使用 `text`。
+- `debug_key_traces` 的请求体、响应体、上游体、headers、URL、错误信息、admin_info、use_channel 等大字段统一改为 `DebugTraceText`，避免 MySQL 被降级到 `TEXT`。
+- 已在 `docs/uiweb/database-and-migrations.md` 增加线上手动救急 SQL，说明 `debug_key_traces` 跟随 `LOG_SQL_DSN` 所在库。
+
+### 验证结果
+
+- `go test ./model ./controller ./service -run "DebugKeyTrace|Token|KPay" -count=1` 通过。
+- `go test ./... -count=1` 通过。
+- `git diff --check` 通过。
 
 ## 当前可接手状态：管理员调试 Key 记录（2026-05-16）
 

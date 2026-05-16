@@ -6,7 +6,8 @@ export default function ProtectedRoute({ children }) {
   const location = useLocation()
 
   if (!user) {
-    return <Navigate to="/login" state={{ from: location.pathname + location.search }} replace />
+    const loginPath = location.search.includes('debug=') ? `/login${location.search}` : '/login'
+    return <Navigate to={loginPath} state={{ from: location.pathname + location.search }} replace />
   }
   return children
 }

@@ -16,7 +16,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   Modal,
   Table,
@@ -42,7 +42,7 @@ const { Text } = Typography;
 // 状态映射配置
 const STATUS_CONFIG = {
   success: { type: 'success', key: '成功' },
-  pending: { type: 'warning', key: '待支付' },
+  pending: { type: 'warning', key: '待支付/待到账' },
   failed: { type: 'danger', key: '失败' },
   expired: { type: 'danger', key: '已过期' },
 };
@@ -54,19 +54,42 @@ const PAYMENT_METHOD_MAP = {
   waffo: 'Waffo',
   alipay: '支付宝',
   wxpay: '微信',
+  wechat: '微信支付',
+  kpay_alipay: '支付宝',
+  kpay_wechat: '微信支付',
 };
 
-const TopupHistoryModal = ({ visible, onCancel, t }) => {
+const normalizeTopupStatus = (status) => String(status || '').toLowerCase();
+
+const isKPayTopupRecord = (record) =>
+  String(record?.payment_provider || '').toLowerCase() === 'kpay' ||
+  String(record?.trade_no || '').startsWith('KPAY');
+
+const canCheckKPayRecord = (record) =>
+  isKPayTopupRecord(record) &&
+  normalizeTopupStatus(record?.status) === 'pending';
+
+const isKPayFinalStatus = (status) =>
+  ['success', 'failed', 'expired'].includes(normalizeTopupStatus(status));
+
+const TopupHistoryModal = ({ visible, onCancel, t, onKPayStatusChange }) => {
   const [loading, setLoading] = useState(false);
   const [topups, setTopups] = useState([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [keyword, setKeyword] = useState('');
+  const [checkingTradeNo, setCheckingTradeNo] = useState('');
+  const autoCheckedKPayTradesRef = useRef(new Set());
   const isMobile = useIsMobile();
+  const userIsAdmin = useMemo(() => isAdmin(), []);
 
-  const loadTopups = async (currentPage, currentPageSize) => {
-    setLoading(true);
+  const loadTopups = async (
+    currentPage,
+    currentPageSize,
+    { silent = false } = {},
+  ) => {
+    if (!silent) setLoading(true);
     try {
       const base = isAdmin() ? '/api/user/topup' : '/api/user/topup/self';
       const qs =
@@ -84,7 +107,7 @@ const TopupHistoryModal = ({ visible, onCancel, t }) => {
     } catch (error) {
       Toast.error({ content: t('加载账单失败') });
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
@@ -107,6 +130,106 @@ const TopupHistoryModal = ({ visible, onCancel, t }) => {
     setKeyword(value);
     setPage(1);
   };
+
+  const getKPayStatusText = (status) => {
+    switch (normalizeTopupStatus(status)) {
+      case 'success':
+        return t('已到账');
+      case 'failed':
+        return t('支付失败');
+      case 'expired':
+        return t('已过期');
+      default:
+        return t('待支付');
+    }
+  };
+
+  const requestKPayCheck = async (record) => {
+    const res = await API.post('/api/user/kpay/check', {
+      trade_no: record.trade_no,
+      provider_order_no: record.provider_order_no || '',
+    });
+    const message = res?.data?.message;
+    const nextStatus = normalizeTopupStatus(res?.data?.data?.status);
+    return { message, status: nextStatus, data: res?.data?.data };
+  };
+
+  const handleKPayCheck = async (record, { silent = false } = {}) => {
+    if (!record?.trade_no || !canCheckKPayRecord(record)) return null;
+    if (!silent) setCheckingTradeNo(record.trade_no);
+    try {
+      const result = await requestKPayCheck(record);
+      if (result.message === 'success' && isKPayFinalStatus(result.status)) {
+        if (!silent) {
+          if (result.status === 'success') {
+            Toast.success({ content: t('支付已到账') });
+          } else {
+            Toast.error({ content: getKPayStatusText(result.status) });
+          }
+        }
+        onKPayStatusChange?.({
+          tradeNo: record.trade_no,
+          status: result.status,
+          record,
+        });
+        await loadTopups(page, pageSize, { silent: true });
+        return result.status;
+      }
+      if (!silent) {
+        Toast.info({ content: t('订单仍在等待支付确认') });
+      }
+      return result.status || 'pending';
+    } catch (e) {
+      if (!silent) {
+        Toast.error({ content: t('检查失败') });
+      }
+      return null;
+    } finally {
+      if (!silent) setCheckingTradeNo('');
+    }
+  };
+
+  useEffect(() => {
+    if (!visible || userIsAdmin) return undefined;
+    const pendingRecords = topups
+      .filter((record) => canCheckKPayRecord(record))
+      .filter(
+        (record) => !autoCheckedKPayTradesRef.current.has(record.trade_no),
+      )
+      .slice(0, 5);
+    if (pendingRecords.length === 0) return undefined;
+
+    pendingRecords.forEach((record) =>
+      autoCheckedKPayTradesRef.current.add(record.trade_no),
+    );
+    let cancelled = false;
+    (async () => {
+      const results = await Promise.allSettled(
+        pendingRecords.map((record) => requestKPayCheck(record)),
+      );
+      if (cancelled) return;
+      let shouldRefresh = false;
+      results.forEach((result, index) => {
+        if (result.status !== 'fulfilled') return;
+        const nextStatus = result.value?.status;
+        if (!isKPayFinalStatus(nextStatus)) return;
+        shouldRefresh = true;
+        onKPayStatusChange?.({
+          tradeNo: pendingRecords[index]?.trade_no,
+          status: nextStatus,
+          record: pendingRecords[index],
+        });
+      });
+      if (shouldRefresh) {
+        await loadTopups(page, pageSize, { silent: true });
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible, topups, userIsAdmin]);
 
   // 管理员补单
   const handleAdminComplete = async (tradeNo) => {
@@ -146,9 +269,13 @@ const TopupHistoryModal = ({ visible, onCancel, t }) => {
   };
 
   // 渲染支付方式
-  const renderPaymentMethod = (pm) => {
+  const renderPaymentMethod = (pm, record) => {
     const displayName = PAYMENT_METHOD_MAP[pm];
-    return <Text>{displayName ? t(displayName) : pm || '-'}</Text>;
+    const methodName = displayName ? t(displayName) : pm || '-';
+    if (String(record?.payment_provider || '').toLowerCase() === 'kpay') {
+      return <Text>{`KPay · ${methodName}`}</Text>;
+    }
+    return <Text>{methodName}</Text>;
   };
 
   const isSubscriptionTopup = (record) => {
@@ -156,8 +283,10 @@ const TopupHistoryModal = ({ visible, onCancel, t }) => {
     return Number(record?.amount || 0) === 0 && tradeNo.startsWith('sub');
   };
 
-  // 检查是否为管理员
-  const userIsAdmin = useMemo(() => isAdmin(), []);
+  const hasCheckableKPay = useMemo(
+    () => !userIsAdmin && topups.some((record) => canCheckKPayRecord(record)),
+    [topups, userIsAdmin],
+  );
 
   const columns = useMemo(() => {
     const baseColumns = [
@@ -217,24 +346,38 @@ const TopupHistoryModal = ({ visible, onCancel, t }) => {
       },
     ];
 
-    // 管理员才显示操作列
-    if (userIsAdmin) {
+    if (userIsAdmin || hasCheckableKPay) {
       baseColumns.push({
         title: t('操作'),
         key: 'action',
         render: (_, record) => {
           const actions = [];
-          if (record.status === 'pending') {
+          if (!userIsAdmin && canCheckKPayRecord(record)) {
+            const checking = checkingTradeNo === record.trade_no;
             actions.push(
               <Button
-                key="complete"
+                key='check-kpay'
+                size='small'
+                type='primary'
+                theme='outline'
+                loading={checking}
+                onClick={() => handleKPayCheck(record)}
+              >
+                {t('检查到账')}
+              </Button>,
+            );
+          }
+          if (userIsAdmin && record.status === 'pending') {
+            actions.push(
+              <Button
+                key='complete'
                 size='small'
                 type='primary'
                 theme='outline'
                 onClick={() => confirmAdminComplete(record.trade_no)}
               >
                 {t('补单')}
-              </Button>
+              </Button>,
             );
           }
           return actions.length > 0 ? <>{actions}</> : null;
@@ -250,7 +393,7 @@ const TopupHistoryModal = ({ visible, onCancel, t }) => {
     });
 
     return baseColumns;
-  }, [t, userIsAdmin]);
+  }, [t, userIsAdmin, hasCheckableKPay, checkingTradeNo]);
 
   return (
     <Modal

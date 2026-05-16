@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, NavLink, useNavigate } from 'react-router-dom'
-import { Bell, Bot, Home, LayoutDashboard, LogOut, Megaphone, Menu, Settings2, ShieldCheck } from 'lucide-react'
+import { Bell, Bot, Gamepad2, Home, LayoutDashboard, LogOut, Megaphone, Menu, Settings2, ShieldCheck } from 'lucide-react'
 import ClayAvatar from '../clay/ClayAvatar.jsx'
 import ClayCard from '../clay/ClayCard.jsx'
 import ClayFooter from './ClayFooter.jsx'
@@ -17,6 +17,7 @@ const NAV = [
   { to: '/admin/notifications', label: '通知', icon: Bell },
   { to: '/admin/refund-appeals', label: '申诉', icon: ShieldCheck },
   { to: '/admin/page-config', label: '页面', icon: Settings2 },
+  { to: '/admin/playground-foods', label: '游乐场', icon: Gamepad2 },
   { to: '/admin/assistant', label: 'AI 助手', icon: Bot },
 ]
 

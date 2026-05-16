@@ -45,3 +45,6 @@ uiweb-dist/
 .tmp/
 .playwright-cli/
 .tmp_stream_diag_*
+
+# Local private deployment records and secrets
+.local/

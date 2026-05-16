@@ -10,6 +10,7 @@
 - 通知设置
 - 空回补偿申诉审核
 - 页面配置
+- 游乐场菜品审核
 - AI 助手配置
 
 不建议放在 `uiweb` 的内容：
@@ -186,6 +187,40 @@
 - `POST /api/ui/admin/refund-appeals/:id/approve`
 - `POST /api/ui/admin/refund-appeals/:id/reject`
 - `POST /api/ui/admin/refund-appeals/approve-all`
+
+## 游乐场菜品审核
+
+页面：
+
+- 用户游乐场：`/playground/what-to-eat`
+- 管理审核：`/admin/playground-foods`
+
+后端表：
+
+- `ui_playground_foods`
+
+定位：
+
+- 用户自己的“我的菜单”保存到服务器，作为当前用户私有候选，不需要管理员审核。
+- 用户“投稿菜品”进入公共投稿池，管理员编辑名称、描述、分类和图片后批准，才会进入公共菜品池。
+
+接口：
+
+- `GET /api/ui/playground/foods`
+- `POST /api/ui/playground/foods/private`
+- `DELETE /api/ui/playground/foods/private/:id`
+- `POST /api/ui/playground/foods/submissions`
+- `GET /api/ui/admin/playground-foods`
+- `GET/PUT/DELETE /api/ui/admin/playground-foods/:id`
+- `POST /api/ui/admin/playground-foods/:id/approve`
+- `POST /api/ui/admin/playground-foods/:id/reject`
+
+规则：
+
+- 私有菜单 `visibility=private`，只返回给提交用户。
+- 公共投稿 `visibility=public`，初始 `status=pending`。
+- 批准后写为 `status=approved`，用户随机池会自动读取。
+- 图片单张限制 800KB，支持 jpeg/png/webp/gif。
 
 ## 页面配置
 

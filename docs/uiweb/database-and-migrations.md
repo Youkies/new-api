@@ -25,6 +25,7 @@ uiweb 相关表：
 - `ui_refund_appeals`
 - `ui_refund_appeal_items`
 - `ui_page_configs`
+- `ui_playground_foods`
 - `ui_assistant_configs`
 - `ui_assistant_documents`
 - `ui_assistant_sessions`
@@ -162,6 +163,24 @@ uiweb 相关表：
 - 与既有 `UserUsableGroups` 分离：`UserUsableGroups` 保存短描述，`UserUsableGroupDetails` 保存长介绍。
 - `/api/pricing` 返回时只暴露当前用户可见分组对应的详细介绍。
 - 生产环境不需要手动建表或加列；如需上线前预置内容，只需向现有 `options` 表写入 key 为 `UserUsableGroupDetails` 的 JSON 值，或在 `/legacy/` 经典控制台保存分组设置自动生成。
+
+## 游乐场菜品表
+
+`ui_playground_foods`：
+
+- 菜品名称、描述、分类、图标。
+- 图片二进制与图片 MIME 类型。
+- `visibility`：`private` 为用户自己的菜单，`public` 为公共投稿/公共菜品池。
+- `status`：`pending`、`approved`、`rejected`。私有菜单默认直接 `approved`，公共投稿需管理员审核。
+- `source`、`submitted_by`、`submitted_username`。
+- `reviewed_by`、`review_note`、`reviewed_at`。
+- 创建/更新时间、软删除时间。
+
+语义：
+
+- 用户侧随机池读取公共已通过菜品 + 当前用户自己的私有菜品。
+- 管理端只审核 `visibility=public` 的投稿。
+- 图片当前保存在数据库中，单张限制 800KB，支持 jpeg/png/webp/gif。
 
 ## AI 助手表
 

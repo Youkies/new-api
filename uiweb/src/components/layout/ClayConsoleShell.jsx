@@ -3,7 +3,6 @@ import { Link, NavLink, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard,
   Wallet,
-  MessageSquare,
   Settings,
   LogOut,
   Menu,
@@ -13,6 +12,7 @@ import {
   CalendarCheck2,
   Link2,
   Bell,
+  Gamepad2,
 } from 'lucide-react'
 import ClayCard from '../clay/ClayCard.jsx'
 import ClayFooter from './ClayFooter.jsx'
@@ -36,8 +36,8 @@ const NAV = [
   { to: '/personal', label: '设置', icon: Settings },
 ]
 
-const LEGACY = [
-  { href: '/legacy/playground', label: '游乐场', icon: MessageSquare },
+const PROFILE_LINKS = [
+  { to: '/playground', label: '游乐场', icon: Gamepad2 },
 ]
 
 export default function ClayConsoleShell({
@@ -166,20 +166,20 @@ export default function ClayConsoleShell({
                       </span>
                     )}
                   </Link>
-                  {LEGACY.map((l) => {
+                  {PROFILE_LINKS.map((l) => {
                     const Icon = l.icon
                     return (
-                      <a
-                        key={l.href}
-                        href={l.href}
+                      <Link
+                        key={l.to}
+                        to={l.to}
+                        onClick={() => setUserOpen(false)}
                         className="flex items-center justify-between gap-2 px-4 py-2.5 rounded-clay-sm text-sm font-bold hover:bg-white/40"
                       >
                         <span className="flex items-center gap-2">
                           <Icon className="w-4 h-4" />
                           {l.label}
                         </span>
-                        <ExternalLink className="w-3.5 h-3.5 text-clay-faint" />
-                      </a>
+                      </Link>
                     )
                   })}
                   <a
@@ -222,20 +222,18 @@ export default function ClayConsoleShell({
                 )
               })}
               <div className="h-px bg-black/5 my-1" />
-              {LEGACY.map((l) => {
+              {PROFILE_LINKS.map((l) => {
                 const Icon = l.icon
                 return (
-                  <a
-                    key={l.href}
-                    href={l.href}
-                    className="px-5 py-2.5 rounded-clay-pill font-bold text-sm text-clay-faint flex items-center justify-between"
+                  <NavLink
+                    key={l.to}
+                    to={l.to}
+                    className={linkCls}
+                    onClick={() => setMenuOpen(false)}
                   >
-                    <span className="flex items-center gap-2">
-                      <Icon className="w-4 h-4" />
-                      {l.label}
-                    </span>
-                    <ExternalLink className="w-3.5 h-3.5" />
-                  </a>
+                    <Icon className="w-4 h-4" />
+                    {l.label}
+                  </NavLink>
                 )
               })}
             </ClayCard>

@@ -615,15 +615,11 @@ func RechargeKPay(tradeNo string, actualPaymentMethod string, callerIp string, p
 	}
 
 	var quotaToAdd int
+	var completed bool
 	topUp := &TopUp{}
 
-	refCol := "`trade_no`"
-	if common.UsingPostgreSQL {
-		refCol = `"trade_no"`
-	}
-
 	err = DB.Transaction(func(tx *gorm.DB) error {
-		err = tx.Set("gorm:query_option", "FOR UPDATE").Where(refCol+" = ?", tradeNo).First(topUp).Error
+		err = tx.Where("trade_no = ?", tradeNo).First(topUp).Error
 		if err != nil {
 			return ErrTopUpNotFound
 		}
@@ -636,7 +632,9 @@ func RechargeKPay(tradeNo string, actualPaymentMethod string, callerIp string, p
 			return nil
 		}
 
-		if topUp.Status != common.TopUpStatusPending {
+		if topUp.Status != common.TopUpStatusPending &&
+			topUp.Status != common.TopUpStatusFailed &&
+			topUp.Status != common.TopUpStatusExpired {
 			return ErrTopUpStatusInvalid
 		}
 
@@ -651,19 +649,48 @@ func RechargeKPay(tradeNo string, actualPaymentMethod string, callerIp string, p
 			return errors.New("无效的充值额度")
 		}
 
+		now := common.GetTimestamp()
+		updates := map[string]interface{}{
+			"complete_time": now,
+			"status":        common.TopUpStatusSuccess,
+		}
+		if actualPaymentMethod != "" && topUp.PaymentMethod != actualPaymentMethod {
+			updates["payment_method"] = actualPaymentMethod
+		}
+
+		result := tx.Model(&TopUp{}).
+			Where("id = ? AND payment_provider = ? AND status IN ?", topUp.Id, PaymentProviderKPay, []string{
+				common.TopUpStatusPending,
+				common.TopUpStatusFailed,
+				common.TopUpStatusExpired,
+			}).
+			Updates(updates)
+		if result.Error != nil {
+			return result.Error
+		}
+		if result.RowsAffected == 0 {
+			var current TopUp
+			if err := tx.Select("status").Where("id = ?", topUp.Id).First(&current).Error; err != nil {
+				return err
+			}
+			if current.Status == common.TopUpStatusSuccess {
+				quotaToAdd = 0
+				return nil
+			}
+			return ErrTopUpStatusInvalid
+		}
+
 		if actualPaymentMethod != "" && topUp.PaymentMethod != actualPaymentMethod {
 			topUp.PaymentMethod = actualPaymentMethod
 		}
-		topUp.CompleteTime = common.GetTimestamp()
+		topUp.CompleteTime = now
 		topUp.Status = common.TopUpStatusSuccess
-		if err := tx.Save(topUp).Error; err != nil {
-			return err
-		}
 
 		if err := tx.Model(&User{}).Where("id = ?", topUp.UserId).Update("quota", gorm.Expr("quota + ?", quotaToAdd)).Error; err != nil {
 			return err
 		}
 
+		completed = true
 		return nil
 	})
 
@@ -672,7 +699,7 @@ func RechargeKPay(tradeNo string, actualPaymentMethod string, callerIp string, p
 		return err
 	}
 
-	if quotaToAdd > 0 {
+	if completed && quotaToAdd > 0 {
 		RecordTopupLog(topUp.UserId, fmt.Sprintf("KPay充值成功，充值额度: %v，支付金额: %.2f", logger.FormatQuota(quotaToAdd), topUp.Money), callerIp, topUp.PaymentMethod, PaymentProviderKPay)
 		if err := NotifyUITopUpSuccess(topUp, quotaToAdd, PaymentProviderKPay); err != nil {
 			common.SysLog("failed to create kpay topup notification: " + err.Error())

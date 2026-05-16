@@ -60,3 +60,37 @@
 - [2026-05-08 06:31] 价格页移动端分组弹窗顶部提示改为跟随当前 `user.group` 动态显示，并用前台 Chrome 验证普通用户不再固定显示 Pro/Ultra。
 - [2026-05-08 06:50] 调整首页移动端未登录布局：导航隐藏登录/注册，登录/注册放在 `Youkies API` 品牌与 `AI Gateway` 小标题之间且与品牌等高；登录态头像继续在右上角。
 - [2026-05-10 02:15] 完成渠道思维链输出拦截：新增 `strip_native_reasoning` 与 `strip_content_think_tags`，覆盖 OpenAI 流式/非流式/聚合输出，补齐 default 与 classic 设置入口、i18n 和文档。
+- [2026-05-10 19:18] 完成 Youkies 必吃榜第一版：新增模型评价、食评积分、积分兑换额度、后台奖励配置和审核/精选入口；`go test ./... -count=1`、`uiweb npm run build`、`git diff --check` 通过。
+- [2026-05-10 21:48] 部署东京 API-only 节点 `newapi-jp.youkies.space`：GHCR latest 镜像、`NODE_TYPE=slave`、Nginx 仅放行 `/v1` 和 `/api/status`，证书有效且容器 healthy；真实凭据记录在 git 忽略的 `.local/deployments/newapi-jp/`。
+- [2026-05-13 12:47] 按紧急更新安排搁置 Youkies 必吃榜：`main` 已通过 `7ac0b9a9` revert，代码保留在 `feature/youkies-must-eat-shelved`，当前生产库暂不执行必吃榜建表 SQL。
+- [2026-05-13 13:12] 完成 KPay 原生二维码充值接入：新增服务端下单/查单/回调入账、`uiweb` 站内扫码弹窗、classic KPay 设置入口和文档；Go 全量测试、两套前端构建、`git diff --check` 与本地 `5178` 预览通过。
+- [2026-05-13 14:38] 记录测试机约定：服务器迁移前的云悠美国机器 + 旧数据库作为 `newapi-test.youkies.space` 测试环境，push 后云悠自动构建，运行 `NODE_TYPE=master`。
+- [2026-05-13 15:11] 修复 classic 充值页未识别 KPay 的问题，并增强 KPay 创建平台订单失败日志，便于排查授权域名、商户通道和金额限制。
+- [2026-05-13 15:32] 根据 KPay `code=7` 下单失败日志定位到平台侧拒绝，记录优先排查 API Key IP 白名单、授权域名和手动指定商户；本地补了 `selected_merchant_id` 数值日志。
+- [2026-05-13 16:08] 读取 `kpay-epay-api` 本地文档，确认标准 API 会严格校验 IP、授权域名归属和 AI 巡查；当前测试环境日志显示 `selected_merchant_id=45`，建议先改为 `0` 自动选商户再测。
+- [2026-05-13 16:32] 调整 KPay 用户侧体验：去掉支付方式里的 KPay 前缀，KPay 与易支付同时配置时优先展示 KPay，扫码弹窗去掉底部按钮，并补移动端支付宝直跳、微信截图/保存二维码提示。
+- [2026-05-13 16:49] 从干净临时 worktree 构建并推送 GHCR 镜像 `ghcr.io/youkies/new-api:latest` 与 `:dec8db47`，digest 为 `sha256:b863a569fbcacc31b0387e3d363d1c500eeff485d5872ed4faf8221ee81ccfaf`。
+- [2026-05-13 18:28] 修复 KPay 移动端支付后不到账兜底：回跳地址改到 `/topup`，`uiweb` 兼容旧 `/console/topup` 并保存待支付订单，回跳/聚焦后自动查单补偿；新增 `top_ups.provider_order_no` 保存 KPay 平台单号。
+- [2026-05-13 18:37] 提交并推送 `99e845f1 修复 KPay 微信支付到账兜底`；从干净临时 worktree 构建并推送 GHCR 镜像 `latest` / `99e845f1`，digest `sha256:30b735b3c09420e04409dc05e281d14fe42b2b70919bb366d8eaba52f2b04a22`。
+- [2026-05-13 18:45] 按 KPay 回调协议调整 `/api/kpay/notify`：请求到达后统一 HTTP 200，body 用 `ok` / `fail` 表示业务结果，避免 400/403 被平台判定为接口不可用。
+- [2026-05-13 19:05] 提交并推送 `1927d4ae 兼容 KPay 回调 200 响应协议`；从干净临时 worktree 构建并推送 GHCR 镜像 `latest` / `1927d4ae`，digest `sha256:05f563517cbf7b0e5554207dc294c23db7d09b962a7032040cfcdb099bc6cd63`。
+- [2026-05-13 20:44] 为 `uiweb` 充值页新增最近订单历史和 KPay 待确认订单“检查到账”按钮，用户可自行触发查单补偿；`uiweb npm run build` 与 `git diff --check` 通过。
+- [2026-05-13 20:50] 优化 KPay 待支付订单恢复：用户关闭浏览器进程后再次进入充值页，会恢复扫码弹窗并立即查单一次，之后继续轮询。
+- [2026-05-13 20:57] 调整 KPay 订单状态语义：前端 `pending` 显示为“待支付/待到账”，后端查单明确失败、取消或过期时同步为 `failed` / `expired`；KPay 控制器测试和 `uiweb` 构建通过。
+- [2026-05-13 21:08] 对照 KPay 在线文档补齐查单通道状态：当顶层订单仍为 `pending` 但 `channels[].status` / `providerStatus` 为 `paid` 时，后端会按成功补偿入账。
+- [2026-05-13 21:13] 修正 KPay 过期订单展示：`uiweb` 最近订单列表加载后会静默查一次可见的 KPay 待支付订单，查到过期/失败/已支付后刷新列表状态。
+- [2026-05-13 21:18] 补 KPay 旧单兜底：无 `provider_order_no` 的 pending 单超过 15 分钟按过期返回，同时允许已支付回调覆盖本地 failed/expired 状态。
+- [2026-05-14 01:04] 修复 KPay 重复到账风险：`RechargeKPay` 改为订单状态原子切换后才加额度，并补充幂等/终态恢复测试。
+- [2026-05-14 01:09] 从临时干净 Docker context 构建并推送 GHCR 镜像 `latest` / `kpay-idempotent-20260514-0104`，digest `sha256:e15991833ca54c8ae59620dffb47dbad43120cf3e835841ad9386058396056ce`。
+- [2026-05-14 01:10] 记录 KPay 事故用户复现补充：支付后返回/刷新跳转页多次触发查单补偿，符合旧版非原子幂等导致重复到账的修复方向。
+- [2026-05-16 11:09] 补齐 classic `/legacy/` KPay 充值回调兜底：待支付订单本地保存/恢复、页面聚焦自动查单、账单列表静默查单和“检查到账”按钮；`web/classic npm run build` 与相关 `git diff --check` 通过。
+- [2026-05-16 19:33] 新增 `uiweb` 原生游乐场 `/playground`：头像下拉菜单入口接入“今天吃什么呀”随机工具，支持分类、自定义和今日记录；`uiweb npm run build`、`git diff --check` 与本地 Playwright 验收通过。
+- [2026-05-16 19:38] 将 `/playground` 调整为“小游戏列表 + 当前小游戏工作区”结构，当前显示“今天吃什么呀”已上线和 2 个待加入占位卡片；`uiweb npm run build` 与 Playwright 随机记录验收通过。
+- [2026-05-16 19:40] 为移动端进一步拆分游乐场：`/playground` 只保留小游戏列表，点击进入 `/playground/what-to-eat` 独立界面并提供返回；`uiweb npm run build` 与手机视口 Playwright 验收通过。
+- [2026-05-16 20:02] 扩展游乐场菜品体系：用户“我的菜单”保存到服务器，投稿菜品进入管理员审核池，审核编辑后加入公共菜品池；后端定向测试、`uiweb npm run build`、`git diff --check` 与 Playwright smoke test 通过。
+- [2026-05-16 20:14] 优化 `/playground/what-to-eat` 移动端：标题改紧凑模式、分类改横向滑动、抽奖卡只保留主按钮，清空/自定义/投稿入口移到侧栏卡片；`uiweb npm run build` 与 `git diff --check` 通过。
+- [2026-05-16 20:21] 修复手机内网调试入口：登录页在 dev 环境显示“进入调试模式”，受保护路由跳登录时保留 `?debug=1`；`uiweb npm run build`、`git diff --check` 与 Playwright 登录页跳回验证通过。
+- [2026-05-16 20:22] 收束“今天吃什么呀”操作入口：抽奖结果卡移除自定义/投稿按钮，统一放到“我的菜单”右上角；`uiweb npm run build` 与 `git diff --check` 通过。
+- [2026-05-16 20:35] 导入问卷菜谱：从 `000_快来丰富一下Youkies的菜谱_提交统计.xlsx` 去重整理出 200 个社区菜单候选，包含 `滨寿司`；`uiweb npm run build` 与 `git diff --check` 通过。
+- [2026-05-16 20:37] 将 `隔壁家的小孩` 作为“今天吃什么呀”整蛊彩蛋加入夜宵/小吃候选，并用描述明确这是问推荐的玩笑项；`uiweb npm run build` 与 `git diff --check` 通过。
+- [2026-05-16 20:44] 发布前复查并构建推送 Docker：定向 Go 测试、`uiweb` 构建、`web/classic` 构建通过；从干净 context 推送 `ghcr.io/youkies/new-api:latest` 与 `:release-20260516-2040`，digest `sha256:a10b71192f0f08bcfb74ea69b749ae5eed66e0e221cd111d0da19278241c559d`。

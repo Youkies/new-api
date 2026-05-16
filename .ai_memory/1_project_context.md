@@ -45,13 +45,24 @@
 - `uiweb` 管理端定位为轻量“站点运营后台”，不要塞大量渠道、模型、系统设置等重管理功能。
 - 用户端移动端体验优先优化；管理端主要按桌面使用场景维护，只需保持基本可访问。
 - 官方 default UI 当前审美不符合用户偏好，先保留不删除；后续官方 default 更新优先借鉴 API/逻辑，不主动替换主 UI。
+- 用户头像下拉菜单的“游乐场”当前指向 `uiweb` 原生 `/playground`；第一版是“今天吃什么呀”随机工具，支持内置菜单、用户私有服务器菜单和公共审核菜品池，今日记录仍存在浏览器 `localStorage`，细节查 `docs/uiweb/features.md`、`docs/uiweb/api-contracts.md` 和 `docs/uiweb/database-and-migrations.md`。
+
+## 支付边界
+
+- KPay 原生充值走服务端 API 下单和回调：用户侧 `POST /api/user/kpay/pay` 创建 `direct_qr` 订单，`uiweb` 站内展示二维码，`POST /api/kpay/notify` 回调入账，`POST /api/user/kpay/check` 仅作为用户当前订单查单兜底。
+- KPay 平台回跳地址使用主 UI `/topup?show_history=true`；`uiweb` 兼容旧 `/console/topup` 回跳，并会短期保存待支付 KPay 订单，支付 App 回跳或页面重新聚焦后自动恢复 `/api/user/kpay/check` 补偿查单；KPay 平台订单号保存到 `top_ups.provider_order_no`，用于服务端查单兜底。
+- classic `/legacy/` 充值页同样会短期保存待支付 KPay 订单，支付 App 返回、页面重新聚焦或重新进入充值页时会自动恢复并查单；legacy 账单弹窗也会对用户自己的 KPay `pending` 单静默查单并提供“检查到账”按钮。
+- KPay 配置入口在 `/legacy/` classic 支付设置的 `KPay 设置` 标签；密钥只保存到 option，不写入 docs、memory、提交或回复。
+- 旧易支付兼容链路仍保留，KPay 只是新增站内二维码链路，用于减少外部收银台跳转失败。
 
 ## 部署与生产约束
 
 - Zeabur 同一个项目内同时部署数据库服务和应用服务；数据库为 Zeabur MySQL，数据库名 `zeabur`。
 - 正式网站使用本地打包 Docker 镜像并推送到 GHCR 后部署。
 - 调试/验证部署使用 `NODE_TYPE=slave`，每次 GitHub push 后由 Zeabur 自动构建。
+- 测试机使用服务器迁移前的云悠美国机器与旧数据库，域名 `newapi-test.youkies.space`；push 后由云悠服务器自动构建，运行模式使用 `NODE_TYPE=master`，用于上线前验证，不要混同正式站 Zeabur/GHCR 发布链路。
 - 海外域名：`newapi.youkies.space`；国内中转域名：`newapi.youkies.cn`。
+- 东京 API-only 节点：`newapi-jp.youkies.space`，部署在东京国际线路服务器，使用 `ghcr.io/youkies/new-api:latest`、`NODE_TYPE=slave`、同一套 Zeabur MySQL；Nginx 只放行 `/v1`、`/v1/*` 和 `/api/status`，根路径返回 404。真实连接信息和 secret 只保存在 git 忽略的 `.local/deployments/newapi-jp/`。
 - 国内中转服务器：腾讯云 `81.71.120.210`，Nginx 配置在 `/etc/nginx/sites-enabled/newapi.conf`，同机还运行 `lobe.youkies.cn`。
 - SSE/长响应反代关键配置：`proxy_buffering off`，`proxy_read_timeout 1000s`。
 - 生产必须固定 `SESSION_SECRET`；如需加密签名稳定，可同步固定 `CRYPTO_SECRET`。
@@ -65,6 +76,12 @@
 - Claude extended thinking：OpenAI 格式转 Claude 时需清洗 `temperature`、`top_k`、非法 `top_p`，强制工具调用降级为 `auto`。
 - 头像缓存：User 对象 `_avatar_t` + 头像 URL `?t=` + 服务端 CRC32 ETag + `no-cache`。
 - 定价公式、模型状态 SQL、日志筛选、签到时区、分组签到、通知/申诉/AI 助手等细节均已沉淀到 `docs/uiweb/`。
+
+## 搁置功能
+
+- Youkies 必吃榜第一版已从 `main` 撤回，撤回提交为 `7ac0b9a9`。
+- 必吃榜代码保留在远端分支 `feature/youkies-must-eat-shelved`，需要恢复时从该分支继续。
+- 当前主线不要依赖 `/must-eat`、`/admin/model-reviews` 或 `ui_model_review_*` 表；相关迁移 SQL 暂不执行。
 
 ## 协作偏好
 

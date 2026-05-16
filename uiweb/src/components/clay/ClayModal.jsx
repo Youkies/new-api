@@ -33,7 +33,7 @@ export default function ClayModal({ open, onClose, title, children, footer, size
         if (e.target === e.currentTarget) onClose?.()
       }}
     >
-      <ClayCard className={`relative w-full ${sizeCls} max-h-[85vh] overflow-y-auto`}>
+      <ClayCard className={`clay-scrollbar-none relative w-full ${sizeCls} max-h-[85vh] overflow-y-auto`}>
         {title && (
           <div className="flex items-center justify-between mb-5">
             <h3 className="text-2xl font-black tracking-tight">{title}</h3>

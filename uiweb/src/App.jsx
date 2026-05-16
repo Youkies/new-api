@@ -24,6 +24,7 @@ import Checkin from './pages/Checkin.jsx'
 import ApiUrls from './pages/ApiUrls.jsx'
 import PaymentReturn from './pages/PaymentReturn.jsx'
 import Notifications from './pages/Notifications.jsx'
+import Playground from './pages/Playground.jsx'
 import ProtectedRoute from './components/layout/ProtectedRoute.jsx'
 import AdminRoute from './components/layout/AdminRoute.jsx'
 import AdminHome from './pages/admin/AdminHome.jsx'
@@ -32,6 +33,7 @@ import AdminNotifications from './pages/admin/AdminNotifications.jsx'
 import AdminRefundAppeals from './pages/admin/AdminRefundAppeals.jsx'
 import AdminAssistant from './pages/admin/AdminAssistant.jsx'
 import AdminPageConfig from './pages/admin/AdminPageConfig.jsx'
+import AdminPlaygroundFoods from './pages/admin/AdminPlaygroundFoods.jsx'
 
 export default function App() {
   return (
@@ -141,6 +143,38 @@ export default function App() {
         }
       />
       <Route
+        path="/playground"
+        element={
+          <ProtectedRoute>
+            <Playground />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/playground/:gameId"
+        element={
+          <ProtectedRoute>
+            <Playground />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/console/playground"
+        element={
+          <ProtectedRoute>
+            <Playground />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/console/playground/:gameId"
+        element={
+          <ProtectedRoute>
+            <Playground />
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/admin"
         element={
           <ProtectedRoute>
@@ -186,6 +220,16 @@ export default function App() {
           <ProtectedRoute>
             <AdminRoute>
               <AdminPageConfig />
+            </AdminRoute>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/playground-foods"
+        element={
+          <ProtectedRoute>
+            <AdminRoute>
+              <AdminPlaygroundFoods />
             </AdminRoute>
           </ProtectedRoute>
         }

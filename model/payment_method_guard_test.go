@@ -87,6 +87,13 @@ func getUserQuotaForPaymentGuardTest(t *testing.T, userID int) int {
 	return user.Quota
 }
 
+func countTopupLogsForPaymentGuardTest(t *testing.T, userID int) int64 {
+	t.Helper()
+	var count int64
+	require.NoError(t, LOG_DB.Model(&Log{}).Where("user_id = ? AND type = ?", userID, LogTypeTopup).Count(&count).Error)
+	return count
+}
+
 func TestRechargeWaffoPancake_RejectsMismatchedPaymentMethod(t *testing.T) {
 	truncateTables(t)
 
@@ -100,6 +107,50 @@ func TestRechargeWaffoPancake_RejectsMismatchedPaymentMethod(t *testing.T) {
 	require.NotNil(t, topUp)
 	assert.Equal(t, common.TopUpStatusPending, topUp.Status)
 	assert.Equal(t, 0, getUserQuotaForPaymentGuardTest(t, 101))
+}
+
+func TestRechargeKPay_IsIdempotentAfterSuccess(t *testing.T) {
+	truncateTables(t)
+
+	insertUserForPaymentGuardTest(t, 230, 0)
+	insertTopUpForPaymentGuardTest(t, "kpay-idempotent-guard", 230, PaymentProviderKPay)
+
+	require.NoError(t, RechargeKPay("kpay-idempotent-guard", "alipay", "127.0.0.1", 9.99))
+	require.NoError(t, RechargeKPay("kpay-idempotent-guard", "alipay", "127.0.0.1", 9.99))
+
+	assert.Equal(t, common.TopUpStatusSuccess, getTopUpStatusForPaymentGuardTest(t, "kpay-idempotent-guard"))
+	assert.Equal(t, int(2*common.QuotaPerUnit), getUserQuotaForPaymentGuardTest(t, 230))
+	assert.Equal(t, int64(1), countTopupLogsForPaymentGuardTest(t, 230))
+}
+
+func TestRechargeKPay_AllowsTerminalStatusRecoveryOnce(t *testing.T) {
+	testCases := []struct {
+		name          string
+		initialStatus string
+	}{
+		{name: "failed", initialStatus: common.TopUpStatusFailed},
+		{name: "expired", initialStatus: common.TopUpStatusExpired},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			truncateTables(t)
+			tradeNo := "kpay-recovery-" + tc.name
+			insertUserForPaymentGuardTest(t, 240, 0)
+			insertTopUpForPaymentGuardTest(t, tradeNo, 240, PaymentProviderKPay)
+			require.NoError(t, DB.Model(&TopUp{}).Where("trade_no = ?", tradeNo).Update("status", tc.initialStatus).Error)
+
+			require.NoError(t, RechargeKPay(tradeNo, "wechat", "127.0.0.1", 9.99))
+			require.NoError(t, RechargeKPay(tradeNo, "wechat", "127.0.0.1", 9.99))
+
+			topUp := GetTopUpByTradeNo(tradeNo)
+			require.NotNil(t, topUp)
+			assert.Equal(t, common.TopUpStatusSuccess, topUp.Status)
+			assert.Equal(t, "wechat", topUp.PaymentMethod)
+			assert.Equal(t, int(2*common.QuotaPerUnit), getUserQuotaForPaymentGuardTest(t, 240))
+			assert.Equal(t, int64(1), countTopupLogsForPaymentGuardTest(t, 240))
+		})
+	}
 }
 
 func TestUpdatePendingTopUpStatus_RejectsMismatchedPaymentProvider(t *testing.T) {

@@ -40,6 +40,71 @@ import TransferModal from './modals/TransferModal';
 import PaymentConfirmModal from './modals/PaymentConfirmModal';
 import TopupHistoryModal from './modals/TopupHistoryModal';
 
+const KPAY_PENDING_ORDER_KEY = 'youkies_pending_kpay_order';
+const KPAY_PENDING_ORDER_TTL_MS = 30 * 60 * 1000;
+
+const normalizeKPayStatus = (status) => String(status || '').toLowerCase();
+
+const isKPayFinalStatus = (status) =>
+  ['success', 'failed', 'expired'].includes(normalizeKPayStatus(status));
+
+const normalizePendingKPayOrder = (order) => {
+  if (!order?.trade_no) return null;
+  const savedAt = Number(order.saved_at) || Date.now();
+  if (Date.now() - savedAt > KPAY_PENDING_ORDER_TTL_MS) return null;
+  return { ...order, saved_at: savedAt };
+};
+
+const readPendingKPayOrder = () => {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = window.localStorage?.getItem(KPAY_PENDING_ORDER_KEY);
+    if (!raw) return null;
+    const order = normalizePendingKPayOrder(JSON.parse(raw));
+    if (!order) {
+      window.localStorage?.removeItem(KPAY_PENDING_ORDER_KEY);
+      return null;
+    }
+    return order;
+  } catch (_) {
+    try {
+      window.localStorage?.removeItem(KPAY_PENDING_ORDER_KEY);
+    } catch (_) {}
+    return null;
+  }
+};
+
+const savePendingKPayOrder = (order) => {
+  const nextOrder = normalizePendingKPayOrder({
+    ...order,
+    saved_at: Date.now(),
+  });
+  if (!nextOrder || typeof window === 'undefined') return nextOrder;
+  try {
+    window.localStorage?.setItem(
+      KPAY_PENDING_ORDER_KEY,
+      JSON.stringify(nextOrder),
+    );
+  } catch (_) {}
+  return nextOrder;
+};
+
+const clearPendingKPayOrder = () => {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage?.removeItem(KPAY_PENDING_ORDER_KEY);
+  } catch (_) {}
+};
+
+const isMobilePaymentContext = () => {
+  if (typeof window === 'undefined') return false;
+  const ua = window.navigator?.userAgent || '';
+  return (
+    window.matchMedia?.('(max-width: 767px)').matches ||
+    /Android|iPhone|iPad|iPod|Mobile|MicroMessenger/i.test(ua)
+  );
+};
+
 const TopUp = () => {
   const { t } = useTranslation();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -88,6 +153,7 @@ const TopUp = () => {
   const [payMethods, setPayMethods] = useState([]);
 
   const affFetchedRef = useRef(false);
+  const autoCheckedKpayTradeRef = useRef('');
 
   // 邀请相关状态
   const [affLink, setAffLink] = useState('');
@@ -140,6 +206,19 @@ const TopUp = () => {
 
   const toKPayMethod = (payment) =>
     payment === 'kpay_wechat' ? 'wechat' : 'alipay';
+
+  const getKPayStatusText = (status) => {
+    switch (normalizeKPayStatus(status)) {
+      case 'success':
+        return t('已到账');
+      case 'failed':
+        return t('支付失败');
+      case 'expired':
+        return t('已过期');
+      default:
+        return t('待支付');
+    }
+  };
 
   const requestAmountByPayment = async (payment, value) => {
     if (payment === 'stripe') {
@@ -288,7 +367,20 @@ const TopUp = () => {
         if (res !== undefined) {
           const { message, data } = res.data;
           if (message === 'success') {
-            setKpayOrder(data);
+            const orderPayload = {
+              ...data,
+              payment_method: data?.payment_method || toKPayMethod(payWay),
+            };
+            const nextOrder =
+              savePendingKPayOrder(orderPayload) || orderPayload;
+            setKpayOrder(nextOrder);
+            if (
+              toKPayMethod(payWay) === 'alipay' &&
+              isMobilePaymentContext() &&
+              nextOrder.direct_pay_url
+            ) {
+              window.location.assign(nextOrder.direct_pay_url);
+            }
           } else {
             const errorMsg =
               typeof data === 'string' ? data : message || t('支付失败');
@@ -524,40 +616,79 @@ const TopUp = () => {
     }
   };
 
-  const checkKPayStatus = async (silent = false) => {
-    if (!kpayOrder?.trade_no) return;
+  const checkKPayStatus = async (silent = false, targetOrder = kpayOrder) => {
+    if (!targetOrder?.trade_no) return;
     setKpayChecking(true);
     try {
       const res = await API.post('/api/user/kpay/check', {
-        trade_no: kpayOrder.trade_no,
-        provider_order_no: kpayOrder.provider_order_no || '',
+        trade_no: targetOrder.trade_no,
+        provider_order_no: targetOrder.provider_order_no || '',
       });
-      const nextStatus = res?.data?.data?.status;
-      if (res?.data?.message === 'success' && nextStatus === 'success') {
-        setKpayOrder((prev) => ({ ...prev, status: 'success' }));
-        showSuccess(t('支付已到账'));
-        await getUserQuota();
-        return;
+      const nextStatus = normalizeKPayStatus(res?.data?.data?.status);
+      if (res?.data?.message === 'success' && isKPayFinalStatus(nextStatus)) {
+        setKpayOrder((prev) =>
+          prev?.trade_no === targetOrder.trade_no
+            ? { ...prev, status: nextStatus }
+            : prev,
+        );
+        clearPendingKPayOrder();
+        if (nextStatus === 'success') {
+          showSuccess(t('支付已到账'));
+          await getUserQuota();
+        } else if (!silent) {
+          showError(getKPayStatusText(nextStatus));
+        }
+        return nextStatus;
       }
       if (!silent) {
         showInfo(t('订单仍在等待支付确认'));
       }
+      return nextStatus || 'pending';
     } catch (err) {
       if (!silent) {
         showError(t('检查失败'));
       }
+      return null;
     } finally {
       setKpayChecking(false);
     }
   };
 
   useEffect(() => {
-    if (!kpayOrder?.trade_no || kpayOrder.status === 'success') return;
+    if (!kpayOrder?.trade_no || isKPayFinalStatus(kpayOrder.status)) return;
     const timer = setInterval(() => {
       checkKPayStatus(true);
     }, 5000);
     return () => clearInterval(timer);
   }, [kpayOrder?.trade_no, kpayOrder?.status]);
+
+  useEffect(() => {
+    const restorePendingOrder = () => {
+      const pendingOrder = readPendingKPayOrder();
+      if (!pendingOrder || isKPayFinalStatus(pendingOrder.status)) return;
+      setKpayOrder((prev) =>
+        prev?.trade_no === pendingOrder.trade_no ? prev : pendingOrder,
+      );
+      if (autoCheckedKpayTradeRef.current !== pendingOrder.trade_no) {
+        autoCheckedKpayTradeRef.current = pendingOrder.trade_no;
+        window.setTimeout(() => checkKPayStatus(true, pendingOrder), 0);
+      }
+    };
+
+    restorePendingOrder();
+    if (typeof window === 'undefined') return undefined;
+
+    const onVisibilityChange = () => {
+      if (!document.hidden) restorePendingOrder();
+    };
+    window.addEventListener('focus', restorePendingOrder);
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    return () => {
+      window.removeEventListener('focus', restorePendingOrder);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const getWaffoPancakeAmount = async (value) => {
     if (value === undefined) {
@@ -598,6 +729,23 @@ const TopUp = () => {
       userDispatch({ type: 'login', payload: data });
     } else {
       showError(message);
+    }
+  };
+
+  const handleKPayStatusChange = async ({ tradeNo, status }) => {
+    const nextStatus = normalizeKPayStatus(status);
+    if (!tradeNo || !isKPayFinalStatus(nextStatus)) return;
+    const pendingOrder = readPendingKPayOrder();
+    if (pendingOrder?.trade_no === tradeNo || kpayOrder?.trade_no === tradeNo) {
+      clearPendingKPayOrder();
+    }
+    setKpayOrder((prev) =>
+      prev?.trade_no === tradeNo ? { ...prev, status: nextStatus } : prev,
+    );
+    if (nextStatus === 'success') {
+      try {
+        await getUserQuota();
+      } catch (_) {}
     }
   };
 
@@ -1031,6 +1179,7 @@ const TopUp = () => {
         visible={openHistory}
         onCancel={handleHistoryCancel}
         t={t}
+        onKPayStatusChange={handleKPayStatusChange}
       />
 
       {/* Creem 充值确认模态框 */}
@@ -1104,7 +1253,7 @@ const TopUp = () => {
               <div className='flex justify-between'>
                 <span className='text-gray-500'>{t('状态')}</span>
                 <span className='font-semibold'>
-                  {kpayOrder.status === 'success' ? t('已到账') : t('待支付')}
+                  {getKPayStatusText(kpayOrder.status)}
                 </span>
               </div>
             </div>

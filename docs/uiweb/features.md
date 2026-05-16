@@ -86,6 +86,21 @@
 - 分组覆盖来自 `checkin_setting.group_quotas`。
 - 支持 `standard` / `standard优`、`pro` / `pro优`、`super` / `super优` / `spuer`、`ultra` / `ultra优` 等归一化匹配。
 
+## 游乐场
+
+页面：`uiweb/src/pages/Playground.jsx`
+
+能力：
+
+- 用户头像下拉菜单中的“游乐场”进入 `uiweb` 原生 `/playground` 页面，不再跳转到 classic `/legacy/playground`。
+- 游乐场采用独立列表页结构：`/playground` 只展示小游戏列表，具体小游戏打开独立界面，例如 `/playground/what-to-eat`。
+- 当前已上线“今天吃什么呀”，后续小游戏以列表配置加组件/路由的方式继续接入，避免移动端列表和游戏工作区挤在同一屏。
+- “今天吃什么呀”使用 Clay 组件和 Tailwind 样式，不引入外部 CDN、Font Awesome 或独立全局样式。
+- 菜单池由内置默认菜单、服务端公共菜品池、用户自己的私有菜单组成；内置菜单包含基础菜单和问卷收集的社区菜谱候选，今日记录仍保存在浏览器 `localStorage`。
+- “我的菜单”会保存到服务器，支持名称、描述、分类和可选图片，登录后可跨设备同步；历史本地自定义菜单仍会作为本地候选保留。
+- “投稿菜品”用于申请加入公共菜品池，用户需提交名称、描述、分类和图片，管理员审核编辑后才会进入公共随机候选。
+- 支持分类筛选、随机选择、再来一次、清空今日记录和添加/删除我的菜单；`/console/playground` 与 `/console/playground/:gameId` 兼容同一套页面。
+
 ## 定价页
 
 页面：`uiweb/src/pages/Pricing.jsx`

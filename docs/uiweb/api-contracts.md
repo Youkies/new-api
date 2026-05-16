@@ -83,6 +83,31 @@
 - approve 会补余额并写管理日志。
 - reject 不改余额。
 
+## 游乐场菜品
+
+用户侧：
+
+- `GET /api/ui/playground/foods`：返回公共已审核菜品 + 当前用户自己的私有菜单。
+- `GET /api/ui/playground/foods/:id/image`：读取菜品图片。公共图片可直接展示；私有图片只允许提交用户通过登录会话访问。
+- `POST /api/ui/playground/foods/private`：创建“我的菜单”，multipart 表单字段为 `name`、`description`、`category`、`icon`、可选 `image`。
+- `DELETE /api/ui/playground/foods/private/:id`：删除当前用户自己的私有菜单。
+- `POST /api/ui/playground/foods/submissions`：投稿公共菜品，multipart 表单字段为 `name`、`description`、`category`、`icon`、必填 `image`。
+
+管理侧：
+
+- `GET /api/ui/admin/playground-foods`
+- `GET /api/ui/admin/playground-foods/:id`
+- `PUT /api/ui/admin/playground-foods/:id`
+- `POST /api/ui/admin/playground-foods/:id/approve`
+- `POST /api/ui/admin/playground-foods/:id/reject`
+- `DELETE /api/ui/admin/playground-foods/:id`
+
+语义：
+
+- `private` 菜品不进入管理员审核，只归提交用户使用。
+- `public` 投稿初始为 `pending`，管理员可编辑名称、描述、分类和图片后批准为 `approved`，批准后进入公共随机候选。
+- 图片单张限制 800KB，支持 jpeg/png/webp/gif。
+
 ## 充值
 
 用户侧：

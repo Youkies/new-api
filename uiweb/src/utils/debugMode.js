@@ -459,6 +459,62 @@ function createInitialState() {
       ],
       updated_at: nowSec(),
     },
+    playgroundFoods: [
+      {
+        id: 1,
+        name: '调试投稿：草莓舒芙蕾',
+        description: '甜甜软软，适合下午需要一点漂亮东西的时候。',
+        category: 'dessert',
+        icon: '🍽️',
+        image_url: '',
+        status: 'pending',
+        visibility: 'public',
+        source: 'user',
+        submitted_by: DEBUG_USER.id,
+        submitted_username: DEBUG_USER.display_name,
+        reviewed_by: 0,
+        review_note: '',
+        reviewed_at: 0,
+        created_at: daysAgo(0, 16, 20),
+        updated_at: daysAgo(0, 16, 20),
+      },
+      {
+        id: 2,
+        name: '调试公共菜品：番茄芝士焗饭',
+        description: '热乎、拉丝，公共菜品池示例。',
+        category: 'rice',
+        icon: '🍽️',
+        image_url: '',
+        status: 'approved',
+        visibility: 'public',
+        source: 'user',
+        submitted_by: DEBUG_USER.id,
+        submitted_username: DEBUG_USER.display_name,
+        reviewed_by: DEBUG_USER.id,
+        review_note: '调试通过',
+        reviewed_at: daysAgo(0, 17, 0),
+        created_at: daysAgo(1, 14, 0),
+        updated_at: daysAgo(0, 17, 0),
+      },
+      {
+        id: 3,
+        name: '我的调试菜单：韩式炸酱面',
+        description: '黑黑的但好吃，只有当前用户能看到。',
+        category: 'noodles',
+        icon: '🍽️',
+        image_url: '',
+        status: 'approved',
+        visibility: 'private',
+        source: 'user',
+        submitted_by: DEBUG_USER.id,
+        submitted_username: DEBUG_USER.display_name,
+        reviewed_by: 0,
+        review_note: '',
+        reviewed_at: 0,
+        created_at: daysAgo(0, 12, 0),
+        updated_at: daysAgo(0, 12, 0),
+      },
+    ],
     assistantConfig: {
       id: 1,
       enabled: true,
@@ -577,7 +633,20 @@ function parseBody(data) {
   if (typeof data === 'string') {
     try { return JSON.parse(data) } catch (_) { return {} }
   }
-  if (data instanceof FormData) return {}
+  if (data instanceof FormData) {
+    const result = {}
+    for (const [key, value] of data.entries()) {
+      if (typeof File !== 'undefined' && value instanceof File) {
+        result[key] = value
+        if (key === 'image' && typeof URL !== 'undefined') {
+          try { result.image_url = URL.createObjectURL(value) } catch (_) {}
+        }
+      } else {
+        result[key] = value
+      }
+    }
+    return result
+  }
   return data
 }
 
@@ -723,6 +792,28 @@ function adminNotificationResponse(url) {
 
 function refundAppealResponse(url) {
   let items = filterKeyword(debugState.refundAppeals, url, ['username', 'user_note', 'review_note'])
+  const status = url.searchParams.get('status')
+  if (status) items = items.filter((item) => item.status === status)
+  items = [...items].sort((a, b) => b.created_at - a.created_at)
+  return page(paginate(items, url), items.length)
+}
+
+function userPlaygroundFoodResponse() {
+  const items = debugState.playgroundFoods
+    .filter((item) => (
+      (item.visibility === 'public' && item.status === 'approved') ||
+      (item.visibility === 'private' && item.submitted_by === DEBUG_USER.id)
+    ))
+    .sort((a, b) => b.updated_at - a.updated_at)
+  return ok({ items })
+}
+
+function adminPlaygroundFoodResponse(url) {
+  let items = filterKeyword(
+    debugState.playgroundFoods.filter((item) => item.visibility === 'public'),
+    url,
+    ['name', 'description', 'submitted_username'],
+  )
   const status = url.searchParams.get('status')
   if (status) items = items.filter((item) => item.status === status)
   items = [...items].sort((a, b) => b.created_at - a.created_at)
@@ -1076,6 +1167,90 @@ export async function mockApiResponse(config) {
       updated_at: nowSec(),
     }
     return ok(debugState.pageConfig)
+  }
+
+  if (path === '/api/ui/playground/foods' && method === 'GET') return userPlaygroundFoodResponse()
+  if (path === '/api/ui/playground/foods/private' && method === 'POST') {
+    const item = {
+      id: nextId(debugState.playgroundFoods),
+      name: body.name || '我的调试菜品',
+      description: body.description || '这是我的服务器菜单',
+      category: body.category || 'breakfast',
+      icon: body.icon || '🍽️',
+      image_url: body.image_url || '',
+      status: 'approved',
+      visibility: 'private',
+      source: 'user',
+      submitted_by: DEBUG_USER.id,
+      submitted_username: DEBUG_USER.display_name,
+      reviewed_by: 0,
+      review_note: '',
+      reviewed_at: 0,
+      created_at: nowSec(),
+      updated_at: nowSec(),
+    }
+    debugState.playgroundFoods.unshift(item)
+    return ok(item)
+  }
+  const privateFoodMatch = path.match(/^\/api\/ui\/playground\/foods\/private\/(\d+)$/)
+  if (privateFoodMatch && method === 'DELETE') {
+    debugState.playgroundFoods = debugState.playgroundFoods.filter(
+      (item) => !(Number(item.id) === Number(privateFoodMatch[1]) && item.visibility === 'private'),
+    )
+    return ok(null)
+  }
+  if (path === '/api/ui/playground/foods/submissions' && method === 'POST') {
+    const item = {
+      id: nextId(debugState.playgroundFoods),
+      name: body.name || '调试投稿菜品',
+      description: body.description || '',
+      category: body.category || 'breakfast',
+      icon: body.icon || '🍽️',
+      image_url: body.image_url || '',
+      status: 'pending',
+      visibility: 'public',
+      source: 'user',
+      submitted_by: DEBUG_USER.id,
+      submitted_username: DEBUG_USER.display_name,
+      reviewed_by: 0,
+      review_note: '',
+      reviewed_at: 0,
+      created_at: nowSec(),
+      updated_at: nowSec(),
+    }
+    debugState.playgroundFoods.unshift(item)
+    return ok(item)
+  }
+  if (path === '/api/ui/admin/playground-foods' && method === 'GET') return adminPlaygroundFoodResponse(url)
+  const adminPlaygroundFoodMatch = path.match(/^\/api\/ui\/admin\/playground-foods\/(\d+)(?:\/(approve|reject))?$/)
+  if (adminPlaygroundFoodMatch && (method === 'PUT' || method === 'POST')) {
+    const item = debugState.playgroundFoods.find((food) => Number(food.id) === Number(adminPlaygroundFoodMatch[1]))
+    if (item) {
+      Object.assign(item, {
+        name: body.name || item.name,
+        description: body.description ?? item.description,
+        category: body.category || item.category,
+        icon: body.icon || item.icon || '🍽️',
+        image_url: body.image_url || item.image_url,
+        review_note: body.review_note ?? item.review_note,
+        updated_at: nowSec(),
+      })
+      if (adminPlaygroundFoodMatch[2] === 'approve') {
+        item.status = 'approved'
+        item.reviewed_by = DEBUG_USER.id
+        item.reviewed_at = nowSec()
+      }
+      if (adminPlaygroundFoodMatch[2] === 'reject') {
+        item.status = 'rejected'
+        item.reviewed_by = DEBUG_USER.id
+        item.reviewed_at = nowSec()
+      }
+    }
+    return ok(item || null)
+  }
+  if (adminPlaygroundFoodMatch && method === 'DELETE') {
+    debugState.playgroundFoods = debugState.playgroundFoods.filter((item) => Number(item.id) !== Number(adminPlaygroundFoodMatch[1]))
+    return ok(null)
   }
 
   if (path === '/api/ui/announcements' && method === 'GET') return page(paginate(activeAnnouncements(), url), activeAnnouncements().length)

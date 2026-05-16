@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
-import { LogIn, User, Lock, Github } from 'lucide-react'
+import { Bug, LogIn, User, Lock, Github } from 'lucide-react'
 import ClayAuthShell from '../components/layout/ClayAuthShell.jsx'
 import ClayField from '../components/clay/ClayField.jsx'
 import ClayInput from '../components/clay/ClayInput.jsx'
@@ -12,6 +12,7 @@ import { useStatus } from '../context/StatusContext.jsx'
 import { useUser } from '../context/UserContext.jsx'
 import { useToast } from '../context/ToastContext.jsx'
 import { login } from '../services/auth.js'
+import { DEBUG_STORAGE_KEY, DEBUG_USER } from '../utils/debugMode.js'
 
 export default function Login() {
   const navigate = useNavigate()
@@ -26,6 +27,7 @@ export default function Login() {
   const [notice, setNotice] = useState('')
 
   const passwordLoginDisabled = status?.password_login === false
+  const debugLoginAvailable = import.meta.env.DEV
 
   useEffect(() => {
     const params = new URLSearchParams(location.search)
@@ -72,6 +74,20 @@ export default function Login() {
     } finally {
       setLoading(false)
     }
+  }
+
+  const enterDebugMode = () => {
+    try {
+      localStorage.setItem(DEBUG_STORAGE_KEY, '1')
+    } catch (_) {}
+    setUser(DEBUG_USER)
+    toast('已进入调试模式', 'success')
+    const from = location.state?.from || '/dashboard'
+    if (from.startsWith('http')) {
+      window.location.replace(from)
+      return
+    }
+    navigate(from.startsWith('/login') ? '/dashboard' : from, { replace: true })
   }
 
   const oauthProviders = []
@@ -134,6 +150,13 @@ export default function Login() {
             {loading ? '登录中…' : (<><LogIn className="w-4 h-4" /> 登录</>)}
           </ClayButton>
         </form>
+      )}
+
+      {debugLoginAvailable && (
+        <ClayButton type="button" variant="ghost" className="mt-3 w-full" onClick={enterDebugMode}>
+          <Bug className="w-4 h-4" />
+          进入调试模式
+        </ClayButton>
       )}
 
       {oauthProviders.length > 0 && (

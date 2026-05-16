@@ -31,6 +31,7 @@
 - `thinking_to_content`：将上游 `reasoning_content` 转成正文中的 `<think>...</think>`，适合需要在客户端展示思考过程的场景。
 - `strip_native_reasoning`：返回前移除 `reasoning_content` 和 `reasoning` 字段，适合 SillyTavern 等已有角色卡预设思维链的客户端，避免模型原生思维链与预设内容冲突。
 - `strip_content_think_tags`：进一步移除正文 `content` 中的 `<think>...</think>` 内容块。该选项会影响角色卡主动要求输出的预设思维链，默认不要开启。
+- `claude_assistant_prefill_compat`：仅 Anthropic / Claude 渠道使用；当上游不支持最后一条 `assistant` 作为 prefill 时，开启后服务端会追加一条用户继续消息，避免上游直接返回 400。
 
 ## 经典控制台保留能力
 
@@ -227,6 +228,23 @@
 - `GET /api/ui/admin/debug-traces/:id`
 - `GET /api/ui/admin/debug-traces/:id/download`
 - `DELETE /api/ui/admin/debug-traces/:id`
+
+## Claude assistant prefill 兼容
+
+页面：
+
+- 渠道编辑页：Anthropic / Claude 渠道的高级设置。
+
+字段：
+
+- `settings.claude_assistant_prefill_compat`
+
+语义：
+
+- 默认关闭，仅对单个渠道生效。
+- 开启后，如果转换后的 Claude 请求最后一条 message 是纯文本 `assistant`，服务端会在末尾追加一条极短的 `user` 继续消息，避免部分 Claude / Vertex Claude 上游返回 `This model does not support assistant message prefill. The conversation must end with a user message.`。
+- 末尾 `assistant` 含 `tool_use` 时不会改写，避免破坏工具调用链路。
+- 适合只在确认上游不支持 assistant prefill 的渠道上开启。
 
 ## 游乐场菜品审核
 

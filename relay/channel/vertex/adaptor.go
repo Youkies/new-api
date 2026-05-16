@@ -98,6 +98,7 @@ func (a *Adaptor) ConvertClaudeRequest(c *gin.Context, info *relaycommon.RelayIn
 	} else {
 		c.Set("request_model", request.Model)
 	}
+	claude.NormalizeAssistantPrefillCompat(request, info != nil && info.ChannelOtherSettings.ClaudeAssistantPrefillCompat)
 	claude.NormalizeThinkingRequest(request)
 	vertexClaudeReq := copyRequest(request, anthropicVersion)
 	return vertexClaudeReq, nil

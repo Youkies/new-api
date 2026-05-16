@@ -2,10 +2,14 @@ package claude
 
 import (
 	"encoding/base64"
+	"net/http/httptest"
 	"strings"
 	"testing"
 
+	"github.com/QuantumNous/new-api/common"
+	"github.com/QuantumNous/new-api/constant"
 	"github.com/QuantumNous/new-api/dto"
+	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/require"
 )
 
@@ -379,6 +383,46 @@ func TestRequestOpenAI2ClaudeMessage_ConvertsTextFileContentToText(t *testing.T)
 	require.Equal(t, "text", content[0].Type)
 	require.NotNil(t, content[0].Text)
 	require.Equal(t, "alpha\nbeta", *content[0].Text)
+}
+
+func TestRequestOpenAI2ClaudeMessage_AssistantPrefillCompatAppendsUser(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	c, _ := gin.CreateTestContext(httptest.NewRecorder())
+	common.SetContextKey(c, constant.ContextKeyChannelOtherSetting, dto.ChannelOtherSettings{
+		ClaudeAssistantPrefillCompat: true,
+	})
+	request := dto.GeneralOpenAIRequest{
+		Model: "claude-3-5-sonnet",
+		Messages: []dto.Message{
+			{Role: "user", Content: "Return exactly: hello"},
+			{Role: "assistant", Content: "hel"},
+		},
+	}
+
+	claudeRequest, err := RequestOpenAI2ClaudeMessage(c, request)
+	require.NoError(t, err)
+	require.Len(t, claudeRequest.Messages, 3)
+	require.Equal(t, "assistant", claudeRequest.Messages[1].Role)
+	require.Equal(t, "hel", claudeRequest.Messages[1].Content)
+	require.Equal(t, "user", claudeRequest.Messages[2].Role)
+	require.Equal(t, claudeAssistantPrefillCompatPrompt, claudeRequest.Messages[2].Content)
+}
+
+func TestNormalizeAssistantPrefillCompatSkipsToolUse(t *testing.T) {
+	request := &dto.ClaudeRequest{
+		Messages: []dto.ClaudeMessage{
+			{
+				Role: "assistant",
+				Content: []dto.ClaudeMediaMessage{
+					{Type: "tool_use", Id: "tool-1", Name: "lookup"},
+				},
+			},
+		},
+	}
+
+	applied := NormalizeAssistantPrefillCompat(request, true)
+	require.False(t, applied)
+	require.Len(t, request.Messages, 1)
 }
 
 func TestRequestOpenAI2ClaudeMessage_RemovesInvalidThinkingParameters(t *testing.T) {

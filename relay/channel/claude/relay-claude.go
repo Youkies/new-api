@@ -161,6 +161,60 @@ func NormalizeThinkingRequest(request *dto.ClaudeRequest) {
 	}
 }
 
+const claudeAssistantPrefillCompatPrompt = "Continue the previous assistant message exactly where it stopped. Do not repeat the already-written assistant text."
+
+// NormalizeAssistantPrefillCompat appends a short user continuation turn when
+// a Claude-compatible upstream rejects assistant prefill. This keeps the
+// upstream conversation ending with user while preserving the prior assistant
+// text as context.
+func NormalizeAssistantPrefillCompat(request *dto.ClaudeRequest, enabled bool) bool {
+	if request == nil || !enabled || len(request.Messages) == 0 {
+		return false
+	}
+	last := request.Messages[len(request.Messages)-1]
+	if last.Role != "assistant" || claudeMessageContainsToolUse(last) {
+		return false
+	}
+	request.Messages = append(request.Messages, dto.ClaudeMessage{
+		Role:    "user",
+		Content: claudeAssistantPrefillCompatPrompt,
+	})
+	return true
+}
+
+func claudeMessageContainsToolUse(message dto.ClaudeMessage) bool {
+	switch content := message.Content.(type) {
+	case []dto.ClaudeMediaMessage:
+		for _, item := range content {
+			if item.Type == "tool_use" {
+				return true
+			}
+		}
+	case []any:
+		for _, item := range content {
+			switch typed := item.(type) {
+			case dto.ClaudeMediaMessage:
+				if typed.Type == "tool_use" {
+					return true
+				}
+			case map[string]any:
+				if typed["type"] == "tool_use" {
+					return true
+				}
+			}
+		}
+	}
+	return false
+}
+
+func shouldApplyAssistantPrefillCompat(c *gin.Context) bool {
+	if c == nil {
+		return false
+	}
+	settings, ok := common.GetContextKeyType[dto.ChannelOtherSettings](c, constant.ContextKeyChannelOtherSetting)
+	return ok && settings.ClaudeAssistantPrefillCompat
+}
+
 func isThinkingEnabled(thinking *dto.Thinking) bool {
 	if thinking == nil {
 		return false
@@ -552,6 +606,7 @@ func RequestOpenAI2ClaudeMessage(c *gin.Context, textRequest dto.GeneralOpenAIRe
 
 	claudeRequest.Prompt = ""
 	claudeRequest.Messages = claudeMessages
+	NormalizeAssistantPrefillCompat(&claudeRequest, shouldApplyAssistantPrefillCompat(c))
 	NormalizeThinkingRequest(&claudeRequest)
 	return &claudeRequest, nil
 }

@@ -233,7 +233,8 @@
 
 页面：
 
-- 渠道编辑页：Anthropic / Claude 渠道的高级设置。
+- 新 UI 渠道编辑页：Anthropic / Claude 渠道的高级设置。
+- classic / legacy 渠道编辑页：Claude 渠道的“额外设置”。
 
 字段：
 

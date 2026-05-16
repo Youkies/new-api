@@ -6,10 +6,10 @@
 
 - 针对用户下载的调试日志定位到上游 400：`This model does not support assistant message prefill. The conversation must end with a user message.`，根因是 OpenAI 请求转换到 Claude 后最后一条 message 为 `assistant` prefill。
 - 已用用户提供的真实渠道做验证：原始末尾 `assistant` 请求返回 400；追加一条 `user` continuation 消息后，同一模型非流式返回 200，流式也能正常开始输出。
-- 新增渠道级开关 `settings.claude_assistant_prefill_compat`，默认关闭，仅 Anthropic / Claude 渠道表单展示。
+- 新增渠道级开关 `settings.claude_assistant_prefill_compat`，默认关闭，新 UI 的 Anthropic / Claude 渠道表单和 classic `/legacy/` Claude 渠道编辑页均可配置。
 - 开启后，OpenAI->Claude、Claude-native adaptor、Vertex Claude adaptor 都会在转换后的 Claude 请求末尾为纯文本 `assistant` prefill 追加一条短 `user` 继续消息。
 - 末尾 `assistant` 含 `tool_use` 时不会改写，避免破坏工具调用链路。
-- 已更新渠道表单、类型定义、i18n 文案和 `docs/uiweb/admin.md`。
+- 已更新新 UI 渠道表单、classic `/legacy/` 渠道编辑页、类型定义、i18n 文案和 `docs/uiweb/admin.md`。
 
 ### 验证结果
 

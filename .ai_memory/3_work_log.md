@@ -96,3 +96,4 @@
 - [2026-05-16 20:44] 发布前复查并构建推送 Docker：定向 Go 测试、`uiweb` 构建、`web/classic` 构建通过；从干净 context 推送 `ghcr.io/youkies/new-api:latest` 与 `:release-20260516-2040`，digest `sha256:a10b71192f0f08bcfb74ea69b749ae5eed66e0e221cd111d0da19278241c559d`。
 - [2026-05-16 22:20] 新增管理员调试 Key 记录：管理员可在令牌管理开启调试 Key，后台 `/admin/debug-traces` 查看/删除/下载脱敏 `.log`；全量 Go 测试、`uiweb npm run build` 与 `git diff --check` 通过。
 - [2026-05-16 22:49] 验证 Claude assistant prefill 400 兼容思路，并新增 Anthropic 渠道级 `claude_assistant_prefill_compat` 开关。
+- [2026-05-16 23:06] 补齐 classic `/legacy/` Claude 渠道编辑页的预填充兼容开关，并修正新 UI 中文文案。

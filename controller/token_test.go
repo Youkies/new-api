@@ -48,21 +48,21 @@ type sqliteColumnInfo struct {
 }
 
 type legacyToken struct {
-	Id                 int            `gorm:"primaryKey"`
-	UserId             int            `gorm:"index"`
-	Key                string         `gorm:"column:key;type:char(48);uniqueIndex"`
-	Status             int            `gorm:"default:1"`
-	Name               string         `gorm:"index"`
-	CreatedTime        int64          `gorm:"bigint"`
-	AccessedTime       int64          `gorm:"bigint"`
-	ExpiredTime        int64          `gorm:"bigint;default:-1"`
-	RemainQuota        int            `gorm:"default:0"`
+	Id                 int    `gorm:"primaryKey"`
+	UserId             int    `gorm:"index"`
+	Key                string `gorm:"column:key;type:char(48);uniqueIndex"`
+	Status             int    `gorm:"default:1"`
+	Name               string `gorm:"index"`
+	CreatedTime        int64  `gorm:"bigint"`
+	AccessedTime       int64  `gorm:"bigint"`
+	ExpiredTime        int64  `gorm:"bigint;default:-1"`
+	RemainQuota        int    `gorm:"default:0"`
 	UnlimitedQuota     bool
 	ModelLimitsEnabled bool
-	ModelLimits        string         `gorm:"type:text"`
-	AllowIps           *string        `gorm:"default:''"`
-	UsedQuota          int            `gorm:"default:0"`
-	Group              string         `gorm:"column:group;default:''"`
+	ModelLimits        string  `gorm:"type:text"`
+	AllowIps           *string `gorm:"default:''"`
+	UsedQuota          int     `gorm:"default:0"`
+	Group              string  `gorm:"column:group;default:''"`
 	CrossGroupRetry    bool
 	DeletedAt          gorm.DeletedAt `gorm:"index"`
 }
@@ -503,6 +503,78 @@ func TestUpdateTokenMasksKeyInResponse(t *testing.T) {
 	}
 	if strings.Contains(recorder.Body.String(), token.Key) {
 		t.Fatalf("update response leaked raw token key: %s", recorder.Body.String())
+	}
+}
+
+func TestAddTokenDebugEnabledRequiresAdmin(t *testing.T) {
+	db := setupTokenControllerTestDB(t)
+	body := map[string]any{
+		"name":            "debug-token",
+		"expired_time":    -1,
+		"remain_quota":    0,
+		"unlimited_quota": true,
+		"group":           "default",
+		"debug_enabled":   true,
+	}
+
+	userCtx, userRecorder := newAuthenticatedContext(t, http.MethodPost, "/api/token/", body, 1)
+	userCtx.Set("role", common.RoleCommonUser)
+	AddToken(userCtx)
+	userResponse := decodeAPIResponse(t, userRecorder)
+	if userResponse.Success {
+		t.Fatalf("expected common user to be blocked from creating debug token")
+	}
+
+	adminCtx, adminRecorder := newAuthenticatedContext(t, http.MethodPost, "/api/token/", body, 1)
+	adminCtx.Set("role", common.RoleAdminUser)
+	AddToken(adminCtx)
+	adminResponse := decodeAPIResponse(t, adminRecorder)
+	if !adminResponse.Success {
+		t.Fatalf("expected admin debug token creation to succeed, got: %s", adminResponse.Message)
+	}
+
+	var token model.Token
+	if err := db.First(&token, "name = ?", "debug-token").Error; err != nil {
+		t.Fatalf("failed to load created debug token: %v", err)
+	}
+	if !token.DebugEnabled {
+		t.Fatalf("expected debug_enabled to be saved for admin-created token")
+	}
+}
+
+func TestUpdateTokenPreservesDebugEnabledWhenFieldAbsent(t *testing.T) {
+	db := setupTokenControllerTestDB(t)
+	token := seedToken(t, db, 1, "debug-preserve-token", "debugpreserve123456")
+	if err := db.Model(token).Update("debug_enabled", true).Error; err != nil {
+		t.Fatalf("failed to enable debug flag: %v", err)
+	}
+
+	body := map[string]any{
+		"id":                   token.Id,
+		"name":                 "updated-debug-preserve-token",
+		"expired_time":         -1,
+		"remain_quota":         100,
+		"unlimited_quota":      true,
+		"model_limits_enabled": false,
+		"model_limits":         "",
+		"group":                "default",
+		"cross_group_retry":    false,
+	}
+
+	ctx, recorder := newAuthenticatedContext(t, http.MethodPut, "/api/token/", body, 1)
+	ctx.Set("role", common.RoleAdminUser)
+	UpdateToken(ctx)
+	response := decodeAPIResponse(t, recorder)
+	if !response.Success {
+		t.Fatalf("expected token update to succeed, got: %s", response.Message)
+	}
+
+	var updated model.Token
+	if err := db.First(&updated, "id = ?", token.Id).Error; err != nil {
+		t.Fatalf("failed to load updated token: %v", err)
+	}
+	if !updated.DebugEnabled {
+		t.Fatalf("expected debug_enabled to remain true when update payload omits it")
 	}
 }
 

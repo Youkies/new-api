@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback, useSyncExternalStore } from 'react'
 import {
   KeyRound, Plus, Search, Copy, Trash2, Eye, EyeOff,
   ToggleLeft, ToggleRight, Pencil, ChevronLeft, ChevronRight,
-  Clock, Shield, Layers, Infinity, RefreshCw,
+  Clock, Shield, Layers, Infinity, RefreshCw, Bug,
 } from 'lucide-react'
 import ClayCard from '../components/clay/ClayCard.jsx'
 import ClayButton from '../components/clay/ClayButton.jsx'
@@ -18,6 +18,7 @@ import {
   deleteToken, getTokenKey, getUserGroups,
 } from '../services/tokens.js'
 import { copyTextToClipboard } from '../utils/clipboard.js'
+import { useUser } from '../context/UserContext.jsx'
 
 const mobileQuery = typeof window !== 'undefined' ? window.matchMedia('(max-width: 767px)') : null
 function useIsMobile() {
@@ -75,7 +76,10 @@ function TokenCard({ t, revealedKeys, onRevealKey, onCopyKey, onToggleStatus, op
             <KeyRound className="w-4 h-4 text-clay-blue-300" />
           </div>
           <div className="min-w-0">
-            <div className="font-bold text-sm truncate max-w-[160px]">{t.name}</div>
+            <div className="flex items-center gap-1.5">
+              <div className="font-bold text-sm truncate max-w-[160px]">{t.name}</div>
+              {t.debug_enabled && <Bug className="w-3.5 h-3.5 text-clay-pink-400 shrink-0" title="调试 Key" />}
+            </div>
             {t.model_limits_enabled && models.length > 0 && (
               <div className="text-[11px] text-clay-faint mt-0.5">
                 <Shield className="w-3 h-3 inline mr-0.5 -mt-0.5" />
@@ -151,6 +155,8 @@ function TokenCard({ t, revealedKeys, onRevealKey, onCopyKey, onToggleStatus, op
 export default function TokenManage() {
   const toast = useToast()
   const isMobile = useIsMobile()
+  const { user } = useUser()
+  const isAdmin = Number(user?.role ?? user?.Role ?? 0) >= 10
   const [tokens, setTokens] = useState([])
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
@@ -159,7 +165,7 @@ export default function TokenManage() {
 
   const [showModal, setShowModal] = useState(false)
   const [editing, setEditing] = useState(null)
-  const [form, setForm] = useState({ name: '', remain_quota: 0, expired_time: -1, unlimited_quota: true, group: '', display_amount: '' })
+  const [form, setForm] = useState({ name: '', remain_quota: 0, expired_time: -1, unlimited_quota: true, group: '', display_amount: '', debug_enabled: false })
   const [saving, setSaving] = useState(false)
   const [groupOptions, setGroupOptions] = useState([])
 
@@ -210,7 +216,7 @@ export default function TokenManage() {
   const openCreate = () => {
     setEditing(null)
     const defaultGroup = groupOptions.find((o) => o.value === 'default') ? 'default' : (groupOptions[0]?.value || '')
-    setForm({ name: '', remain_quota: 0, expired_time: -1, unlimited_quota: true, group: defaultGroup, display_amount: '' })
+    setForm({ name: '', remain_quota: 0, expired_time: -1, unlimited_quota: true, group: defaultGroup, display_amount: '', debug_enabled: false })
     setShowModal(true)
   }
 
@@ -224,6 +230,7 @@ export default function TokenManage() {
       unlimited_quota: t.unlimited_quota,
       group: t.group || '',
       display_amount: da,
+      debug_enabled: Boolean(t.debug_enabled),
     })
     setShowModal(true)
   }
@@ -238,6 +245,7 @@ export default function TokenManage() {
       remain_quota: form.unlimited_quota ? 0 : displayToQuota(parseFloat(form.display_amount) || 0),
       group: form.group,
     }
+    if (isAdmin) payload.debug_enabled = Boolean(form.debug_enabled)
     try {
       if (editing) {
         const res = await updateToken({ id: editing.id, ...payload })
@@ -417,7 +425,15 @@ export default function TokenManage() {
                         <KeyRound className="w-4 h-4 text-clay-blue-300" />
                       </div>
                       <div className="min-w-0">
-                        <div className="font-bold text-sm truncate max-w-[160px]">{t.name}</div>
+                        <div className="flex items-center gap-1.5">
+                          <div className="font-bold text-sm truncate max-w-[160px]">{t.name}</div>
+                          {t.debug_enabled && (
+                            <span className="inline-flex items-center gap-1 rounded-clay-pill bg-clay-pink-100 px-2 py-0.5 text-[10px] font-black text-[#8a4860]">
+                              <Bug className="w-3 h-3" />
+                              调试
+                            </span>
+                          )}
+                        </div>
                         {t.model_limits_enabled && models.length > 0 && (
                           <div className="text-[11px] text-clay-faint mt-0.5">
                             <Shield className="w-3 h-3 inline mr-0.5 -mt-0.5" />
@@ -556,6 +572,26 @@ export default function TokenManage() {
             }}
             hint="留空表示永不过期"
           />
+          {isAdmin && (
+            <div className="rounded-clay bg-clay-bg p-4 shadow-clay-inset">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <div className="flex items-center gap-2 text-sm font-black">
+                    <Bug className="h-4 w-4 text-clay-pink-400" />
+                    调试 Key
+                  </div>
+                  <p className="mt-1 text-xs font-bold text-clay-faint">
+                    开启后会记录该 Key 的请求、上游请求、返回和错误，普通用户不能启用。
+                  </p>
+                </div>
+                <button type="button" onClick={() => setForm({ ...form, debug_enabled: !form.debug_enabled })} className="p-0.5 shrink-0">
+                  {form.debug_enabled
+                    ? <ToggleRight className="w-7 h-7 text-clay-pink-400" />
+                    : <ToggleLeft className="w-7 h-7 text-gray-400" />}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
         <div className="flex flex-col-reverse items-stretch gap-3 mt-6 sm:flex-row sm:items-center sm:justify-end">
           <ClayButton variant="ghost" onClick={() => setShowModal(false)}>取消</ClayButton>

@@ -2,6 +2,7 @@ package controller
 
 import (
 	"fmt"
+	"io"
 	"net/http"
 	"strconv"
 	"strings"
@@ -164,15 +165,37 @@ func GetTokenUsage(c *gin.Context) {
 	})
 }
 
+func bindTokenPayload(c *gin.Context) (model.Token, map[string]bool, error) {
+	var token model.Token
+	body, err := io.ReadAll(c.Request.Body)
+	if err != nil {
+		return token, nil, err
+	}
+	if err = common.Unmarshal(body, &token); err != nil {
+		return token, nil, err
+	}
+	var raw map[string]any
+	fields := make(map[string]bool)
+	if err = common.Unmarshal(body, &raw); err == nil {
+		for key := range raw {
+			fields[key] = true
+		}
+	}
+	return token, fields, nil
+}
+
 func AddToken(c *gin.Context) {
-	token := model.Token{}
-	err := c.ShouldBindJSON(&token)
+	token, _, err := bindTokenPayload(c)
 	if err != nil {
 		common.ApiError(c, err)
 		return
 	}
 	if len(token.Name) > 50 {
 		common.ApiErrorI18n(c, i18n.MsgTokenNameTooLong)
+		return
+	}
+	if token.DebugEnabled && c.GetInt("role") < common.RoleAdminUser {
+		common.ApiErrorMsg(c, "只有管理员可以创建调试 Key")
 		return
 	}
 	// 非无限额度时，检查额度值是否超出有效范围
@@ -221,6 +244,7 @@ func AddToken(c *gin.Context) {
 		AllowIps:           token.AllowIps,
 		Group:              token.Group,
 		CrossGroupRetry:    token.CrossGroupRetry,
+		DebugEnabled:       token.DebugEnabled && c.GetInt("role") >= common.RoleAdminUser,
 	}
 	err = cleanToken.Insert()
 	if err != nil {
@@ -250,14 +274,17 @@ func DeleteToken(c *gin.Context) {
 func UpdateToken(c *gin.Context) {
 	userId := c.GetInt("id")
 	statusOnly := c.Query("status_only")
-	token := model.Token{}
-	err := c.ShouldBindJSON(&token)
+	token, fields, err := bindTokenPayload(c)
 	if err != nil {
 		common.ApiError(c, err)
 		return
 	}
 	if len(token.Name) > 50 {
 		common.ApiErrorI18n(c, i18n.MsgTokenNameTooLong)
+		return
+	}
+	if token.DebugEnabled && c.GetInt("role") < common.RoleAdminUser {
+		common.ApiErrorMsg(c, "只有管理员可以启用调试 Key")
 		return
 	}
 	if !token.UnlimitedQuota {
@@ -299,6 +326,9 @@ func UpdateToken(c *gin.Context) {
 		cleanToken.AllowIps = token.AllowIps
 		cleanToken.Group = token.Group
 		cleanToken.CrossGroupRetry = token.CrossGroupRetry
+		if fields["debug_enabled"] {
+			cleanToken.DebugEnabled = token.DebugEnabled && c.GetInt("role") >= common.RoleAdminUser
+		}
 	}
 	err = cleanToken.Update()
 	if err != nil {

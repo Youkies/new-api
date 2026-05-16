@@ -34,6 +34,7 @@ import AdminRefundAppeals from './pages/admin/AdminRefundAppeals.jsx'
 import AdminAssistant from './pages/admin/AdminAssistant.jsx'
 import AdminPageConfig from './pages/admin/AdminPageConfig.jsx'
 import AdminPlaygroundFoods from './pages/admin/AdminPlaygroundFoods.jsx'
+import AdminDebugTraces from './pages/admin/AdminDebugTraces.jsx'
 
 export default function App() {
   return (
@@ -230,6 +231,16 @@ export default function App() {
           <ProtectedRoute>
             <AdminRoute>
               <AdminPlaygroundFoods />
+            </AdminRoute>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/debug-traces"
+        element={
+          <ProtectedRoute>
+            <AdminRoute>
+              <AdminDebugTraces />
             </AdminRoute>
           </ProtectedRoute>
         }

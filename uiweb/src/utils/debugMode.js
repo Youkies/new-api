@@ -366,6 +366,7 @@ function createInitialState() {
         used_quota: 4200,
         remain_quota: 800000,
         unlimited_quota: false,
+        debug_enabled: true,
         model_limits_enabled: false,
         model_limits: '',
         expired_time: -1,
@@ -380,10 +381,90 @@ function createInitialState() {
         used_quota: 2400,
         remain_quota: 0,
         unlimited_quota: true,
+        debug_enabled: false,
         model_limits_enabled: true,
         model_limits: JSON.stringify(['gpt-5.5', 'claude-opus-4-6']),
         expired_time: daysAgo(-30),
         created_time: daysAgo(5),
+      },
+    ],
+    debugTraces: [
+      {
+        id: 90001,
+        request_id: 'debug-trace-ok-90001',
+        created_at: daysAgo(0, 19, 12),
+        user_id: DEBUG_USER.id,
+        username: DEBUG_USER.username,
+        token_id: 101,
+        token_name: '调试主令牌',
+        model_name: 'claude-opus-4-6',
+        group: 'default',
+        request_method: 'POST',
+        request_path: '/v1/chat/completions',
+        relay_format: 'openai',
+        final_relay_format: 'claude',
+        relay_mode: 1,
+        is_stream: true,
+        channel_id: 12,
+        channel_name: 'Claude 调试渠道',
+        channel_type: 14,
+        use_channel: '12',
+        status: 'success',
+        http_status: 200,
+        upstream_status: 200,
+        request_headers: JSON.stringify({ Authorization: ['[redacted]'], 'Content-Type': ['application/json'] }),
+        request_body: JSON.stringify({ model: 'claude-opus-4-6', messages: [{ role: 'user', content: '测试一下调试 Key' }], stream: true }),
+        request_body_truncated: false,
+        upstream_url: 'https://api.example.com/v1/messages',
+        upstream_headers: JSON.stringify({ Authorization: ['[redacted]'], 'Content-Type': ['application/json'] }),
+        upstream_body: JSON.stringify({ model: 'claude-opus-4-6', messages: [{ role: 'user', content: '测试一下调试 Key' }] }),
+        upstream_body_truncated: false,
+        response_headers: JSON.stringify({ 'Content-Type': ['text/event-stream'] }),
+        response_body: 'data: {"type":"message_delta","delta":{"text":"调试返回"}}\n\ndata: [DONE]\n\n',
+        response_body_truncated: false,
+        response_size: 86,
+        use_time: 1842,
+        admin_info: JSON.stringify({ use_channel: ['12'] }),
+      },
+      {
+        id: 90002,
+        request_id: 'debug-trace-error-90002',
+        created_at: daysAgo(0, 19, 28),
+        user_id: DEBUG_USER.id,
+        username: DEBUG_USER.username,
+        token_id: 101,
+        token_name: '调试主令牌',
+        model_name: 'gemini-2.5-pro',
+        group: 'default',
+        request_method: 'POST',
+        request_path: '/v1/chat/completions',
+        relay_format: 'openai',
+        final_relay_format: 'gemini',
+        relay_mode: 1,
+        is_stream: false,
+        channel_id: 18,
+        channel_name: 'Gemini 调试渠道',
+        channel_type: 24,
+        use_channel: '18',
+        status: 'error',
+        http_status: 400,
+        upstream_status: 400,
+        error_type: 'upstream_error',
+        error_code: 'bad_response_status_code',
+        error_message: 'status_code=400, upstream returned invalid parameter',
+        request_headers: JSON.stringify({ Authorization: ['[redacted]'], 'Content-Type': ['application/json'] }),
+        request_body: JSON.stringify({ model: 'gemini-2.5-pro', messages: [{ role: 'user', content: '为什么报错' }] }),
+        request_body_truncated: false,
+        upstream_url: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key=%5Bredacted%5D',
+        upstream_headers: JSON.stringify({ 'x-goog-api-key': ['[redacted]'] }),
+        upstream_body: JSON.stringify({ contents: [{ role: 'user', parts: [{ text: '为什么报错' }] }] }),
+        upstream_body_truncated: false,
+        response_headers: JSON.stringify({ 'Content-Type': ['application/json'] }),
+        response_body: JSON.stringify({ error: { message: 'status_code=400, upstream returned invalid parameter' } }),
+        response_body_truncated: false,
+        response_size: 78,
+        use_time: 613,
+        admin_info: JSON.stringify({ use_channel: ['18'] }),
       },
     ],
     topups: [
@@ -820,6 +901,55 @@ function adminPlaygroundFoodResponse(url) {
   return page(paginate(items, url), items.length)
 }
 
+function adminDebugTraceResponse(url) {
+  let items = filterKeyword(debugState.debugTraces, url, ['username', 'token_name', 'model_name', 'request_path', 'error_message'])
+  const status = url.searchParams.get('status')
+  if (status) items = items.filter((item) => item.status === status)
+  const requestId = url.searchParams.get('request_id')
+  if (requestId) items = items.filter((item) => item.request_id === requestId)
+  items = [...items].sort((a, b) => b.created_at - a.created_at)
+  return page(paginate(items, url), items.length)
+}
+
+function formatDebugTraceLog(trace) {
+  if (!trace) return ''
+  const line = (label, value) => `${label}: ${value || '-'}`
+  const section = (title, value) => `## ${title}\n${value || '无'}\n`
+  return [
+    'Youkies API Debug Trace',
+    '=======================',
+    '',
+    line('ID', trace.id),
+    line('Request ID', trace.request_id),
+    line('Created At', trace.created_at ? new Date(trace.created_at * 1000).toISOString() : '-'),
+    line('Status', trace.status),
+    line('HTTP Status', trace.http_status),
+    line('Upstream Status', trace.upstream_status),
+    line('User', `${trace.username || '-'} (#${trace.user_id || '-'})`),
+    line('Token', `${trace.token_name || '-'} (#${trace.token_id || '-'})`),
+    line('Model', trace.model_name),
+    line('Group', trace.group),
+    line('Request', `${trace.request_method || '-'} ${trace.request_path || ''}`.trim()),
+    line('Relay Format', `${trace.relay_format || '-'} -> ${trace.final_relay_format || '-'}`),
+    line('Stream', String(Boolean(trace.is_stream))),
+    line('Channel', `${trace.channel_name || '-'} (#${trace.channel_id || '-'})`),
+    line('Use Channel', trace.use_channel),
+    line('Use Time', `${trace.use_time || 0} ms`),
+    '',
+    section('Original Request Headers', trace.request_headers),
+    section('Original Request Body', trace.request_body),
+    section('Upstream URL', trace.upstream_url),
+    section('Upstream Headers', trace.upstream_headers),
+    section('Upstream Body', trace.upstream_body),
+    section('Response Headers', trace.response_headers),
+    section('Response Body', trace.response_body),
+    section('Error Type', trace.error_type),
+    section('Error Code', trace.error_code),
+    section('Error Message', trace.error_message),
+    section('Admin Info', trace.admin_info),
+  ].join('\n')
+}
+
 function assistantStreamText(payload) {
   const last = [...(payload?.messages || [])].reverse().find((item) => item.role === 'user')
   const question = last?.content || '这个问题'
@@ -1250,6 +1380,21 @@ export async function mockApiResponse(config) {
   }
   if (adminPlaygroundFoodMatch && method === 'DELETE') {
     debugState.playgroundFoods = debugState.playgroundFoods.filter((item) => Number(item.id) !== Number(adminPlaygroundFoodMatch[1]))
+    return ok(null)
+  }
+
+  if (path === '/api/ui/admin/debug-traces' && method === 'GET') return adminDebugTraceResponse(url)
+  const adminDebugTraceDownloadMatch = path.match(/^\/api\/ui\/admin\/debug-traces\/(\d+)\/download$/)
+  if (adminDebugTraceDownloadMatch && method === 'GET') {
+    const trace = debugState.debugTraces.find((item) => Number(item.id) === Number(adminDebugTraceDownloadMatch[1]))
+    return { status: 200, data: formatDebugTraceLog(trace), headers: { 'content-type': 'text/plain; charset=utf-8' } }
+  }
+  const adminDebugTraceMatch = path.match(/^\/api\/ui\/admin\/debug-traces\/(\d+)$/)
+  if (adminDebugTraceMatch && method === 'GET') {
+    return ok(debugState.debugTraces.find((item) => Number(item.id) === Number(adminDebugTraceMatch[1])) || null)
+  }
+  if (adminDebugTraceMatch && method === 'DELETE') {
+    debugState.debugTraces = debugState.debugTraces.filter((item) => Number(item.id) !== Number(adminDebugTraceMatch[1]))
     return ok(null)
   }
 

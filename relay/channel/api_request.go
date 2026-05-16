@@ -486,6 +486,7 @@ func DoRequest(c *gin.Context, req *http.Request, info *common.RelayInfo) (*http
 func doRequest(c *gin.Context, req *http.Request, info *common.RelayInfo) (*http.Response, error) {
 	var client *http.Client
 	var err error
+	service.WrapDebugTraceUpstreamRequest(c, req)
 	if info.ChannelSetting.Proxy != "" {
 		client, err = service.NewProxyHttpClient(info.ChannelSetting.Proxy)
 		if err != nil {
@@ -523,6 +524,7 @@ func doRequest(c *gin.Context, req *http.Request, info *common.RelayInfo) (*http
 	if resp == nil {
 		return nil, errors.New("resp is nil")
 	}
+	service.RecordDebugTraceUpstreamResponse(c, resp)
 
 	_ = req.Body.Close()
 	_ = c.Request.Body.Close()

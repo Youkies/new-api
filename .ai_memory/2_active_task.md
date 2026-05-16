@@ -1,5 +1,29 @@
 # 当前任务
 
+## 当前可接手状态：管理员调试 Key 记录（2026-05-16）
+
+### 已完成
+
+- 管理员在令牌管理 `/tokens` 新建或编辑自己的 Key 时，可以开启“调试 Key”；普通用户手工提交 `debug_enabled=true` 会被后端拒绝。
+- 后端新增 `tokens.debug_enabled` 和 `debug_key_traces`，relay 仅在“管理员所属且已开启调试”的 Key 请求中写入调试记录。
+- 调试记录会捕获原始请求、实际上游请求、下游返回、错误类型/错误码/错误消息、模型、分组、渠道、使用渠道链路、耗时和管理员排障信息。
+- headers 与 JSON body 中明显的 token、secret、Authorization、API Key、Cookie、密码等字段会脱敏；图片/音频/文件/base64 类大字段会省略或截断；单段 body 最多保存 256KB。
+- 后台新增 `/admin/debug-traces`，支持筛选、查看详情、删除记录。
+- 调试记录详情和列表均支持直接下载 `.log` 文件，接口为 `GET /api/ui/admin/debug-traces/:id/download`。
+- 已更新 `docs/uiweb/features.md`、`docs/uiweb/api-contracts.md`、`docs/uiweb/admin.md`、`docs/uiweb/database-and-migrations.md`。
+
+### 验证结果
+
+- `go test ./model ./controller ./middleware ./service ./relay/channel -run "TestToken|Debug|KPay|PaymentMethod" -count=1` 通过。
+- `go test ./... -count=1` 通过。
+- `npm run build` 于 `uiweb/` 通过；仅有既有大 chunk 警告。
+- `git diff --check` 通过。
+
+### 下一步
+
+- 生产 `NODE_TYPE=slave` 不会自动迁移；上线前需要给主库补 `tokens.debug_enabled`，并按是否配置 `LOG_SQL_DSN` 在日志库或主库创建 `debug_key_traces`，SQL 见 `docs/uiweb/database-and-migrations.md`。
+- 提交前注意当前工作区仍有无关未跟踪文件：问卷 xlsx、`cpa2/`、`kpay-epay-api/`，不要误加入本次提交。
+
 ## 当前可接手状态：uiweb 游乐场与今天吃什么（2026-05-16）
 
 ### 已完成

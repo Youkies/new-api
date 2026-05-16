@@ -83,6 +83,40 @@
 - approve 会补余额并写管理日志。
 - reject 不改余额。
 
+## 调试 Key 记录
+
+令牌：
+
+- `POST /api/token/`
+- `PUT /api/token/`
+
+新增字段：
+
+- `debug_enabled`：仅管理员可设置为 `true`。普通用户提交 `true` 会被拒绝；未提交该字段时，编辑令牌不会改变已有调试开关。
+
+管理侧：
+
+- `GET /api/ui/admin/debug-traces`
+- `GET /api/ui/admin/debug-traces/:id`
+- `GET /api/ui/admin/debug-traces/:id/download`
+- `DELETE /api/ui/admin/debug-traces/:id`
+
+查询参数：
+
+- `p` / `size`：分页。
+- `status`：`success`、`error`、`client_canceled`。
+- `keyword`：搜索用户、Key、模型、路径或错误。
+- `request_id`：精确查询 Request ID。
+- `token_id` / `user_id`：精确筛选。
+- `start_timestamp` / `end_timestamp`：按创建时间筛选。
+
+语义：
+
+- 只有通过管理员调试 Key 发起的 relay 请求会写入记录。
+- 请求头、上游请求头和 body 会做基础脱敏，body 按 256KB 截断。
+- 列表接口不返回大字段；详情接口返回 request/upstream/response body 和 admin info。
+- download 接口返回 `text/plain; charset=utf-8` 附件，文件名为 `debug-trace-<request_id>.log`。
+
 ## 游乐场菜品
 
 用户侧：

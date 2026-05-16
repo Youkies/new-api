@@ -75,6 +75,7 @@ func Relay(c *gin.Context, relayFormat types.RelayFormat) {
 		newAPIError *types.NewAPIError
 		ws          *websocket.Conn
 	)
+	var finishDebugTrace func(*types.NewAPIError)
 
 	if relayFormat == types.RelayFormatOpenAIRealtime {
 		var err error
@@ -85,6 +86,12 @@ func Relay(c *gin.Context, relayFormat types.RelayFormat) {
 		}
 		defer ws.Close()
 	}
+
+	defer func() {
+		if finishDebugTrace != nil {
+			finishDebugTrace(newAPIError)
+		}
+	}()
 
 	defer func() {
 		if newAPIError != nil {
@@ -126,6 +133,7 @@ func Relay(c *gin.Context, relayFormat types.RelayFormat) {
 		newAPIError = types.NewError(err, types.ErrorCodeGenRelayInfoFailed)
 		return
 	}
+	finishDebugTrace = service.StartDebugKeyTrace(c, relayInfo)
 
 	needSensitiveCheck := setting.ShouldCheckPromptSensitive()
 	needCountToken := constant.CountToken
@@ -224,6 +232,7 @@ func Relay(c *gin.Context, relayFormat types.RelayFormat) {
 		default:
 			newAPIError = relayHandler(c, relayInfo)
 		}
+		service.UpdateDebugKeyTraceRelayInfo(c, relayInfo)
 
 		if newAPIError == nil {
 			relayInfo.LastError = nil

@@ -94,3 +94,4 @@
 - [2026-05-16 20:35] 导入问卷菜谱：从 `000_快来丰富一下Youkies的菜谱_提交统计.xlsx` 去重整理出 200 个社区菜单候选，包含 `滨寿司`；`uiweb npm run build` 与 `git diff --check` 通过。
 - [2026-05-16 20:37] 将 `隔壁家的小孩` 作为“今天吃什么呀”整蛊彩蛋加入夜宵/小吃候选，并用描述明确这是问推荐的玩笑项；`uiweb npm run build` 与 `git diff --check` 通过。
 - [2026-05-16 20:44] 发布前复查并构建推送 Docker：定向 Go 测试、`uiweb` 构建、`web/classic` 构建通过；从干净 context 推送 `ghcr.io/youkies/new-api:latest` 与 `:release-20260516-2040`，digest `sha256:a10b71192f0f08bcfb74ea69b749ae5eed66e0e221cd111d0da19278241c559d`。
+- [2026-05-16 22:20] 新增管理员调试 Key 记录：管理员可在令牌管理开启调试 Key，后台 `/admin/debug-traces` 查看/删除/下载脱敏 `.log`；全量 Go 测试、`uiweb npm run build` 与 `git diff --check` 通过。

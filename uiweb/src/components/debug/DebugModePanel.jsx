@@ -22,6 +22,7 @@ const LINKS = [
   { to: '/admin/notifications', label: '通知管理' },
   { to: '/admin/refund-appeals', label: '申诉审核' },
   { to: '/admin/playground-foods', label: '菜品审核' },
+  { to: '/admin/debug-traces', label: '调试记录' },
   { to: '/admin/assistant', label: 'AI 助手配置' },
 ]
 

@@ -11,6 +11,7 @@
 - 空回补偿申诉审核
 - 页面配置
 - 游乐场菜品审核
+- 调试 Key 记录
 - AI 助手配置
 
 不建议放在 `uiweb` 的内容：
@@ -187,6 +188,45 @@
 - `POST /api/ui/admin/refund-appeals/:id/approve`
 - `POST /api/ui/admin/refund-appeals/:id/reject`
 - `POST /api/ui/admin/refund-appeals/approve-all`
+
+## 调试 Key 记录
+
+页面：
+
+- 令牌管理：`/tokens`
+- 管理查看：`/admin/debug-traces`
+
+后端表/字段：
+
+- `tokens.debug_enabled`
+- `debug_key_traces`
+
+定位：
+
+- 只给管理员使用，用于排查“只有一个错误提示，无法判断上游真实问题”的场景。
+- 管理员在新建或编辑自己的 Key 时可开启“调试 Key”。
+- 普通用户即使手工提交 `debug_enabled=true`，后端也会拒绝。
+
+记录内容：
+
+- 原始请求 method/path、脱敏 headers、截断后的 body。
+- 实际上游请求 URL、脱敏 headers、截断后的 body。
+- 下游返回 headers/body、HTTP status、上游 status。
+- 错误类型、错误码、错误消息、模型、渠道、使用渠道链路、耗时。
+
+安全边界：
+
+- `Authorization`、`x-api-key`、`x-goog-api-key`、Cookie、token、secret 等敏感头会脱敏。
+- JSON body 中明显的 `api_key`、`access_token`、`password`、`secret` 会脱敏。
+- 图片、音频、文件和 base64 类大字段会被省略或截断。
+- 单段 body 最多保留 256KB，避免调试记录无限膨胀。
+
+接口：
+
+- `GET /api/ui/admin/debug-traces`
+- `GET /api/ui/admin/debug-traces/:id`
+- `GET /api/ui/admin/debug-traces/:id/download`
+- `DELETE /api/ui/admin/debug-traces/:id`
 
 ## 游乐场菜品审核
 

@@ -31,6 +31,7 @@ uiweb 相关表：
 - `ui_assistant_sessions`
 - `ui_assistant_conversations`
 - `ui_assistant_conversation_messages`
+- `debug_key_traces`
 
 用户表扩展：
 
@@ -38,6 +39,10 @@ uiweb 相关表：
 - `users.avatar_type`
 - `users.created_at`
 - `users.last_login_at`
+
+令牌表扩展：
+
+- `tokens.debug_enabled`
 
 官方 rc.4 新增：
 
@@ -182,6 +187,84 @@ uiweb 相关表：
 - 管理端只审核 `visibility=public` 的投稿。
 - 图片当前保存在数据库中，单张限制 800KB，支持 jpeg/png/webp/gif。
 
+## 调试 Key 记录表
+
+`tokens.debug_enabled`：
+
+- 管理员专用调试 Key 开关。
+- 普通用户不能开启；relay 只对管理员所属且已开启的 token 写调试记录。
+
+`debug_key_traces`：
+
+- Request ID、用户、令牌、模型、分组。
+- 请求 method/path、relay format/mode、是否流式。
+- 渠道 ID/名称/类型、使用渠道链路。
+- 状态、HTTP status、上游 status、错误类型/错误码/错误消息。
+- 原始请求、上游请求、下游返回的脱敏 headers/body。
+- body 截断标记、响应大小、耗时、管理员排障信息。
+
+注意：
+
+- 如果配置了 `LOG_SQL_DSN`，`debug_key_traces` 跟随日志库 `LOG_DB`，需要在日志库执行建表。
+- 如果没有配置 `LOG_SQL_DSN`，`debug_key_traces` 与主库同库。
+- 单段 body 代码侧最多保存 256KB，并会脱敏明显的密钥字段，但仍应只给管理员可见。
+
+生产 `NODE_TYPE=slave` 不会自动补齐字段和表，MySQL 可手动执行：
+
+```sql
+ALTER TABLE tokens ADD COLUMN debug_enabled tinyint(1) DEFAULT 0;
+CREATE INDEX idx_tokens_debug_enabled ON tokens (debug_enabled);
+
+CREATE TABLE debug_key_traces (
+  id bigint AUTO_INCREMENT PRIMARY KEY,
+  request_id varchar(64) DEFAULT '',
+  created_at bigint,
+  user_id bigint DEFAULT 0,
+  username varchar(191) DEFAULT '',
+  token_id bigint DEFAULT 0,
+  token_name varchar(191) DEFAULT '',
+  model_name varchar(191) DEFAULT '',
+  `group` varchar(191) DEFAULT '',
+  request_method varchar(16) DEFAULT '',
+  request_path varchar(512) DEFAULT '',
+  relay_format varchar(64) DEFAULT '',
+  final_relay_format varchar(64) DEFAULT '',
+  relay_mode bigint DEFAULT 0,
+  is_stream tinyint(1) DEFAULT 0,
+  channel_id bigint DEFAULT 0,
+  channel_name varchar(191) DEFAULT '',
+  channel_type bigint DEFAULT 0,
+  use_channel longtext,
+  status varchar(32) DEFAULT '',
+  http_status bigint DEFAULT 0,
+  upstream_status bigint DEFAULT 0,
+  error_type varchar(64) DEFAULT '',
+  error_code varchar(128) DEFAULT '',
+  error_message longtext,
+  request_headers longtext,
+  request_body longtext,
+  request_body_truncated tinyint(1) DEFAULT 0,
+  upstream_url longtext,
+  upstream_headers longtext,
+  upstream_body longtext,
+  upstream_body_truncated tinyint(1) DEFAULT 0,
+  response_headers longtext,
+  response_body longtext,
+  response_body_truncated tinyint(1) DEFAULT 0,
+  response_size bigint DEFAULT 0,
+  use_time bigint DEFAULT 0,
+  admin_info longtext,
+  INDEX idx_debug_key_traces_request_id (request_id),
+  INDEX idx_debug_key_traces_created_at (created_at),
+  INDEX idx_debug_key_traces_user_id (user_id),
+  INDEX idx_debug_key_traces_token_id (token_id),
+  INDEX idx_debug_key_traces_status (status),
+  INDEX idx_debug_key_traces_channel_id (channel_id)
+);
+```
+
+如果数据库面板提示字段、表或索引已存在，可忽略对应语句。
+
 ## AI 助手表
 
 `ui_assistant_configs`：
@@ -308,11 +391,13 @@ CREATE INDEX idx_top_ups_provider_order_no ON top_ups (provider_order_no);
 - `ui_assistant_sessions`
 - `ui_assistant_conversations`
 - `ui_assistant_conversation_messages`
+- `debug_key_traces`
 - `perf_metrics`
 - `users.avatar`
 - `users.avatar_type`
 - `users.created_at`
 - `users.last_login_at`
 - `top_ups.provider_order_no`
+- `tokens.debug_enabled`
 
 如果数据库面板报多语句 SQL 错误，应拆成单条 `CREATE TABLE` 或单条 `ALTER TABLE` 执行。

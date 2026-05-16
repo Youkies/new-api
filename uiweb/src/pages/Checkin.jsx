@@ -28,7 +28,35 @@ function buildCalendar(year, month) {
 const DOW = ['日', '一', '二', '三', '四', '五', '六']
 
 function formatCalendarReward(quota) {
-  return quotaToDisplay(quota ?? 0).text.replace(/^[+\s¥￥$€£]+/, '')
+  return quotaToDisplay(quota ?? 0).text
+    .replace(/^\s*[+-]?\s*/u, '')
+    .replace(/^[^\d.,]+/u, '')
+}
+
+function QuotaAmount({ quota, digits = 2, className = '' }) {
+  const text = quotaToDisplay(quota ?? 0, digits).text
+  const match = text.match(/^(-?)([^\d.,+-]*)([\d.,].*)$/u)
+  if (!match) {
+    return <span className={`inline-block max-w-full whitespace-nowrap ${className}`}>{text}</span>
+  }
+  const [, sign, symbol, amount] = match
+  return (
+    <span className={`inline-flex max-w-full min-w-0 items-baseline whitespace-nowrap ${className}`}>
+      {sign && <span>{sign}</span>}
+      {symbol && <span className="mr-1 shrink-0 text-[0.75em] leading-none">{symbol}</span>}
+      <span className="min-w-0 tabular-nums">{amount}</span>
+    </span>
+  )
+}
+
+function QuotaRange({ minQuota, maxQuota }) {
+  return (
+    <span className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1 leading-tight">
+      <QuotaAmount quota={minQuota} />
+      <span className="opacity-80">~</span>
+      <QuotaAmount quota={maxQuota} />
+    </span>
+  )
 }
 
 function getSecondsUntilMidnight() {
@@ -209,14 +237,16 @@ export default function Checkin() {
         <ClayStat
           icon={Gift}
           label="累计奖励"
-          value={quotaToDisplay(stats?.total_quota ?? 0).text}
+          value={<QuotaAmount quota={stats?.total_quota ?? 0} />}
           tone="green"
+          valueClassName="text-[clamp(1.7rem,8vw,2.25rem)] leading-tight"
         />
         <ClayStat
           icon={Flame}
           label="每次可得"
-          value={`${quotaToDisplay(quotaRange[0]).text} ~ ${quotaToDisplay(quotaRange[1]).text}`}
+          value={<QuotaRange minQuota={quotaRange[0]} maxQuota={quotaRange[1]} />}
           tone="pink"
+          valueClassName="text-[clamp(1.5rem,7vw,2.05rem)] leading-tight"
         />
       </div>
 

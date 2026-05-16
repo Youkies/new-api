@@ -16,6 +16,7 @@ export default function ClayStat({
   hint,
   tone = 'default',
   className = '',
+  valueClassName = '',
 }) {
   const toneCls = TONE[tone] ?? TONE.default
   return (
@@ -31,7 +32,9 @@ export default function ClayStat({
           </div>
         )}
       </div>
-      <div className="text-3xl font-black tracking-tight break-all">{value}</div>
+      <div className={`min-w-0 text-3xl font-black tracking-tight break-words ${valueClassName}`}>
+        {value}
+      </div>
       {hint && <div className="text-xs opacity-70 mt-2 font-semibold">{hint}</div>}
     </ClayCard>
   )

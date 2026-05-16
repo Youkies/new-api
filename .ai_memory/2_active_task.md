@@ -19,11 +19,25 @@
 - `npm run i18n:sync` 于 `web/default/` 通过；只保留既有未翻译计数。
 - `npm run build` 于 `web/default/` 通过。
 - `git diff --check` 通过。
+- 2026-05-16 已从干净 `git archive` 上下文构建并推送 GHCR 镜像 `ghcr.io/youkies/new-api:latest` 与 `:release-20260516-2331`，对应提交 `ede161c6`，平台 `linux/amd64`，digest `sha256:17e6023c673b4e2c1ef7e9fc8c314c7aa28fb9766de52be324f74f13b2c97b96`。
 
 ### 下一步
 
 - 若决定上线，先只提交本次相关文件；不要误加入未跟踪的问卷 xlsx、`cpa2/`、`kpay-epay-api/`、`log目录/`。
 - 上线后只给确认存在 assistant prefill 400 的 Claude 类渠道打开该开关，不建议全局默认开启。
+
+## 当前可接手状态：uiweb 签到页土豆货币展示修正（2026-05-16）
+
+### 已完成
+
+- 修复 `ClayStat` 数值区域使用 `break-all` 导致自定义 emoji 货币符号与金额被硬拆行的问题，改为可传 `valueClassName` 并默认按词换行。
+- 签到页上方“累计奖励”“每次可得”改用 `QuotaAmount` / `QuotaRange`，保证自定义货币符号与数字作为整体展示。
+- 签到日历小格子的奖励显示会去掉前缀货币符号，只保留紧凑数字，避免土豆图标挤占移动端日历空间。
+
+### 验证结果
+
+- `npm run build` 于 `uiweb/` 通过，仅有既有大 chunk 警告。
+- `git diff --check` 通过。
 
 ## 当前可接手状态：管理员调试 Key 记录（2026-05-16）
 

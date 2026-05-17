@@ -674,50 +674,53 @@ function LogCard({ log, onClick }) {
   const hasCache = cache.read > 0 || cache.write > 0
   const quotaText = formatQuotaDelta(log.quota)
   const quotaCls = quotaDeltaClass(log.quota)
+  const hasAlias = log.requested_model_name && log.requested_model_name !== log.model_name
 
   return (
     <div
-      className={`clay-card-interactive !p-4 !rounded-clay cursor-pointer ${isError ? '!bg-red-50/40' : ''}`}
+      className={`clay-card-interactive !p-5 !rounded-clay cursor-pointer ${isError ? '!bg-red-50/40' : ''}`}
       onClick={onClick}
     >
-      {/* Header: type chip + time + quota */}
-      <div className="flex items-center justify-between gap-2 mb-2">
-        <div className="flex items-center gap-2 min-w-0">
-          <div className={`w-7 h-7 rounded-full ${meta.bg} flex items-center justify-center shrink-0
+      {/* Row 1: type icon + label chips + cost */}
+      <div className="flex items-center justify-between gap-2 mb-3">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className={`w-9 h-9 rounded-full ${meta.bg} flex items-center justify-center shrink-0
             shadow-[2px_2px_4px_rgba(0,0,0,0.08),-1px_-1px_3px_rgba(255,255,255,0.6),inset_1px_1px_2px_rgba(255,255,255,0.4)]`}>
-            <TypeIcon className={`w-3.5 h-3.5 ${meta.text}`} strokeWidth={2.5} />
+            <TypeIcon className={`w-4 h-4 ${meta.text}`} strokeWidth={2.5} />
           </div>
-          <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-clay-pill shrink-0 ${meta.bg} ${meta.text}`}>
-            {meta.label}
-          </span>
-          {isConsume && (
-            <span className={`text-[10px] font-extrabold px-1.5 py-0.5 rounded-clay-pill shrink-0
-              ${log.is_stream ? 'bg-clay-blue-100 text-[#43658b]' : 'bg-gray-200/60 text-gray-500'}`}>
-              {log.is_stream ? '流' : '非流'}
+          <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
+            <span className={`text-[11px] font-extrabold px-2.5 py-0.5 rounded-clay-pill shrink-0 ${meta.bg} ${meta.text}`}>
+              {meta.label}
             </span>
-          )}
+            {isConsume && (
+              <span className={`text-[11px] font-extrabold px-2.5 py-0.5 rounded-clay-pill shrink-0
+                ${log.is_stream ? 'bg-clay-blue-100 text-[#43658b]' : 'bg-gray-200/60 text-gray-500'}`}>
+                {log.is_stream ? '流式' : '非流'}
+              </span>
+            )}
+          </div>
         </div>
         {quotaText && (
-          <span className={`text-sm font-black tabular-nums shrink-0 ${quotaCls}`}>{quotaText}</span>
+          <span className={`text-base font-black tabular-nums shrink-0 ${quotaCls}`}>{quotaText}</span>
         )}
       </div>
 
-      {/* Model name (consume) — show alias → real when an archive alias was used */}
+      {/* Row 2: Model pill — show "alias → real" when alias was used */}
       {isConsume && log.model_name && (
-        <div className="mb-2 flex items-center gap-1.5 flex-wrap min-w-0">
-          {log.requested_model_name && log.requested_model_name !== log.model_name && (
+        <div className="mb-3 flex items-center gap-2 min-w-0 flex-wrap">
+          {hasAlias && (
             <>
               <span
-                className="font-mono text-[11px] font-bold bg-clay-purple-100/60 shadow-clay-inset px-2.5 py-0.5 rounded-clay-pill inline-block max-w-[55%] truncate"
+                className="font-mono text-xs font-extrabold bg-clay-purple-100/60 text-[#6b4d83] shadow-clay-inset px-2.5 py-1 rounded-clay-pill max-w-[55%] truncate"
                 title={`用户请求: ${log.requested_model_name}`}
               >
                 {log.requested_model_name}
               </span>
-              <ArrowRight className="w-3 h-3 text-clay-faint shrink-0" />
+              <ArrowRight className="w-3.5 h-3.5 text-clay-faint shrink-0" strokeWidth={2.5} />
             </>
           )}
           <span
-            className="font-mono text-[11px] font-bold bg-clay-bg shadow-clay-inset px-2.5 py-0.5 rounded-clay-pill inline-block flex-1 min-w-0 truncate"
+            className="font-mono text-xs font-extrabold bg-clay-bg shadow-clay-inset px-2.5 py-1 rounded-clay-pill flex-1 min-w-0 truncate"
             title={log.model_name}
           >
             {log.model_name}
@@ -725,66 +728,92 @@ function LogCard({ log, onClick }) {
         </div>
       )}
 
-      {/* Tokens row (consume) */}
+      {/* Row 3: Tokens — embossed pill with bigger, bolder numbers */}
       {isConsume && (hasTokens || hasCache) && (
-        <div className="flex items-center gap-2 flex-wrap text-[11px] font-mono mb-2">
+        <div className="mb-3 bg-clay-bg shadow-clay-inset rounded-clay-sm px-3 py-2 flex items-center gap-2 flex-wrap text-xs font-mono">
           {hasTokens && (
-            <span className="text-clay-faint">
-              <span className="font-bold mr-0.5">入</span>{fmtTokens(log.prompt_tokens)}
-              <span className="text-clay-faint/50 mx-1">/</span>
-              <span className="font-bold mr-0.5">出</span>
-              <span className="font-extrabold text-clay-ink">{fmtTokens(log.completion_tokens)}</span>
-            </span>
+            <>
+              <span className="inline-flex items-baseline gap-1">
+                <span className="text-[10px] text-clay-faint font-bold uppercase tracking-wider">入</span>
+                <span className="font-extrabold text-clay-ink">{fmtTokens(log.prompt_tokens)}</span>
+              </span>
+              <span className="text-clay-faint/40">/</span>
+              <span className="inline-flex items-baseline gap-1">
+                <span className="text-[10px] text-clay-faint font-bold uppercase tracking-wider">出</span>
+                <span className="font-extrabold text-clay-ink">{fmtTokens(log.completion_tokens)}</span>
+              </span>
+            </>
           )}
           {cache.read > 0 && (
-            <span className="text-emerald-600">
-              <span className="font-bold mr-0.5">缓读</span>{fmtTokens(cache.read)}
-            </span>
+            <>
+              <span className="text-clay-faint/40">·</span>
+              <span className="inline-flex items-baseline gap-1 text-emerald-600">
+                <span className="text-[10px] font-bold uppercase tracking-wider opacity-70">缓读</span>
+                <span className="font-extrabold">{fmtTokens(cache.read)}</span>
+              </span>
+            </>
           )}
           {cache.write > 0 && (
-            <span className="text-amber-600">
-              <span className="font-bold mr-0.5">缓写</span>{fmtTokens(cache.write)}
-            </span>
+            <>
+              <span className="text-clay-faint/40">·</span>
+              <span className="inline-flex items-baseline gap-1 text-amber-600">
+                <span className="text-[10px] font-bold uppercase tracking-wider opacity-70">缓写</span>
+                <span className="font-extrabold">{fmtTokens(cache.write)}</span>
+              </span>
+            </>
           )}
         </div>
       )}
 
-      {/* Footer: time + group + use_time + token_name */}
-      <div className="flex items-center justify-between gap-2 text-[10px] text-clay-faint">
-        <span className="inline-flex items-center gap-1 shrink-0">
-          <Clock className="w-3 h-3" />
-          {fmtTs(log.created_at)}
-        </span>
-        <div className="flex items-center gap-1.5 min-w-0">
-          {log.group && (
-            <span
-              className="px-1.5 py-0.5 rounded-clay-sm bg-clay-bg shadow-clay-inset text-clay-faint font-bold shrink-0 max-w-[120px] truncate"
-              title={`分组: ${log.group}`}
-            >
-              {log.group}
+      {/* Footer: time / use_time on top, group + token_name pills below */}
+      {isConsume && (
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between gap-2 text-xs text-clay-faint font-bold">
+            <span className="inline-flex items-center gap-1 shrink-0">
+              <Clock className="w-3.5 h-3.5" strokeWidth={2.5} />
+              {fmtTs(log.created_at)}
             </span>
-          )}
-          {isConsume && log.use_time ? (
-            <span className="font-mono shrink-0">
-              {fmtUseTime(log.use_time)}
-              {fmtFrt(frt) && <span className="text-emerald-600 ml-0.5">/{fmtFrt(frt)}</span>}
-            </span>
-          ) : null}
-          {log.token_name && (
-            <span className="truncate max-w-[120px]" title={log.token_name}>{log.token_name}</span>
+            {log.use_time ? (
+              <span className="font-mono shrink-0">
+                {fmtUseTime(log.use_time)}
+                {fmtFrt(frt) && <span className="text-emerald-600 ml-1 font-extrabold">·{fmtFrt(frt)}</span>}
+              </span>
+            ) : null}
+          </div>
+          {(log.group || log.token_name) && (
+            <div className="flex items-center gap-2 flex-wrap">
+              {log.group && (
+                <span
+                  className="px-2 py-0.5 rounded-clay-pill bg-clay-bg shadow-clay-inset inline-flex items-center gap-1 max-w-[150px]"
+                  title={`分组: ${log.group}`}
+                >
+                  <span className="text-[10px] uppercase tracking-wider text-clay-faint font-bold">组</span>
+                  <span className="text-xs font-extrabold text-clay-ink truncate">{log.group}</span>
+                </span>
+              )}
+              {log.token_name && (
+                <span
+                  className="px-2 py-0.5 rounded-clay-pill bg-clay-bg shadow-clay-inset inline-flex items-center gap-1 max-w-[150px]"
+                  title={`令牌: ${log.token_name}`}
+                >
+                  <span className="text-[10px] uppercase tracking-wider text-clay-faint font-bold">牌</span>
+                  <span className="text-xs font-extrabold text-clay-ink truncate">{log.token_name}</span>
+                </span>
+              )}
+            </div>
           )}
         </div>
-      </div>
+      )}
 
       {/* Non-consume content */}
       {!isConsume && (
-        <div className="mt-3 rounded-clay bg-clay-bg shadow-clay-inset px-3 py-2">
-          <div className="text-[10px] font-black text-clay-faint mb-1">详细信息</div>
-          <div className="text-xs font-semibold text-clay-ink/80 whitespace-pre-wrap break-all leading-relaxed">
+        <div className="rounded-clay bg-clay-bg shadow-clay-inset px-3 py-2.5">
+          <div className="text-[11px] font-black text-clay-faint mb-1.5">详细信息</div>
+          <div className="text-xs font-bold text-clay-ink/80 whitespace-pre-wrap break-all leading-relaxed">
             {log.content || '-'}
           </div>
           {(log.model_name || log.token_name || log.group || log.request_id || log.requested_model_name) && (
-            <div className="mt-2 flex flex-wrap gap-1.5 text-[10px] text-clay-faint">
+            <div className="mt-2.5 flex flex-wrap gap-2 text-[11px] text-clay-faint font-bold">
               {log.requested_model_name && log.requested_model_name !== log.model_name && (
                 <span className="font-mono">请求: {log.requested_model_name}</span>
               )}
@@ -794,6 +823,10 @@ function LogCard({ log, onClick }) {
               {log.request_id && <span className="font-mono break-all">ID: {log.request_id}</span>}
             </div>
           )}
+          <div className="mt-2 text-[10px] text-clay-faint font-bold inline-flex items-center gap-1">
+            <Clock className="w-3 h-3" />
+            {fmtTs(log.created_at)}
+          </div>
         </div>
       )}
     </div>

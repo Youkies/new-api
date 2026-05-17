@@ -37,10 +37,13 @@ function AliasCard({ a, onEdit, onDelete }) {
           </span>
         )}
       </div>
-      <div className="flex items-center gap-1.5 text-xs text-clay-faint mb-3">
-        <span className="px-1.5 py-0.5 rounded-clay-sm bg-clay-bg shadow-clay-inset font-bold">{a.source_group}</span>
-        <ArrowRight className="w-3 h-3" />
-        <span className="font-mono truncate">{a.source_model}</span>
+      <div className="flex items-center gap-1.5 text-xs text-clay-faint mb-3 min-w-0">
+        <span className="px-2 py-0.5 rounded-clay-sm bg-clay-bg shadow-clay-inset shrink-0 inline-flex items-center gap-1">
+          <span className="text-[10px] uppercase tracking-wider opacity-60">分组</span>
+          <span className="font-bold">{a.source_group}</span>
+        </span>
+        <ArrowRight className="w-3 h-3 shrink-0" />
+        <span className="font-mono truncate" title={a.source_model}>{a.source_model}</span>
       </div>
       {a.disabled_reason && (
         <div className="text-[11px] text-amber-700 mb-2 break-words">{a.disabled_reason}</div>

@@ -304,6 +304,11 @@ func CreateArchiveAlias(c *gin.Context) {
 	req.AliasName = strings.TrimSpace(req.AliasName)
 	req.SourceGroup = strings.TrimSpace(req.SourceGroup)
 	req.SourceModel = strings.TrimSpace(req.SourceModel)
+	// Empty alias defaults to the source model name so the user can declare
+	// "I want to call <model> from this group" without having to rename it.
+	if req.AliasName == "" {
+		req.AliasName = req.SourceModel
+	}
 	disabledReason, verr := validateAliasSource(c, req.SourceGroup, req.SourceModel)
 	if verr != nil {
 		common.ApiErrorMsg(c, verr.Error())
@@ -317,12 +322,23 @@ func CreateArchiveAlias(c *gin.Context) {
 		DisabledReason: disabledReason,
 	}
 	if err := al.Insert(); err != nil {
+		// On collision, auto-prefix with the source group and retry once.
+		// This implements the "save with group prefix on conflict" behavior
+		// so users don't get stuck when the same model id appears across groups.
 		if errors.Is(err, model.ErrArchiveAliasDuplicate) {
-			common.ApiErrorMsg(c, "该存档已存在同名别名")
+			al.AliasName = req.SourceGroup + "/" + req.AliasName
+			if err2 := al.Insert(); err2 != nil {
+				if errors.Is(err2, model.ErrArchiveAliasDuplicate) {
+					common.ApiErrorMsg(c, "该存档已存在同名别名，且加前缀后仍冲突，请手动指定别名")
+					return
+				}
+				common.ApiError(c, err2)
+				return
+			}
+		} else {
+			common.ApiError(c, err)
 			return
 		}
-		common.ApiError(c, err)
-		return
 	}
 	c.JSON(http.StatusOK, gin.H{"success": true, "data": toAliasDTO(al)})
 }

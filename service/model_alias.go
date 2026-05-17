@@ -16,10 +16,13 @@ import (
 // archive aliases and rewrites it when a match is found.
 //
 // Two scopes are considered, in order:
-//  1. Explicit prefix routing: a request like "slug/alias-name" is parsed as
+//  1. Explicit prefix routing: a request like "slug@alias-name" is parsed as
 //     archive slug + alias name. The slug must resolve to an archive the user
 //     owns. If the prefix matches but the alias is missing, this is treated
-//     as a user error (returns an error).
+//     as a user error (returns an error). The '@' separator is chosen over
+//     '/' because '/' commonly appears in real model names (e.g.
+//     "anthropic/claude-3-5-sonnet") and in alias names that default to such
+//     model ids.
 //  2. Token-bound archive: if the token has a default archive bound, the full
 //     model name is looked up as an alias in that archive. A miss falls
 //     through to normal routing (no error).
@@ -45,7 +48,7 @@ func ResolveModelAlias(c *gin.Context, modelName string) (string, error) {
 	archiveId := 0
 	explicitPrefix := false
 
-	if idx := strings.IndexByte(modelName, '/'); idx > 0 && idx < len(modelName)-1 {
+	if idx := strings.IndexByte(modelName, '@'); idx > 0 && idx < len(modelName)-1 {
 		candidateSlug := modelName[:idx]
 		candidateAlias := modelName[idx+1:]
 		archive, err := model.GetUserArchiveBySlug(userId, candidateSlug)

@@ -81,7 +81,7 @@ export default function ClayConsoleShell({
   const avatarSrc = user?.has_avatar ? `/api/user/avatar/${user.id}?t=${user._avatar_t || ''}` : undefined
 
   const linkCls = ({ isActive }) =>
-    `px-5 py-2.5 rounded-clay-pill font-bold text-sm transition-all flex items-center gap-2 ${
+    `px-2.5 lg:px-3.5 py-2 rounded-clay-pill font-bold text-sm transition-all flex items-center gap-1.5 whitespace-nowrap ${
       isActive
         ? 'bg-clay-pink-100 text-[#8a4860] shadow-clay'
         : 'text-clay-faint hover:text-clay-ink'
@@ -113,7 +113,7 @@ export default function ClayConsoleShell({
           </div>
 
           {/* Desktop nav */}
-          <nav className="hidden md:flex items-center gap-1 p-2 rounded-clay-pill bg-clay-bg shadow-clay-inset">
+          <nav className="hidden md:flex items-center gap-0.5 lg:gap-1 p-1.5 lg:p-2 rounded-clay-pill bg-clay-bg shadow-clay-inset">
             {NAV.map((n) => {
               const Icon = n.icon
               return (

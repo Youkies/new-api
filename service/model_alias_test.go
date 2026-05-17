@@ -138,7 +138,7 @@ func TestResolveModelAlias_ExplicitPrefixHit(t *testing.T) {
 	// No token-bound archive — only prefix routing should work.
 	c := newGinCtxForUser(1006)
 
-	got, err := ResolveModelAlias(c, archive.Slug+"/cheap")
+	got, err := ResolveModelAlias(c, archive.Slug+"@cheap")
 	require.NoError(t, err)
 	require.Equal(t, "claude-3-5-sonnet", got)
 	require.Equal(t, "vip", common.GetContextKeyString(c, constant.ContextKeyUsingGroup))
@@ -152,19 +152,32 @@ func TestResolveModelAlias_ExplicitPrefixMissReturnsError(t *testing.T) {
 
 	c := newGinCtxForUser(1007)
 
-	_, err := ResolveModelAlias(c, archive.Slug+"/nonexistent")
+	_, err := ResolveModelAlias(c, archive.Slug+"@nonexistent")
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "不存在")
 }
 
 func TestResolveModelAlias_UnknownPrefixPassesThrough(t *testing.T) {
-	// A slash in the model name that doesn't match any of the user's archive
-	// slugs is treated as a normal model name (e.g. "anthropic/claude-..."),
-	// not a routing error.
+	// '@' that doesn't match any of the user's archive slugs is treated as a
+	// normal model name (no error), since '@' is rare but possible in upstream
+	// model identifiers.
 	truncate(t)
 	seedAliasUser(t, 1008, "default")
 
 	c := newGinCtxForUser(1008)
+	got, err := ResolveModelAlias(c, "unknown-slug@something")
+	require.NoError(t, err)
+	require.Equal(t, "unknown-slug@something", got)
+}
+
+func TestResolveModelAlias_SlashInModelNameDoesNotTriggerRouting(t *testing.T) {
+	// Real upstream model names commonly contain '/' (e.g.
+	// "anthropic/claude-3-5-sonnet"). After switching the prefix separator to
+	// '@', a '/'-containing model name must NOT be parsed as routing.
+	truncate(t)
+	seedAliasUser(t, 1009, "default")
+
+	c := newGinCtxForUser(1009)
 	got, err := ResolveModelAlias(c, "anthropic/claude-3-5-sonnet")
 	require.NoError(t, err)
 	require.Equal(t, "anthropic/claude-3-5-sonnet", got)

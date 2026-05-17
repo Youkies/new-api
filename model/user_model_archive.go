@@ -6,6 +6,7 @@ import (
 	"regexp"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/QuantumNous/new-api/common"
 	"gorm.io/gorm"
@@ -55,8 +56,29 @@ var (
 
 	slugInvalidChars = regexp.MustCompile(`[^a-z0-9]+`)
 	slugTrimDashes   = regexp.MustCompile(`(^-+)|(-+$)`)
-	aliasNamePattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9_.:\-]{0,63}$`)
 )
+
+// ValidateAliasName accepts any non-empty string (including Chinese / other
+// Unicode) up to 64 runes, with two forbidden characters:
+//   - '@' is reserved as the archive-prefix routing separator ("slug@alias")
+//   - any whitespace, which has no place in API model names
+func ValidateAliasName(name string) error {
+	if name == "" {
+		return errors.New("别名不能为空")
+	}
+	if utf8.RuneCountInString(name) > 64 {
+		return errors.New("别名长度不能超过 64 个字符")
+	}
+	for _, r := range name {
+		if r == '@' {
+			return errors.New("别名不能包含 '@'（用于跨存档路由的保留字符）")
+		}
+		if r == ' ' || r == '\t' || r == '\n' || r == '\r' {
+			return errors.New("别名不能包含空白字符")
+		}
+	}
+	return nil
+}
 
 // slugify converts an arbitrary display name into an ASCII slug.
 // Non-ASCII (e.g. Chinese) chars are stripped; if the result is empty,
@@ -77,12 +99,7 @@ func slugify(name string) string {
 
 // ValidateAliasName enforces a conservative alias charset so aliases don't
 // collide with URL/path syntax used in prefix routing.
-func ValidateAliasName(name string) error {
-	if !aliasNamePattern.MatchString(name) {
-		return fmt.Errorf("alias name must start with a letter or digit and contain only [A-Za-z0-9_.:-]")
-	}
-	return nil
-}
+// (Moved above into the var block as a standalone func; this comment intentionally left empty.)
 
 func generateArchiveShareCode() (string, error) {
 	return common.GenerateRandomCharsKey(archiveShareCodeLength)

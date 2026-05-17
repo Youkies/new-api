@@ -232,7 +232,7 @@ export default function ArchiveList() {
             value={form.slug}
             onChange={(e) => setForm({ ...form, slug: e.target.value })}
             placeholder="留空则自动生成"
-            hint="用于前缀路由 model=slug/alias-name"
+            hint="用于前缀路由 model=slug@alias-name"
             maxLength={64}
           />
         </div>

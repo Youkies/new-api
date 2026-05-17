@@ -128,7 +128,6 @@ export default function ArchiveDetail() {
   }
 
   const onSave = async () => {
-    if (!form.alias_name.trim()) { toast('请输入别名', 'error'); return }
     if (!form.source_group) { toast('请选择源分组', 'error'); return }
     if (!form.source_model) { toast('请选择源模型', 'error'); return }
     setSaving(true)
@@ -140,7 +139,13 @@ export default function ArchiveDetail() {
       } else {
         const res = await createAlias(archiveId, form)
         if (!res?.success) throw new Error(res?.message ?? '创建失败')
-        toast('已创建')
+        // Surface the actual alias_name in case backend auto-prefixed on collision.
+        const finalName = res?.data?.alias_name
+        if (finalName && finalName !== (form.alias_name.trim() || form.source_model)) {
+          toast(`已创建，因冲突自动重命名为「${finalName}」`)
+        } else {
+          toast('已创建')
+        }
       }
       setShowModal(false)
       load()
@@ -304,35 +309,56 @@ export default function ArchiveDetail() {
       )}
 
       <ClayModal open={showModal} onClose={() => setShowModal(false)} title={editing ? '编辑别名' : '新建别名'} size="md">
-        <div className="space-y-4">
-          <ClayField
-            label="别名"
-            value={form.alias_name}
-            onChange={(e) => setForm({ ...form, alias_name: e.target.value })}
-            placeholder="例如：cheap"
-            hint="字母、数字、下划线、点、冒号、连字符"
-            maxLength={64}
-          />
-          <div>
-            <label className="block ml-4 mb-2 font-bold text-sm text-clay-ink">源分组</label>
-            <ClaySelect
-              value={form.source_group}
-              onChange={(v) => setForm({ ...form, source_group: v, source_model: '' })}
-              options={groupOptions}
-              placeholder="选择分组"
-            />
-          </div>
-          <div>
-            <label className="block ml-4 mb-2 font-bold text-sm text-clay-ink">源模型</label>
-            <ClaySelect
-              value={form.source_model}
-              onChange={(v) => setForm({ ...form, source_model: v })}
-              options={modelOptions}
-              placeholder={form.source_group ? '选择模型' : '请先选择分组'}
-              disabled={!form.source_group}
-            />
-          </div>
-        </div>
+        {(() => {
+          // Effective alias: what would actually be stored if the user saves now.
+          const effectiveAlias = (form.alias_name || '').trim() || form.source_model || ''
+          // Collision: same alias_name already exists in this archive (excluding the one being edited).
+          const collision = effectiveAlias && aliases.some((a) => (
+            a.alias_name === effectiveAlias && (!editing || a.id !== editing.id)
+          ))
+          const autoPrefixed = collision && form.source_group
+            ? `${form.source_group}/${effectiveAlias}`
+            : ''
+          return (
+            <div className="space-y-4">
+              <div>
+                <label className="block ml-4 mb-2 font-bold text-sm text-clay-ink">别名</label>
+                <ClayField
+                  value={form.alias_name}
+                  onChange={(e) => setForm({ ...form, alias_name: e.target.value })}
+                  placeholder={form.source_model || '留空则使用源模型名'}
+                  hint="支持中文、字母、数字、下划线、点、冒号、斜杠、连字符；不能含 '@' 或空格"
+                  maxLength={64}
+                  className="!mb-0"
+                />
+              </div>
+              <div>
+                <label className="block ml-4 mb-2 font-bold text-sm text-clay-ink">源分组</label>
+                <ClaySelect
+                  value={form.source_group}
+                  onChange={(v) => setForm({ ...form, source_group: v, source_model: '' })}
+                  options={groupOptions}
+                  placeholder="选择分组"
+                />
+              </div>
+              <div>
+                <label className="block ml-4 mb-2 font-bold text-sm text-clay-ink">源模型</label>
+                <ClaySelect
+                  value={form.source_model}
+                  onChange={(v) => setForm({ ...form, source_model: v })}
+                  options={modelOptions}
+                  placeholder={form.source_group ? '选择模型' : '请先选择分组'}
+                  disabled={!form.source_group}
+                />
+              </div>
+              {collision && autoPrefixed && (
+                <div className="rounded-clay-sm bg-amber-100/60 px-3 py-2 text-xs text-amber-700">
+                  存档内已存在「{effectiveAlias}」，保存后将自动重命名为「{autoPrefixed}」。
+                </div>
+              )}
+            </div>
+          )
+        })()}
         <div className="flex flex-col-reverse items-stretch gap-3 mt-6 sm:flex-row sm:items-center sm:justify-end">
           <ClayButton variant="ghost" onClick={() => setShowModal(false)}>取消</ClayButton>
           <ClayButton variant="primary" onClick={onSave} disabled={saving}>{saving ? '保存中…' : '保存'}</ClayButton>

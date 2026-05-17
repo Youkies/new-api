@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/QuantumNous/new-api/common"
+	"github.com/QuantumNous/new-api/constant"
 	"github.com/QuantumNous/new-api/logger"
 	"github.com/QuantumNous/new-api/types"
 
@@ -35,8 +36,9 @@ type Log struct {
 	TokenId          int    `json:"token_id" gorm:"default:0;index"`
 	Group            string `json:"group" gorm:"index"`
 	Ip               string `json:"ip" gorm:"index;default:''"`
-	RequestId        string `json:"request_id,omitempty" gorm:"type:varchar(64);index:idx_logs_request_id;default:''"`
-	Other            string `json:"other"`
+	RequestId           string `json:"request_id,omitempty" gorm:"type:varchar(64);index:idx_logs_request_id;default:''"`
+	RequestedModelName  string `json:"requested_model_name,omitempty" gorm:"type:varchar(255);default:''"`
+	Other               string `json:"other"`
 }
 
 // don't use iota, avoid change log type value
@@ -177,8 +179,9 @@ func RecordErrorLog(c *gin.Context, userId int, channelId int, modelName string,
 			}
 			return ""
 		}(),
-		RequestId: requestId,
-		Other:     otherStr,
+		RequestId:          requestId,
+		RequestedModelName: c.GetString(string(constant.ContextKeyUserInputAlias)),
+		Other:              otherStr,
 	}
 	err := LOG_DB.Create(log).Error
 	if err != nil {
@@ -238,8 +241,9 @@ func RecordConsumeLog(c *gin.Context, userId int, params RecordConsumeLogParams)
 			}
 			return ""
 		}(),
-		RequestId: requestId,
-		Other:     otherStr,
+		RequestId:          requestId,
+		RequestedModelName: c.GetString(string(constant.ContextKeyUserInputAlias)),
+		Other:              otherStr,
 	}
 	err := LOG_DB.Create(log).Error
 	if err != nil {

@@ -44,20 +44,20 @@ html[data-theme='light'] {
   --clay-yellow-ink: 138 106 50;
 
   --clay-shadow-sm:
-    3px 3px 8px rgba(163, 177, 198, 0.32),
-    -3px -3px 8px rgba(255, 255, 255, 0.78),
-    inset 1px 1px 2px rgba(255, 255, 255, 0.6),
-    inset -1px -1px 2px rgba(163, 177, 198, 0.14);
+    3px 3px 9px rgba(163, 177, 198, 0.28),
+    -3px -3px 9px rgba(255, 255, 255, 0.5),
+    inset 1px 1px 2px rgba(255, 255, 255, 0.38),
+    inset -1px -1px 2px rgba(163, 177, 198, 0.12);
   --clay-shadow:
-    8px 8px 18px rgba(163, 177, 198, 0.35),
-    -8px -8px 18px rgba(255, 255, 255, 0.85),
-    inset 2px 2px 5px rgba(255, 255, 255, 0.65),
-    inset -2px -2px 5px rgba(163, 177, 198, 0.18);
+    10px 10px 22px rgba(163, 177, 198, 0.3),
+    -10px -10px 22px rgba(255, 255, 255, 0.55),
+    inset 1px 1px 3px rgba(255, 255, 255, 0.4),
+    inset -1px -1px 3px rgba(163, 177, 198, 0.14);
   --clay-shadow-hover:
-    14px 14px 26px rgba(163, 177, 198, 0.4),
-    -14px -14px 26px rgba(255, 255, 255, 0.9),
-    inset 2px 2px 5px rgba(255, 255, 255, 0.65),
-    inset -2px -2px 5px rgba(163, 177, 198, 0.18);
+    16px 16px 30px rgba(163, 177, 198, 0.36),
+    -16px -16px 30px rgba(255, 255, 255, 0.6),
+    inset 1px 1px 3px rgba(255, 255, 255, 0.4),
+    inset -1px -1px 3px rgba(163, 177, 198, 0.14);
   --clay-shadow-active:
     inset 4px 4px 8px rgba(163, 177, 198, 0.5),
     inset -4px -4px 8px rgba(255, 255, 255, 0.8);
@@ -167,7 +167,6 @@ body {
   .clay-card {
     @apply rounded-[35px] p-10 shadow-clay transition-all duration-300 ease-clay overflow-hidden;
     background-color: rgb(var(--clay-surface));
-    border: 2px solid rgb(var(--clay-border) / 0.24);
   }
 
   .clay-card-interactive {

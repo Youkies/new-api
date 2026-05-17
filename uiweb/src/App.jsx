@@ -35,6 +35,7 @@ import AdminAssistant from './pages/admin/AdminAssistant.jsx'
 import AdminPageConfig from './pages/admin/AdminPageConfig.jsx'
 import AdminPlaygroundFoods from './pages/admin/AdminPlaygroundFoods.jsx'
 import AdminDebugTraces from './pages/admin/AdminDebugTraces.jsx'
+import AdminKPayTopUps from './pages/admin/AdminKPayTopUps.jsx'
 
 export default function App() {
   return (
@@ -241,6 +242,16 @@ export default function App() {
           <ProtectedRoute>
             <AdminRoute>
               <AdminDebugTraces />
+            </AdminRoute>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/kpay-topups"
+        element={
+          <ProtectedRoute>
+            <AdminRoute>
+              <AdminKPayTopUps />
             </AdminRoute>
           </ProtectedRoute>
         }

@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { ArrowRight, Bell, Bug, Gamepad2, Megaphone, ShieldCheck, Sparkles } from 'lucide-react'
+import { ArrowRight, Bell, Bug, Gamepad2, Megaphone, ShieldCheck, Sparkles, Wallet } from 'lucide-react'
 import ClayCard from '../../components/clay/ClayCard.jsx'
 import ClayAdminShell from '../../components/layout/ClayAdminShell.jsx'
 
@@ -108,6 +108,23 @@ export default function AdminHome() {
             className="inline-flex items-center gap-2 px-4 py-2 rounded-clay-pill bg-clay-bg shadow-clay text-sm font-extrabold text-clay-ink"
           >
             查看调试
+            <ArrowRight className="w-4 h-4" />
+          </Link>
+        </ClayCard>
+
+        <ClayCard className="!p-6">
+          <div className="clay-icon-box !w-12 !h-12 text-clay-green-300 mb-5">
+            <Wallet className="w-5 h-5" strokeWidth={2.5} />
+          </div>
+          <h2 className="text-xl font-black mb-2">KPay 到账</h2>
+          <p className="text-sm text-clay-faint font-semibold leading-relaxed mb-5">
+            查看全站 KPay 充值订单，对回调失败/未到账的订单触发一次查单并按真实状态入账。
+          </p>
+          <Link
+            to="/admin/kpay-topups"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-clay-pill bg-clay-bg shadow-clay text-sm font-extrabold text-clay-ink"
+          >
+            查看充值
             <ArrowRight className="w-4 h-4" />
           </Link>
         </ClayCard>

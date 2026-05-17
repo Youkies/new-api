@@ -708,3 +708,87 @@ func RechargeKPay(tradeNo string, actualPaymentMethod string, callerIp string, p
 
 	return nil
 }
+
+// GetAllKPayTopUps 管理员查询全部 KPay 充值记录，支持按状态和关键字过滤。
+// 关键字会同时匹配 trade_no 与 provider_order_no。
+func GetAllKPayTopUps(statuses []string, keyword string, pageInfo *common.PageInfo) (topups []*TopUp, total int64, err error) {
+	tx := DB.Begin()
+	if tx.Error != nil {
+		return nil, 0, tx.Error
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	query := tx.Model(&TopUp{}).Where("payment_provider = ?", PaymentProviderKPay)
+	if len(statuses) > 0 {
+		query = query.Where("status IN ?", statuses)
+	}
+	if keyword != "" {
+		pattern, perr := sanitizeLikePattern(keyword)
+		if perr != nil {
+			tx.Rollback()
+			return nil, 0, perr
+		}
+		query = query.Where(
+			"trade_no LIKE ? ESCAPE '!' OR provider_order_no LIKE ? ESCAPE '!'",
+			pattern, pattern,
+		)
+	}
+
+	if err = query.Limit(searchTopUpCountHardLimit).Count(&total).Error; err != nil {
+		tx.Rollback()
+		common.SysError("failed to count kpay topups: " + err.Error())
+		return nil, 0, errors.New("查询 KPay 充值记录失败")
+	}
+
+	if err = query.Order("id desc").Limit(pageInfo.GetPageSize()).Offset(pageInfo.GetStartIdx()).Find(&topups).Error; err != nil {
+		tx.Rollback()
+		common.SysError("failed to list kpay topups: " + err.Error())
+		return nil, 0, errors.New("查询 KPay 充值记录失败")
+	}
+
+	if err = tx.Commit().Error; err != nil {
+		return nil, 0, err
+	}
+	return topups, total, nil
+}
+
+// ScanStalePendingKPayTopUps 扫描需要补查单的 KPay pending 订单。
+// 筛选条件：
+//   - payment_provider = kpay
+//   - status = pending
+//   - provider_order_no 非空（无平台单号的旧订单由 isKPayLocalFallbackExpired 兜底）
+//   - create_time 落在 [now-maxAge, now-minAge] 区间（既避免刚下单立刻扫，
+//     也避免回溯过老导致 DB 压力）
+//
+// 按 id 升序返回，便于稳定分批；limit 由调用方控制单轮扫描上限。
+func ScanStalePendingKPayTopUps(minAgeSeconds int64, maxAgeSeconds int64, limit int) ([]*TopUp, error) {
+	if limit <= 0 {
+		return nil, nil
+	}
+	if minAgeSeconds < 0 {
+		minAgeSeconds = 0
+	}
+	if maxAgeSeconds <= 0 || maxAgeSeconds <= minAgeSeconds {
+		return nil, nil
+	}
+
+	now := common.GetTimestamp()
+	upperBound := now - minAgeSeconds
+	lowerBound := now - maxAgeSeconds
+
+	var topups []*TopUp
+	err := DB.Model(&TopUp{}).
+		Where("payment_provider = ? AND status = ? AND provider_order_no <> '' AND create_time <= ? AND create_time >= ?",
+			PaymentProviderKPay, common.TopUpStatusPending, upperBound, lowerBound).
+		Order("id asc").
+		Limit(limit).
+		Find(&topups).Error
+	if err != nil {
+		return nil, err
+	}
+	return topups, nil
+}

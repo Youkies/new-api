@@ -103,6 +103,8 @@ func SetApiRouter(router *gin.Engine) {
 				uiAdminRoute.PUT("/assistant/documents/:id", controller.AdminUpdateUIAssistantDocument)
 				uiAdminRoute.DELETE("/assistant/documents/:id", controller.AdminDeleteUIAssistantDocument)
 				uiAdminRoute.GET("/assistant/sessions", controller.AdminListUIAssistantSessions)
+				uiAdminRoute.GET("/topups/kpay", controller.AdminListKPayTopUps)
+				uiAdminRoute.POST("/topups/kpay/:trade_no/replay", controller.AdminReplayKPayTopUp)
 			}
 		}
 		perfMetricsRoute := apiRouter.Group("/perf-metrics")

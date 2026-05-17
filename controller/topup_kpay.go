@@ -626,66 +626,180 @@ func CheckKPayTopUp(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "订单不存在"})
 		return
 	}
-	if topUp.Status == common.TopUpStatusSuccess {
-		c.JSON(http.StatusOK, gin.H{"message": "success", "data": gin.H{"status": common.TopUpStatusSuccess}})
+
+	result := reconcileKPayTopUp(c.Request.Context(), topUp, c.ClientIP(), strings.TrimSpace(req.ProviderOrderNo), "user_check")
+	if result.err != nil {
+		c.JSON(http.StatusOK, gin.H{"message": "error", "data": result.err.Error()})
 		return
 	}
-	if topUp.Status != common.TopUpStatusPending {
-		c.JSON(http.StatusOK, gin.H{"message": "success", "data": gin.H{"status": topUp.Status}})
-		return
+	data := gin.H{"status": result.localStatus}
+	if result.providerStatus != "" {
+		data["provider_status"] = result.providerStatus
+	}
+	if result.reason != "" {
+		data["reason"] = result.reason
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "success", "data": data})
+}
+
+// kpayReconcileResult 描述一次 KPay 对账（查单 + 同步终态/入账）的结果。
+type kpayReconcileResult struct {
+	localStatus    string
+	providerStatus string
+	reason         string
+	changed        bool
+	err            error
+}
+
+// reconcileKPayTopUp 对单个 KPay TopUp 执行查单和同步。
+// 调用方负责权限校验（用户身份或管理员身份）。caller 用于区分日志来源。
+func reconcileKPayTopUp(ctx context.Context, topUp *model.TopUp, clientIP string, providerOrderNoOverride string, caller string) kpayReconcileResult {
+	if topUp == nil {
+		return kpayReconcileResult{err: errors.New("订单不存在")}
+	}
+	if topUp.Status == common.TopUpStatusSuccess {
+		return kpayReconcileResult{localStatus: common.TopUpStatusSuccess}
+	}
+	if topUp.Status != common.TopUpStatusPending &&
+		topUp.Status != common.TopUpStatusFailed &&
+		topUp.Status != common.TopUpStatusExpired {
+		return kpayReconcileResult{localStatus: topUp.Status}
 	}
 
-	providerOrderNo := strings.TrimSpace(req.ProviderOrderNo)
+	providerOrderNo := strings.TrimSpace(providerOrderNoOverride)
 	if providerOrderNo == "" {
 		providerOrderNo = strings.TrimSpace(topUp.ProviderOrderNo)
 	}
 	if providerOrderNo == "" {
+		// 无平台单号的老订单只能依赖本地 15 分钟兜底
 		if isKPayLocalFallbackExpired(topUp) {
-			if err := model.UpdatePendingTopUpStatus(req.TradeNo, model.PaymentProviderKPay, common.TopUpStatusExpired); err != nil && err != model.ErrTopUpStatusInvalid {
-				logger.LogWarn(c.Request.Context(), fmt.Sprintf("KPay 无平台订单号过期兜底失败 trade_no=%s user_id=%d create_time=%d error=%q", req.TradeNo, c.GetInt("id"), topUp.CreateTime, err.Error()))
-				c.JSON(http.StatusOK, gin.H{"message": "success", "data": gin.H{"status": common.TopUpStatusPending, "reason": "missing_provider_order_no"}})
-				return
+			if err := model.UpdatePendingTopUpStatus(topUp.TradeNo, model.PaymentProviderKPay, common.TopUpStatusExpired); err != nil && err != model.ErrTopUpStatusInvalid {
+				logger.LogWarn(ctx, fmt.Sprintf("KPay 无平台订单号过期兜底失败 caller=%s trade_no=%s user_id=%d create_time=%d error=%q", caller, topUp.TradeNo, topUp.UserId, topUp.CreateTime, err.Error()))
+				return kpayReconcileResult{localStatus: common.TopUpStatusPending, reason: "missing_provider_order_no"}
 			}
-			logger.LogInfo(c.Request.Context(), fmt.Sprintf("KPay 无平台订单号过期兜底 trade_no=%s user_id=%d create_time=%d", req.TradeNo, c.GetInt("id"), topUp.CreateTime))
-			c.JSON(http.StatusOK, gin.H{"message": "success", "data": gin.H{"status": common.TopUpStatusExpired, "reason": "missing_provider_order_no"}})
-			return
+			logger.LogInfo(ctx, fmt.Sprintf("KPay 无平台订单号过期兜底 caller=%s trade_no=%s user_id=%d create_time=%d", caller, topUp.TradeNo, topUp.UserId, topUp.CreateTime))
+			return kpayReconcileResult{localStatus: common.TopUpStatusExpired, reason: "missing_provider_order_no", changed: true}
 		}
-		c.JSON(http.StatusOK, gin.H{"message": "success", "data": gin.H{"status": common.TopUpStatusPending}})
-		return
+		return kpayReconcileResult{localStatus: common.TopUpStatusPending, reason: "missing_provider_order_no"}
 	}
-	orderData, err := queryKPayOrder(c.Request.Context(), providerOrderNo)
+
+	orderData, err := queryKPayOrder(ctx, providerOrderNo)
 	if err != nil {
-		logger.LogWarn(c.Request.Context(), fmt.Sprintf("KPay 查单失败 trade_no=%s provider_order_no=%s user_id=%d error=%q", req.TradeNo, providerOrderNo, c.GetInt("id"), err.Error()))
-		c.JSON(http.StatusOK, gin.H{"message": "success", "data": gin.H{"status": common.TopUpStatusPending}})
-		return
+		logger.LogWarn(ctx, fmt.Sprintf("KPay 查单失败 caller=%s trade_no=%s provider_order_no=%s user_id=%d error=%q", caller, topUp.TradeNo, providerOrderNo, topUp.UserId, err.Error()))
+		return kpayReconcileResult{localStatus: topUp.Status, reason: "query_failed", err: err}
 	}
-	if orderData.MerchantOrderNo != req.TradeNo {
-		logger.LogWarn(c.Request.Context(), fmt.Sprintf("KPay 查单订单号不匹配 trade_no=%s provider_order_no=%s response_merchant_order_no=%s user_id=%d", req.TradeNo, providerOrderNo, orderData.MerchantOrderNo, c.GetInt("id")))
-		c.JSON(http.StatusOK, gin.H{"message": "success", "data": gin.H{"status": common.TopUpStatusPending}})
-		return
+	if orderData.MerchantOrderNo != topUp.TradeNo {
+		logger.LogWarn(ctx, fmt.Sprintf("KPay 查单订单号不匹配 caller=%s trade_no=%s provider_order_no=%s response_merchant_order_no=%s user_id=%d", caller, topUp.TradeNo, providerOrderNo, orderData.MerchantOrderNo, topUp.UserId))
+		return kpayReconcileResult{localStatus: topUp.Status, providerStatus: orderData.Status, reason: "order_mismatch"}
 	}
+
 	nextStatus := mapKPayOrderStatus(*orderData)
-	if nextStatus == common.TopUpStatusSuccess {
-		if err := model.RechargeKPay(orderData.MerchantOrderNo, normalizeKPayMethod(orderData.PayMethod), c.ClientIP(), getKPayPaidAmount(orderData)); err != nil {
-			logger.LogError(c.Request.Context(), fmt.Sprintf("KPay 查单补偿入账失败 trade_no=%s provider_order_no=%s error=%q", req.TradeNo, providerOrderNo, err.Error()))
-			c.JSON(http.StatusOK, gin.H{"message": "error", "data": "订单入账失败"})
-			return
+	switch nextStatus {
+	case common.TopUpStatusSuccess:
+		if err := model.RechargeKPay(orderData.MerchantOrderNo, normalizeKPayMethod(orderData.PayMethod), clientIP, getKPayPaidAmount(orderData)); err != nil {
+			logger.LogError(ctx, fmt.Sprintf("KPay 查单补偿入账失败 caller=%s trade_no=%s provider_order_no=%s error=%q", caller, topUp.TradeNo, providerOrderNo, err.Error()))
+			return kpayReconcileResult{localStatus: topUp.Status, providerStatus: orderData.Status, err: errors.New("订单入账失败")}
 		}
-		c.JSON(http.StatusOK, gin.H{"message": "success", "data": gin.H{"status": common.TopUpStatusSuccess}})
-		return
+		return kpayReconcileResult{localStatus: common.TopUpStatusSuccess, providerStatus: orderData.Status, changed: true}
+	case common.TopUpStatusFailed, common.TopUpStatusExpired:
+		if err := model.UpdatePendingTopUpStatus(topUp.TradeNo, model.PaymentProviderKPay, nextStatus); err != nil && err != model.ErrTopUpStatusInvalid {
+			logger.LogWarn(ctx, fmt.Sprintf("KPay 查单更新终态失败 caller=%s trade_no=%s provider_order_no=%s provider_status=%s target_status=%s error=%q", caller, topUp.TradeNo, providerOrderNo, orderData.Status, nextStatus, err.Error()))
+			return kpayReconcileResult{localStatus: topUp.Status, providerStatus: orderData.Status}
+		}
+		logger.LogInfo(ctx, fmt.Sprintf("KPay 查单确认订单终态 caller=%s trade_no=%s provider_order_no=%s provider_status=%s local_status=%s", caller, topUp.TradeNo, providerOrderNo, orderData.Status, nextStatus))
+		return kpayReconcileResult{localStatus: nextStatus, providerStatus: orderData.Status, changed: true}
 	}
-	if nextStatus == common.TopUpStatusFailed || nextStatus == common.TopUpStatusExpired {
-		if err := model.UpdatePendingTopUpStatus(req.TradeNo, model.PaymentProviderKPay, nextStatus); err != nil && err != model.ErrTopUpStatusInvalid {
-			logger.LogWarn(c.Request.Context(), fmt.Sprintf("KPay 查单更新终态失败 trade_no=%s provider_order_no=%s provider_status=%s target_status=%s error=%q", req.TradeNo, providerOrderNo, orderData.Status, nextStatus, err.Error()))
-			c.JSON(http.StatusOK, gin.H{"message": "success", "data": gin.H{"status": common.TopUpStatusPending, "provider_status": orderData.Status}})
-			return
-		}
-		logger.LogInfo(c.Request.Context(), fmt.Sprintf("KPay 查单确认订单终态 trade_no=%s provider_order_no=%s provider_status=%s local_status=%s", req.TradeNo, providerOrderNo, orderData.Status, nextStatus))
-		c.JSON(http.StatusOK, gin.H{"message": "success", "data": gin.H{"status": nextStatus, "provider_status": orderData.Status}})
+	return kpayReconcileResult{localStatus: common.TopUpStatusPending, providerStatus: orderData.Status}
+}
+
+// ReconcileKPayTopUpForAdmin 对外暴露的管理员/扫描任务对账入口，复用同一段查单逻辑。
+// 调用方需自行加 LockOrder 互斥。
+func ReconcileKPayTopUpForAdmin(ctx context.Context, topUp *model.TopUp, clientIP string, caller string) (localStatus string, providerStatus string, changed bool, err error) {
+	res := reconcileKPayTopUp(ctx, topUp, clientIP, "", caller)
+	return res.localStatus, res.providerStatus, res.changed, res.err
+}
+
+// AdminListKPayTopUps 管理员侧：查询全站 KPay 充值订单。
+// 支持按状态（status 单值或逗号分隔多值）和关键字（trade_no/provider_order_no）过滤。
+func AdminListKPayTopUps(c *gin.Context) {
+	pageInfo := common.GetPageQuery(c)
+	keyword := strings.TrimSpace(c.Query("keyword"))
+	statusParam := strings.TrimSpace(c.Query("status"))
+
+	statuses := parseKPayStatusFilter(statusParam)
+
+	topups, total, err := model.GetAllKPayTopUps(statuses, keyword, pageInfo)
+	if err != nil {
+		common.ApiError(c, err)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "success", "data": gin.H{"status": common.TopUpStatusPending, "provider_status": orderData.Status}})
+	pageInfo.SetTotal(int(total))
+	pageInfo.SetItems(topups)
+	common.ApiSuccess(c, pageInfo)
+}
+
+// AdminReplayKPayTopUp 管理员对回调失败/未到账的 KPay 订单触发一次查单和入账。
+func AdminReplayKPayTopUp(c *gin.Context) {
+	if !isKPayTopUpEnabled() {
+		common.ApiErrorMsg(c, "KPay 支付未启用")
+		return
+	}
+
+	tradeNo := strings.TrimSpace(c.Param("trade_no"))
+	if tradeNo == "" {
+		common.ApiErrorMsg(c, "订单号不能为空")
+		return
+	}
+
+	// 订单级互斥，避免与用户侧 check、webhook 并发
+	LockOrder(tradeNo)
+	defer UnlockOrder(tradeNo)
+
+	topUp := model.GetTopUpByTradeNo(tradeNo)
+	if topUp == nil || topUp.PaymentProvider != model.PaymentProviderKPay {
+		common.ApiErrorMsg(c, "订单不存在或非 KPay 订单")
+		return
+	}
+
+	res := reconcileKPayTopUp(c.Request.Context(), topUp, c.ClientIP(), "", "admin_replay")
+	if res.err != nil {
+		common.ApiErrorMsg(c, res.err.Error())
+		return
+	}
+
+	logger.LogInfo(c.Request.Context(), fmt.Sprintf("KPay 管理员补查 trade_no=%s provider_order_no=%s local_status=%s provider_status=%s changed=%v admin_id=%d", tradeNo, topUp.ProviderOrderNo, res.localStatus, res.providerStatus, res.changed, c.GetInt("id")))
+
+	common.ApiSuccess(c, gin.H{
+		"trade_no":        tradeNo,
+		"local_status":    res.localStatus,
+		"provider_status": res.providerStatus,
+		"reason":          res.reason,
+		"changed":         res.changed,
+	})
+}
+
+func parseKPayStatusFilter(status string) []string {
+	if status == "" || strings.EqualFold(status, "all") {
+		return nil
+	}
+	allowed := map[string]bool{
+		common.TopUpStatusPending: true,
+		common.TopUpStatusSuccess: true,
+		common.TopUpStatusFailed:  true,
+		common.TopUpStatusExpired: true,
+	}
+	seen := make(map[string]bool, 4)
+	statuses := make([]string, 0, 4)
+	for _, part := range strings.Split(status, ",") {
+		s := strings.TrimSpace(strings.ToLower(part))
+		if s == "" || !allowed[s] || seen[s] {
+			continue
+		}
+		seen[s] = true
+		statuses = append(statuses, s)
+	}
+	return statuses
 }
 
 func KPayNotify(c *gin.Context) {

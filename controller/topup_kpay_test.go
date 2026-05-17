@@ -161,3 +161,22 @@ func TestKPayNotifyAlwaysReturnsOKForRejectedWebhook(t *testing.T) {
 	require.Equal(t, http.StatusOK, rec.Code)
 	require.Equal(t, kpayNotifyFail, rec.Body.String())
 }
+
+func TestParseKPayStatusFilter(t *testing.T) {
+	require.Nil(t, parseKPayStatusFilter(""))
+	require.Nil(t, parseKPayStatusFilter("all"))
+	require.Nil(t, parseKPayStatusFilter("ALL"))
+
+	require.Equal(t, []string{common.TopUpStatusPending}, parseKPayStatusFilter("pending"))
+	require.Equal(t,
+		[]string{common.TopUpStatusPending, common.TopUpStatusFailed},
+		parseKPayStatusFilter("pending,failed"),
+	)
+	// 重复、空段、未知值都应被去掉
+	require.Equal(t,
+		[]string{common.TopUpStatusPending, common.TopUpStatusExpired},
+		parseKPayStatusFilter(" pending , unknown ,, expired , pending "),
+	)
+	// 没有任何合法状态时不应有任何过滤项
+	require.Empty(t, parseKPayStatusFilter("foo,bar"))
+}

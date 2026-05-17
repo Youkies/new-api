@@ -581,6 +581,8 @@ func RequestKPay(c *gin.Context) {
 		if err := topUp.Update(); err != nil {
 			logger.LogWarn(c.Request.Context(), fmt.Sprintf("KPay 保存平台订单号失败 user_id=%d trade_no=%s provider_order_no=%s error=%q", id, tradeNo, providerOrderNo, err.Error()))
 		}
+		// 下单成功后启动短期高频后台跟踪，覆盖用户切后台 / 关闭浏览器 / webhook 延迟的场景
+		SchedulePostCreateKPayWatch(tradeNo, providerOrderNo)
 	}
 
 	qrURL := getKPayQRCodeURL(orderData)

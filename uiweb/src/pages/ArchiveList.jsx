@@ -50,12 +50,13 @@ function ArchiveCard({ a, onOpen, onEdit, onDelete }) {
 
       <div className="flex items-center justify-between gap-2 text-xs">
         <div className="flex items-center gap-2">
-          <span className="px-2 py-0.5 rounded-clay-pill text-[11px] font-bold bg-clay-bg shadow-clay-inset text-clay-faint">
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-clay-pill text-xs font-black bg-clay-blue-100 text-[#43658b] shadow-clay">
+            <Layers className="w-3 h-3" strokeWidth={2.5} />
             {a.alias_count} 个别名
           </span>
           {a.share_enabled && (
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-clay-pill text-[11px] font-bold bg-emerald-100 text-emerald-700">
-              <Share2 className="w-3 h-3" />
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-clay-pill text-xs font-black bg-emerald-100 text-emerald-700 shadow-clay">
+              <Share2 className="w-3 h-3" strokeWidth={2.5} />
               已分享
             </span>
           )}

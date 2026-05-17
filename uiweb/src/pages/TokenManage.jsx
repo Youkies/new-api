@@ -94,8 +94,8 @@ function TokenCard({ t, revealedKeys, onRevealKey, onCopyKey, onToggleStatus, op
       </div>
 
       {/* Row 2: key */}
-      <div className="bg-clay-bg shadow-clay-inset rounded-clay-sm px-3 py-2.5 mb-3 flex items-center gap-2">
-        <code className="text-xs flex-1 truncate">
+      <div className="bg-gradient-to-br from-gray-100/80 to-gray-50/40 shadow-clay-inset rounded-clay-sm px-3 py-2.5 mb-3 flex items-center gap-2 border border-white/40">
+        <code className="text-xs flex-1 truncate font-mono font-bold text-gray-700">
           {revealed || (t.key ? `sk-${t.key}` : '***')}
         </code>
         <button onClick={() => onRevealKey(t)} className="p-1 rounded-clay-sm hover:bg-white/40 transition-colors shrink-0" title={revealed ? '隐藏' : '显示'}>
@@ -123,13 +123,14 @@ function TokenCard({ t, revealedKeys, onRevealKey, onCopyKey, onToggleStatus, op
       <div className="flex items-center justify-between gap-3 text-xs">
         <div className="flex items-center gap-2">
           {group !== '-' ? (
-            <span className="px-2 py-0.5 rounded-clay-sm text-[11px] font-bold bg-clay-bg shadow-clay-inset text-clay-faint">
-              {group}
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-clay-pill bg-clay-purple-100 text-[#6b4d83] shadow-clay">
+              <Layers className="w-3 h-3" strokeWidth={2.5} />
+              <span className="text-xs font-black">{group}</span>
             </span>
           ) : (
-            <span className="text-clay-faint">默认</span>
+            <span className="text-clay-faint font-bold">默认</span>
           )}
-          <span className="text-clay-faint flex items-center gap-1">
+          <span className="text-clay-faint flex items-center gap-1 font-bold">
             <Clock className="w-3 h-3" />
             <span className={t.expired_time > 0 && t.expired_time * 1000 < Date.now() ? 'text-red-500' : ''}>
               {fmtTime(t.expired_time)}
@@ -469,7 +470,7 @@ export default function TokenManage() {
                   </td>
                   <td className="px-5 py-3" onClick={(e) => e.stopPropagation()}>
                     <div className="flex items-center gap-1.5">
-                      <code className="text-xs bg-clay-bg px-2 py-1 rounded-clay-sm max-w-[180px] truncate shadow-clay-inset">
+                      <code className="text-xs font-mono font-bold text-gray-700 bg-gradient-to-br from-gray-100/80 to-gray-50/40 px-2.5 py-1 rounded-clay-sm max-w-[180px] truncate shadow-clay-inset border border-white/40">
                         {revealed || (t.key ? `sk-${t.key}` : '***')}
                       </code>
                       <button onClick={() => onRevealKey(t)} className="p-1 rounded-clay-sm hover:bg-white/40 transition-colors" title={revealed ? '隐藏' : '显示'}>
@@ -495,11 +496,12 @@ export default function TokenManage() {
                   </td>
                   <td className="px-5 py-3">
                     {group !== '-' ? (
-                      <span className="px-2 py-0.5 rounded-clay-sm text-[11px] font-bold bg-clay-bg shadow-clay-inset text-clay-faint">
-                        {group}
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-clay-pill bg-clay-purple-100 text-[#6b4d83] shadow-clay">
+                        <Layers className="w-3 h-3" strokeWidth={2.5} />
+                        <span className="text-xs font-black">{group}</span>
                       </span>
                     ) : (
-                      <span className="text-clay-faint text-xs">默认</span>
+                      <span className="text-clay-faint text-xs font-bold">默认</span>
                     )}
                   </td>
                   <td className="px-5 py-3">

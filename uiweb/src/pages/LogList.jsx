@@ -4,7 +4,7 @@ import {
   Clock, CalendarDays,
   Activity, AlertCircle, RefreshCw, CreditCard, Settings, Terminal,
   RotateCcw, FileText, TrendingUp, ShieldCheck, History, CheckCircle2, XCircle, X,
-  ArrowRight,
+  ArrowRight, Layers, KeyRound, Cpu, Tag,
 } from 'lucide-react'
 import ClayCard from '../components/clay/ClayCard.jsx'
 import ClayButton from '../components/clay/ClayButton.jsx'
@@ -705,69 +705,71 @@ function LogCard({ log, onClick }) {
         )}
       </div>
 
-      {/* Row 2: Model pill — show "alias → real" when alias was used */}
+      {/* Row 2: Model pill — alias (purple) → real (yellow), both with outset shadow */}
       {isConsume && log.model_name && (
         <div className="mb-3 flex items-center gap-2 min-w-0 flex-wrap">
           {hasAlias && (
             <>
               <span
-                className="font-mono text-xs font-extrabold bg-clay-purple-100/60 text-[#6b4d83] shadow-clay-inset px-2.5 py-1 rounded-clay-pill max-w-[55%] truncate"
+                className="inline-flex items-center gap-1.5 font-mono text-xs font-black bg-clay-purple-100 text-[#6b4d83] shadow-clay px-3 py-1 rounded-clay-pill max-w-[55%] truncate"
                 title={`用户请求: ${log.requested_model_name}`}
               >
-                {log.requested_model_name}
+                <Tag className="w-3 h-3 shrink-0" strokeWidth={2.5} />
+                <span className="truncate">{log.requested_model_name}</span>
               </span>
-              <ArrowRight className="w-3.5 h-3.5 text-clay-faint shrink-0" strokeWidth={2.5} />
+              <ArrowRight className="w-4 h-4 text-clay-faint shrink-0" strokeWidth={3} />
             </>
           )}
           <span
-            className="font-mono text-xs font-extrabold bg-clay-bg shadow-clay-inset px-2.5 py-1 rounded-clay-pill flex-1 min-w-0 truncate"
+            className="inline-flex items-center gap-1.5 font-mono text-xs font-black bg-clay-yellow-100 text-[#8a6a32] shadow-clay px-3 py-1 rounded-clay-pill flex-1 min-w-0 truncate"
             title={log.model_name}
           >
-            {log.model_name}
+            <Cpu className="w-3 h-3 shrink-0" strokeWidth={2.5} />
+            <span className="truncate">{log.model_name}</span>
           </span>
         </div>
       )}
 
       {/* Row 3: Tokens — embossed pill with bigger, bolder numbers */}
       {isConsume && (hasTokens || hasCache) && (
-        <div className="mb-3 bg-clay-bg shadow-clay-inset rounded-clay-sm px-3 py-2 flex items-center gap-2 flex-wrap text-xs font-mono">
+        <div className="mb-3 bg-clay-bg shadow-clay-inset rounded-clay px-3.5 py-2.5 flex items-center gap-3 flex-wrap text-xs font-mono">
           {hasTokens && (
             <>
-              <span className="inline-flex items-baseline gap-1">
-                <span className="text-[10px] text-clay-faint font-bold uppercase tracking-wider">入</span>
-                <span className="font-extrabold text-clay-ink">{fmtTokens(log.prompt_tokens)}</span>
+              <span className="inline-flex items-baseline gap-1.5">
+                <span className="text-[10px] text-clay-blue-300 font-black uppercase tracking-wider">入</span>
+                <span className="font-black text-clay-ink text-sm">{fmtTokens(log.prompt_tokens)}</span>
               </span>
-              <span className="text-clay-faint/40">/</span>
-              <span className="inline-flex items-baseline gap-1">
-                <span className="text-[10px] text-clay-faint font-bold uppercase tracking-wider">出</span>
-                <span className="font-extrabold text-clay-ink">{fmtTokens(log.completion_tokens)}</span>
+              <span className="text-clay-faint/40 font-bold">/</span>
+              <span className="inline-flex items-baseline gap-1.5">
+                <span className="text-[10px] text-clay-pink-400 font-black uppercase tracking-wider">出</span>
+                <span className="font-black text-clay-ink text-sm">{fmtTokens(log.completion_tokens)}</span>
               </span>
             </>
           )}
           {cache.read > 0 && (
             <>
-              <span className="text-clay-faint/40">·</span>
-              <span className="inline-flex items-baseline gap-1 text-emerald-600">
-                <span className="text-[10px] font-bold uppercase tracking-wider opacity-70">缓读</span>
-                <span className="font-extrabold">{fmtTokens(cache.read)}</span>
+              <span className="text-clay-faint/40 font-bold">·</span>
+              <span className="inline-flex items-baseline gap-1.5 text-emerald-600">
+                <span className="text-[10px] font-black uppercase tracking-wider">缓读</span>
+                <span className="font-black text-sm">{fmtTokens(cache.read)}</span>
               </span>
             </>
           )}
           {cache.write > 0 && (
             <>
-              <span className="text-clay-faint/40">·</span>
-              <span className="inline-flex items-baseline gap-1 text-amber-600">
-                <span className="text-[10px] font-bold uppercase tracking-wider opacity-70">缓写</span>
-                <span className="font-extrabold">{fmtTokens(cache.write)}</span>
+              <span className="text-clay-faint/40 font-bold">·</span>
+              <span className="inline-flex items-baseline gap-1.5 text-amber-600">
+                <span className="text-[10px] font-black uppercase tracking-wider">缓写</span>
+                <span className="font-black text-sm">{fmtTokens(cache.write)}</span>
               </span>
             </>
           )}
         </div>
       )}
 
-      {/* Footer: time / use_time on top, group + token_name pills below */}
+      {/* Footer: time / use_time on top, group + token pills below (colored, with icons) */}
       {isConsume && (
-        <div className="space-y-1.5">
+        <div className="space-y-2">
           <div className="flex items-center justify-between gap-2 text-xs text-clay-faint font-bold">
             <span className="inline-flex items-center gap-1 shrink-0">
               <Clock className="w-3.5 h-3.5" strokeWidth={2.5} />
@@ -776,7 +778,7 @@ function LogCard({ log, onClick }) {
             {log.use_time ? (
               <span className="font-mono shrink-0">
                 {fmtUseTime(log.use_time)}
-                {fmtFrt(frt) && <span className="text-emerald-600 ml-1 font-extrabold">·{fmtFrt(frt)}</span>}
+                {fmtFrt(frt) && <span className="text-emerald-600 ml-1 font-black">·{fmtFrt(frt)}</span>}
               </span>
             ) : null}
           </div>
@@ -784,20 +786,20 @@ function LogCard({ log, onClick }) {
             <div className="flex items-center gap-2 flex-wrap">
               {log.group && (
                 <span
-                  className="px-2 py-0.5 rounded-clay-pill bg-clay-bg shadow-clay-inset inline-flex items-center gap-1 max-w-[150px]"
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-clay-pill bg-clay-purple-100 text-[#6b4d83] shadow-clay max-w-[160px]"
                   title={`分组: ${log.group}`}
                 >
-                  <span className="text-[10px] uppercase tracking-wider text-clay-faint font-bold">组</span>
-                  <span className="text-xs font-extrabold text-clay-ink truncate">{log.group}</span>
+                  <Layers className="w-3 h-3 shrink-0" strokeWidth={2.5} />
+                  <span className="text-xs font-black truncate">{log.group}</span>
                 </span>
               )}
               {log.token_name && (
                 <span
-                  className="px-2 py-0.5 rounded-clay-pill bg-clay-bg shadow-clay-inset inline-flex items-center gap-1 max-w-[150px]"
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-clay-pill bg-clay-blue-100 text-[#43658b] shadow-clay max-w-[160px]"
                   title={`令牌: ${log.token_name}`}
                 >
-                  <span className="text-[10px] uppercase tracking-wider text-clay-faint font-bold">牌</span>
-                  <span className="text-xs font-extrabold text-clay-ink truncate">{log.token_name}</span>
+                  <KeyRound className="w-3 h-3 shrink-0" strokeWidth={2.5} />
+                  <span className="text-xs font-black truncate">{log.token_name}</span>
                 </span>
               )}
             </div>

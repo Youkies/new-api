@@ -200,7 +200,13 @@ func loadOptionsFromDatabase() {
 	for _, option := range options {
 		err := updateOptionMap(option.Key, option.Value)
 		if err != nil {
-			common.SysLog("failed to update option map: " + err.Error())
+			// JSON-typed options whose value is empty in the DB (admin has
+			// never configured them) raise "unexpected end of JSON input"
+			// every sync cycle. That's not an error — treat as no-op.
+			if option.Value == "" && strings.Contains(err.Error(), "unexpected end of JSON input") {
+				continue
+			}
+			common.SysLog("failed to update option map for key " + option.Key + ": " + err.Error())
 		}
 	}
 }

@@ -542,6 +542,60 @@ func TestAddTokenDebugEnabledRequiresAdmin(t *testing.T) {
 	}
 }
 
+func TestAddTokenDebugConnectivityRequiresAdminDebugKey(t *testing.T) {
+	db := setupTokenControllerTestDB(t)
+	body := map[string]any{
+		"name":                       "connectivity-token",
+		"expired_time":               -1,
+		"remain_quota":               0,
+		"unlimited_quota":            true,
+		"group":                      "default",
+		"debug_enabled":              true,
+		"debug_connectivity_enabled": true,
+	}
+
+	userCtx, userRecorder := newAuthenticatedContext(t, http.MethodPost, "/api/token/", body, 1)
+	userCtx.Set("role", common.RoleCommonUser)
+	AddToken(userCtx)
+	userResponse := decodeAPIResponse(t, userRecorder)
+	if userResponse.Success {
+		t.Fatalf("expected common user to be blocked from creating connectivity debug token")
+	}
+
+	missingDebugBody := map[string]any{
+		"name":                       "connectivity-without-debug",
+		"expired_time":               -1,
+		"remain_quota":               0,
+		"unlimited_quota":            true,
+		"group":                      "default",
+		"debug_enabled":              false,
+		"debug_connectivity_enabled": true,
+	}
+	adminInvalidCtx, adminInvalidRecorder := newAuthenticatedContext(t, http.MethodPost, "/api/token/", missingDebugBody, 1)
+	adminInvalidCtx.Set("role", common.RoleAdminUser)
+	AddToken(adminInvalidCtx)
+	adminInvalidResponse := decodeAPIResponse(t, adminInvalidRecorder)
+	if adminInvalidResponse.Success {
+		t.Fatalf("expected connectivity debug token to require debug_enabled")
+	}
+
+	adminCtx, adminRecorder := newAuthenticatedContext(t, http.MethodPost, "/api/token/", body, 1)
+	adminCtx.Set("role", common.RoleAdminUser)
+	AddToken(adminCtx)
+	adminResponse := decodeAPIResponse(t, adminRecorder)
+	if !adminResponse.Success {
+		t.Fatalf("expected admin connectivity debug token creation to succeed, got: %s", adminResponse.Message)
+	}
+
+	var token model.Token
+	if err := db.First(&token, "name = ?", "connectivity-token").Error; err != nil {
+		t.Fatalf("failed to load created connectivity debug token: %v", err)
+	}
+	if !token.DebugEnabled || !token.DebugConnectivity {
+		t.Fatalf("expected debug and connectivity flags to be saved, got debug=%t connectivity=%t", token.DebugEnabled, token.DebugConnectivity)
+	}
+}
+
 func TestUpdateTokenPreservesDebugEnabledWhenFieldAbsent(t *testing.T) {
 	db := setupTokenControllerTestDB(t)
 	token := seedToken(t, db, 1, "debug-preserve-token", "debugpreserve123456")
@@ -575,6 +629,56 @@ func TestUpdateTokenPreservesDebugEnabledWhenFieldAbsent(t *testing.T) {
 	}
 	if !updated.DebugEnabled {
 		t.Fatalf("expected debug_enabled to remain true when update payload omits it")
+	}
+}
+
+func TestUpdateTokenDisablingDebugClearsConnectivity(t *testing.T) {
+	db := setupTokenControllerTestDB(t)
+	token := seedToken(t, db, 1, "debug-connectivity-clear-token", "debugclear123456")
+	if err := db.Model(token).Updates(map[string]any{
+		"debug_enabled":              true,
+		"debug_connectivity_enabled": true,
+	}).Error; err != nil {
+		t.Fatalf("failed to enable debug flags: %v", err)
+	}
+
+	body := map[string]any{
+		"id":                         token.Id,
+		"name":                       "updated-debug-connectivity-clear-token",
+		"expired_time":               -1,
+		"remain_quota":               100,
+		"unlimited_quota":            true,
+		"model_limits_enabled":       false,
+		"model_limits":               "",
+		"group":                      "default",
+		"cross_group_retry":          false,
+		"debug_enabled":              false,
+		"debug_connectivity_enabled": true,
+	}
+
+	ctx, recorder := newAuthenticatedContext(t, http.MethodPut, "/api/token/", body, 1)
+	ctx.Set("role", common.RoleAdminUser)
+	UpdateToken(ctx)
+	response := decodeAPIResponse(t, recorder)
+	if response.Success {
+		t.Fatalf("expected update to reject connectivity without debug_enabled")
+	}
+
+	body["debug_connectivity_enabled"] = false
+	ctx, recorder = newAuthenticatedContext(t, http.MethodPut, "/api/token/", body, 1)
+	ctx.Set("role", common.RoleAdminUser)
+	UpdateToken(ctx)
+	response = decodeAPIResponse(t, recorder)
+	if !response.Success {
+		t.Fatalf("expected token update to succeed, got: %s", response.Message)
+	}
+
+	var updated model.Token
+	if err := db.First(&updated, "id = ?", token.Id).Error; err != nil {
+		t.Fatalf("failed to load updated token: %v", err)
+	}
+	if updated.DebugEnabled || updated.DebugConnectivity {
+		t.Fatalf("expected debug flags to be disabled, got debug=%t connectivity=%t", updated.DebugEnabled, updated.DebugConnectivity)
 	}
 }
 

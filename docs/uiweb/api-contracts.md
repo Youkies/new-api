@@ -93,6 +93,7 @@
 新增字段：
 
 - `debug_enabled`：仅管理员可设置为 `true`。普通用户提交 `true` 会被拒绝；未提交该字段时，编辑令牌不会改变已有调试开关。
+- `debug_connectivity_enabled`：仅管理员调试 Key 可设置为 `true`。开启后该 Key 会作为“连通性测试 Key”，普通 relay 请求会在服务端短路返回检测完成，不选择渠道、不请求上游、不扣费。
 
 管理侧：
 
@@ -100,6 +101,10 @@
 - `GET /api/ui/admin/debug-traces/:id`
 - `GET /api/ui/admin/debug-traces/:id/download`
 - `DELETE /api/ui/admin/debug-traces/:id`
+
+用户端连通性探测：
+
+- `GET/POST /v1/debug/connectivity`
 
 查询参数：
 
@@ -113,6 +118,9 @@
 语义：
 
 - 只有通过管理员调试 Key 发起的 relay 请求会写入记录。
+- 通过管理员调试 Key 调用 `/v1/debug/connectivity` 会直接返回服务器收到的客户端 IP、User-Agent、协议、Content-Type、Content-Length、服务器时间和 `request_id`，用于确认用户端到服务器的链路已打通。
+- 连通性探测不选择渠道、不调用上游、不扣费；普通 Key 或非管理员 Key 会返回 `403 debug_key_required`。
+- 开启 `debug_connectivity_enabled` 的 Key 可以直接复制到用户软件里替换原 Key。用户按原软件发起任意模型请求时，服务端返回 OpenAI chat completion 形状的 `200` 响应，正文包含“连通性检测已完成，请联系管理员并提供 Request ID。”，并将 `admin_info.probe_mode` 记为 `transparent_key`。
 - 请求头、上游请求头和 body 会做基础脱敏，body 按 256KB 截断。
 - 列表接口不返回大字段；详情接口返回 request/upstream/response body 和 admin info。
 - download 接口返回 `text/plain; charset=utf-8` 附件，文件名为 `debug-trace-<request_id>.log`。

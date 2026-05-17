@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Activity, Bug, Copy, Download, Eye, Loader2, RefreshCw, Search, Trash2 } from 'lucide-react'
+import { Activity, Bug, Copy, Download, Eye, Loader2, RefreshCw, Search, Terminal, Trash2, Wifi } from 'lucide-react'
 import ClayAlert from '../../components/clay/ClayAlert.jsx'
 import ClayButton from '../../components/clay/ClayButton.jsx'
 import ClayCard from '../../components/clay/ClayCard.jsx'
@@ -63,6 +63,19 @@ export default function AdminDebugTraces() {
   const [requestId, setRequestId] = useState('')
   const [detail, setDetail] = useState(null)
   const [detailLoading, setDetailLoading] = useState(false)
+  const connectivityEndpoint = useMemo(() => {
+    if (typeof window === 'undefined') return '/v1/debug/connectivity'
+    return `${window.location.origin}/v1/debug/connectivity`
+  }, [])
+  const connectivityCommand = useMemo(() => {
+    const payload = JSON.stringify({ probe: 'client-connectivity', sent_at: new Date().toISOString() })
+    return [
+      `curl -sS -X POST "${connectivityEndpoint}"`,
+      '  -H "Authorization: Bearer sk-你的调试Key"',
+      '  -H "Content-Type: application/json"',
+      `  -d '${payload}'`,
+    ].join(' \\\n')
+  }, [connectivityEndpoint])
 
   const fetchData = async () => {
     setLoading(true)
@@ -151,6 +164,15 @@ export default function AdminDebugTraces() {
     }
   }
 
+  const copyConnectivityCommand = async () => {
+    try {
+      await copyTextToClipboard(connectivityCommand)
+      toast('连通性探测命令已复制')
+    } catch (_) {
+      toast('复制失败，请手动复制', 'error')
+    }
+  }
+
   const actions = (
     <ClayButton variant="ghost" onClick={fetchData} disabled={loading} className="!px-5">
       <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
@@ -165,6 +187,29 @@ export default function AdminDebugTraces() {
         <Stat label="成功" value={stats.success} tone="green" />
         <Stat label="错误" value={stats.failed} tone="pink" />
       </div>
+
+      <ClayCard className="mb-5 !p-4 md:!p-5">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 text-sm font-black text-clay-ink">
+              <Wifi className="h-4 w-4 text-clay-blue-300" />
+              连通性探测
+            </div>
+            <div className="mt-2 flex flex-wrap items-center gap-2 text-xs font-bold text-clay-faint">
+              <span className="rounded-clay-sm bg-clay-bg px-2 py-1 shadow-clay-inset">POST /v1/debug/connectivity</span>
+              <span>返回 Request ID 后可在本页精确查询</span>
+            </div>
+          </div>
+          <ClayButton type="button" variant="secondary" onClick={copyConnectivityCommand} className="!px-5">
+            <Copy className="h-4 w-4" />
+            复制 cURL
+          </ClayButton>
+        </div>
+        <div className="mt-4 flex items-start gap-3 rounded-clay bg-[#16202d] p-4 text-[#e8f1ff] shadow-clay-inset">
+          <Terminal className="mt-0.5 h-4 w-4 shrink-0 text-clay-blue-100" />
+          <pre className="min-w-0 flex-1 overflow-auto whitespace-pre-wrap break-words text-xs leading-relaxed">{connectivityCommand}</pre>
+        </div>
+      </ClayCard>
 
       <ClayCard className="mb-5 !overflow-visible !p-4 md:!p-5">
         <div className="grid items-center gap-3 lg:grid-cols-[180px_1fr_1fr_auto]">

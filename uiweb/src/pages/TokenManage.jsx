@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback, useSyncExternalStore } from 'react'
 import {
   KeyRound, Plus, Search, Copy, Trash2, Eye, EyeOff,
   ToggleLeft, ToggleRight, Pencil, ChevronLeft, ChevronRight,
-  Clock, Shield, Layers, Infinity, RefreshCw, Bug,
+  Clock, Shield, Layers, Infinity, RefreshCw, Bug, Wifi,
 } from 'lucide-react'
 import ClayCard from '../components/clay/ClayCard.jsx'
 import ClayButton from '../components/clay/ClayButton.jsx'
@@ -79,6 +79,7 @@ function TokenCard({ t, revealedKeys, onRevealKey, onCopyKey, onToggleStatus, op
             <div className="flex items-center gap-1.5">
               <div className="font-bold text-sm truncate max-w-[160px]">{t.name}</div>
               {t.debug_enabled && <Bug className="w-3.5 h-3.5 text-clay-pink-400 shrink-0" title="调试 Key" />}
+              {t.debug_connectivity_enabled && <Wifi className="w-3.5 h-3.5 text-clay-blue-300 shrink-0" title="连通性测试 Key" />}
             </div>
             {t.model_limits_enabled && models.length > 0 && (
               <div className="text-[11px] text-clay-faint mt-0.5">
@@ -165,7 +166,7 @@ export default function TokenManage() {
 
   const [showModal, setShowModal] = useState(false)
   const [editing, setEditing] = useState(null)
-  const [form, setForm] = useState({ name: '', remain_quota: 0, expired_time: -1, unlimited_quota: true, group: '', display_amount: '', debug_enabled: false })
+  const [form, setForm] = useState({ name: '', remain_quota: 0, expired_time: -1, unlimited_quota: true, group: '', display_amount: '', debug_enabled: false, debug_connectivity_enabled: false })
   const [saving, setSaving] = useState(false)
   const [groupOptions, setGroupOptions] = useState([])
 
@@ -216,7 +217,7 @@ export default function TokenManage() {
   const openCreate = () => {
     setEditing(null)
     const defaultGroup = groupOptions.find((o) => o.value === 'default') ? 'default' : (groupOptions[0]?.value || '')
-    setForm({ name: '', remain_quota: 0, expired_time: -1, unlimited_quota: true, group: defaultGroup, display_amount: '', debug_enabled: false })
+    setForm({ name: '', remain_quota: 0, expired_time: -1, unlimited_quota: true, group: defaultGroup, display_amount: '', debug_enabled: false, debug_connectivity_enabled: false })
     setShowModal(true)
   }
 
@@ -231,6 +232,7 @@ export default function TokenManage() {
       group: t.group || '',
       display_amount: da,
       debug_enabled: Boolean(t.debug_enabled),
+      debug_connectivity_enabled: Boolean(t.debug_connectivity_enabled),
     })
     setShowModal(true)
   }
@@ -245,7 +247,10 @@ export default function TokenManage() {
       remain_quota: form.unlimited_quota ? 0 : displayToQuota(parseFloat(form.display_amount) || 0),
       group: form.group,
     }
-    if (isAdmin) payload.debug_enabled = Boolean(form.debug_enabled)
+    if (isAdmin) {
+      payload.debug_enabled = Boolean(form.debug_enabled)
+      payload.debug_connectivity_enabled = Boolean(form.debug_enabled && form.debug_connectivity_enabled)
+    }
     try {
       if (editing) {
         const res = await updateToken({ id: editing.id, ...payload })
@@ -433,6 +438,12 @@ export default function TokenManage() {
                               调试
                             </span>
                           )}
+                          {t.debug_connectivity_enabled && (
+                            <span className="inline-flex items-center gap-1 rounded-clay-pill bg-clay-blue-100 px-2 py-0.5 text-[10px] font-black text-clay-blue-300">
+                              <Wifi className="w-3 h-3" />
+                              连通性
+                            </span>
+                          )}
                         </div>
                         {t.model_limits_enabled && models.length > 0 && (
                           <div className="text-[11px] text-clay-faint mt-0.5">
@@ -584,12 +595,41 @@ export default function TokenManage() {
                     开启后会记录该 Key 的请求、上游请求、返回和错误，普通用户不能启用。
                   </p>
                 </div>
-                <button type="button" onClick={() => setForm({ ...form, debug_enabled: !form.debug_enabled })} className="p-0.5 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const nextDebug = !form.debug_enabled
+                    setForm({
+                      ...form,
+                      debug_enabled: nextDebug,
+                      debug_connectivity_enabled: nextDebug ? form.debug_connectivity_enabled : false,
+                    })
+                  }}
+                  className="p-0.5 shrink-0"
+                >
                   {form.debug_enabled
                     ? <ToggleRight className="w-7 h-7 text-clay-pink-400" />
                     : <ToggleLeft className="w-7 h-7 text-gray-400" />}
                 </button>
               </div>
+              {form.debug_enabled && (
+                <div className="mt-4 flex items-center justify-between gap-3 rounded-clay-sm bg-white/50 px-3 py-3">
+                  <div>
+                    <div className="flex items-center gap-2 text-sm font-black">
+                      <Wifi className="h-4 w-4 text-clay-blue-300" />
+                      连通性测试 Key
+                    </div>
+                    <p className="mt-1 text-xs font-bold text-clay-faint">
+                      开启后复制到用户软件中发起任意模型请求，会直接返回检测完成，不会请求上游或扣费。
+                    </p>
+                  </div>
+                  <button type="button" onClick={() => setForm({ ...form, debug_connectivity_enabled: !form.debug_connectivity_enabled })} className="p-0.5 shrink-0">
+                    {form.debug_connectivity_enabled
+                      ? <ToggleRight className="w-7 h-7 text-clay-blue-300" />
+                      : <ToggleLeft className="w-7 h-7 text-gray-400" />}
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>

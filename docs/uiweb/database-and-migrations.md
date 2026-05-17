@@ -43,6 +43,7 @@ uiweb 相关表：
 令牌表扩展：
 
 - `tokens.debug_enabled`
+- `tokens.debug_connectivity_enabled`
 
 官方 rc.4 新增：
 
@@ -194,6 +195,11 @@ uiweb 相关表：
 - 管理员专用调试 Key 开关。
 - 普通用户不能开启；relay 只对管理员所属且已开启的 token 写调试记录。
 
+`tokens.debug_connectivity_enabled`：
+
+- 管理员调试 Key 的子开关。
+- 开启后该 Key 用于用户端连通性测试，普通 relay 请求会在渠道选择前短路返回检测完成，不请求上游、不扣费。
+
 `debug_key_traces`：
 
 - Request ID、用户、令牌、模型、分组。
@@ -214,6 +220,8 @@ uiweb 相关表：
 ```sql
 ALTER TABLE tokens ADD COLUMN debug_enabled tinyint(1) DEFAULT 0;
 CREATE INDEX idx_tokens_debug_enabled ON tokens (debug_enabled);
+ALTER TABLE tokens ADD COLUMN debug_connectivity_enabled tinyint(1) DEFAULT 0;
+CREATE INDEX idx_tokens_debug_connectivity_enabled ON tokens (debug_connectivity_enabled);
 
 CREATE TABLE debug_key_traces (
   id bigint AUTO_INCREMENT PRIMARY KEY,
@@ -417,5 +425,6 @@ CREATE INDEX idx_top_ups_provider_order_no ON top_ups (provider_order_no);
 - `users.last_login_at`
 - `top_ups.provider_order_no`
 - `tokens.debug_enabled`
+- `tokens.debug_connectivity_enabled`
 
 如果数据库面板报多语句 SQL 错误，应拆成单条 `CREATE TABLE` 或单条 `ALTER TABLE` 执行。

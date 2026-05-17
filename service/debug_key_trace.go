@@ -35,6 +35,7 @@ type debugTraceState struct {
 	responseCapture *debugBodyCapture
 	upstreamCapture *debugBodyCapture
 	startedAt       time.Time
+	adminInfo       map[string]interface{}
 }
 
 type debugBodyCapture struct {
@@ -208,6 +209,25 @@ func RecordDebugTraceUpstreamResponse(c *gin.Context, resp *http.Response) {
 	state.trace.UpstreamStatus = resp.StatusCode
 }
 
+func AppendDebugKeyTraceAdminInfo(c *gin.Context, values map[string]interface{}) {
+	state := getDebugTraceState(c)
+	if state == nil || len(values) == 0 {
+		return
+	}
+	state.mu.Lock()
+	defer state.mu.Unlock()
+	if state.adminInfo == nil {
+		state.adminInfo = make(map[string]interface{}, len(values))
+	}
+	for key, value := range values {
+		key = strings.TrimSpace(key)
+		if key == "" {
+			continue
+		}
+		state.adminInfo[key] = value
+	}
+}
+
 func FinishDebugKeyTrace(c *gin.Context, finalErr *types.NewAPIError) {
 	state := getDebugTraceState(c)
 	if state == nil || state.trace == nil {
@@ -219,6 +239,10 @@ func FinishDebugKeyTrace(c *gin.Context, finalErr *types.NewAPIError) {
 	upstreamCapture := state.upstreamCapture
 	responseCapture := state.responseCapture
 	startedAt := state.startedAt
+	extraAdminInfo := make(map[string]interface{}, len(state.adminInfo))
+	for key, value := range state.adminInfo {
+		extraAdminInfo[key] = value
+	}
 	state.mu.Unlock()
 
 	trace.ChannelId = c.GetInt("channel_id")
@@ -266,8 +290,14 @@ func FinishDebugKeyTrace(c *gin.Context, finalErr *types.NewAPIError) {
 	if trace.Group == "" {
 		trace.Group = c.GetString("group")
 	}
+	if !trace.IsStream {
+		trace.IsStream = common.GetContextKeyBool(c, constant.ContextKeyIsStream)
+	}
 	adminInfo := map[string]interface{}{
 		"use_channel": useChannel,
+	}
+	for key, value := range extraAdminInfo {
+		adminInfo[key] = value
 	}
 	if common.GetContextKeyBool(c, constant.ContextKeyChannelIsMultiKey) {
 		adminInfo["is_multi_key"] = true

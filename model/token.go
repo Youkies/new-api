@@ -29,6 +29,7 @@ type Token struct {
 	Group              string         `json:"group" gorm:"default:''"`
 	CrossGroupRetry    bool           `json:"cross_group_retry"`                        // 跨分组重试，仅auto分组有效
 	DebugEnabled       bool           `json:"debug_enabled" gorm:"default:false;index"` // admin-only debug key tracing
+	DebugConnectivity  bool           `json:"debug_connectivity_enabled" gorm:"column:debug_connectivity_enabled;default:false;index"`
 	DeletedAt          gorm.DeletedAt `gorm:"index"`
 }
 
@@ -296,7 +297,8 @@ func (token *Token) Update() (err error) {
 		}
 	}()
 	err = DB.Model(token).Select("name", "status", "expired_time", "remain_quota", "unlimited_quota",
-		"model_limits_enabled", "model_limits", "allow_ips", "group", "cross_group_retry", "debug_enabled").Updates(token).Error
+		"model_limits_enabled", "model_limits", "allow_ips", "group", "cross_group_retry", "debug_enabled",
+		"debug_connectivity_enabled").Updates(token).Error
 	return err
 }
 

@@ -367,6 +367,7 @@ function createInitialState() {
         remain_quota: 800000,
         unlimited_quota: false,
         debug_enabled: true,
+        debug_connectivity_enabled: true,
         model_limits_enabled: false,
         model_limits: '',
         expired_time: -1,
@@ -382,6 +383,7 @@ function createInitialState() {
         remain_quota: 0,
         unlimited_quota: true,
         debug_enabled: false,
+        debug_connectivity_enabled: false,
         model_limits_enabled: true,
         model_limits: JSON.stringify(['gpt-5.5', 'claude-opus-4-6']),
         expired_time: daysAgo(-30),
@@ -389,6 +391,43 @@ function createInitialState() {
       },
     ],
     debugTraces: [
+      {
+        id: 90000,
+        request_id: 'debug-connectivity-90000',
+        created_at: daysAgo(0, 18, 58),
+        user_id: DEBUG_USER.id,
+        username: DEBUG_USER.username,
+        token_id: 101,
+        token_name: '调试主令牌',
+        model_name: 'debug-connectivity',
+        group: 'default',
+        request_method: 'POST',
+        request_path: '/v1/debug/connectivity',
+        relay_format: '',
+        final_relay_format: '',
+        relay_mode: 0,
+        is_stream: false,
+        channel_id: 0,
+        channel_name: '',
+        channel_type: 0,
+        use_channel: '',
+        status: 'success',
+        http_status: 200,
+        upstream_status: 0,
+        request_headers: JSON.stringify({ Authorization: ['[redacted]'], 'Content-Type': ['application/json'], 'User-Agent': ['curl/8.0'] }),
+        request_body: JSON.stringify({ probe: 'client-connectivity', sent_at: '2026-05-17T12:00:00Z' }),
+        request_body_truncated: false,
+        upstream_url: '',
+        upstream_headers: '',
+        upstream_body: '',
+        upstream_body_truncated: false,
+        response_headers: JSON.stringify({ 'Content-Type': ['application/json; charset=utf-8'] }),
+        response_body: JSON.stringify({ object: 'debug.connectivity', ok: true, message: 'client_to_server_ok', request_id: 'debug-connectivity-90000' }),
+        response_body_truncated: false,
+        response_size: 128,
+        use_time: 4,
+        admin_info: JSON.stringify({ diagnostic: 'client_connectivity', client_ip: '203.0.113.10', debug_key_probe: true }),
+      },
       {
         id: 90001,
         request_id: 'debug-trace-ok-90001',
@@ -1060,14 +1099,19 @@ export async function mockApiResponse(config) {
       created_time: nowSec(),
       model_limits_enabled: false,
       model_limits: '',
+      debug_connectivity_enabled: Boolean(body.debug_enabled && body.debug_connectivity_enabled),
       ...body,
     }
+    if (!token.debug_enabled) token.debug_connectivity_enabled = false
     debugState.tokens.unshift(token)
     return ok(token)
   }
   if ((path === '/api/token/' || path === '/api/token') && method === 'PUT') {
     const index = debugState.tokens.findIndex((item) => Number(item.id) === Number(body.id))
-    if (index >= 0) debugState.tokens[index] = { ...debugState.tokens[index], ...body }
+    if (index >= 0) {
+      debugState.tokens[index] = { ...debugState.tokens[index], ...body }
+      if (!debugState.tokens[index].debug_enabled) debugState.tokens[index].debug_connectivity_enabled = false
+    }
     return ok(index >= 0 ? debugState.tokens[index] : body)
   }
   if (path === '/api/token/batch/keys' && method === 'POST') {

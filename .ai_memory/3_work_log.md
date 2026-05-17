@@ -101,3 +101,8 @@
 - [2026-05-16 23:35] 修复 uiweb 签到页自定义 emoji 货币符号导致金额换行，日历小格子改为只显示奖励数字。
 - [2026-05-16 23:49] 从干净上下文构建并推送 GHCR 镜像 `latest` 与 `release-20260516-2347`，digest `sha256:0cd9435202a46e9a9042b50a1493c3a9493f79a8480eacfb1dcb7182e4f5d63e`。
 - [2026-05-16 23:57] 修复 `debug_key_traces` MySQL 自动迁移将大字段降级为 `TEXT` 导致启动 fatal 的问题，改为 MySQL `LONGTEXT`。
+- [2026-05-17 00:01] 从干净上下文构建并推送 GHCR 镜像 `latest` 与 `release-20260516-2358`，digest `sha256:b898b97f1f23690dfefb4afb2e0cc9937604aa0e3606b11d8161b4c6b46c3818`。
+- [2026-05-17 17:45] 更新东京 API-only 节点 `newapi-jp.youkies.space`：远端拉取 GHCR `latest` digest `sha256:b898b97f1f23690dfefb4afb2e0cc9937604aa0e3606b11d8161b4c6b46c3818` 并重建容器；健康检查 200/404/401 通过，启动日志未见 fatal。
+- [2026-05-17 18:14] 为管理员调试 Key 新增 `/v1/debug/connectivity` 用户端连通性探测，后台调试记录页增加 cURL 复制卡片；定向 Go 测试、`uiweb npm run build` 与 `git diff --check` 通过。
+- [2026-05-17 18:24] 将连通性探测扩展为调试 Key 子开关 `debug_connectivity_enabled`：用户可直接替换原软件 Key 发起普通模型请求，服务端短路返回检测完成并写调试记录；定向 Go 测试、`uiweb npm run build` 与 `git diff --check` 通过。
+- [2026-05-17 18:27] 补齐连通性测试 Key 的流式客户端兼容：`stream=true` 时返回 OpenAI-compatible SSE 和 `[DONE]`；定向 Go 测试通过，全量 Go 测试仍卡在既有 `relay/helper` ticker panic。

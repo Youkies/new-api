@@ -1,5 +1,33 @@
 # 当前任务
 
+## 当前可接手状态：调试 Key 用户端连通性探测（2026-05-17）
+
+### 已完成
+
+- 新增 `GET/POST /v1/debug/connectivity`，仅允许管理员调试 Key 调用；普通 Key 返回 `403 debug_key_required`。
+- 连通性探测只确认用户端请求是否到达当前服务器，不选择渠道、不调用上游、不扣费。
+- 成功响应返回 `object=debug.connectivity`、`message=client_to_server_ok`、服务器时间、客户端 IP、User-Agent、Content-Type、Content-Length 和 `request_id`。
+- 同一次探测会写入 `debug_key_traces`，`model_name=debug-connectivity`，`admin_info.diagnostic=client_connectivity`，方便在 `/admin/debug-traces` 用 `request_id` 精确查询。
+- 新增 `tokens.debug_connectivity_enabled` 作为调试 Key 的子开关；开启后这把 Key 复制到用户软件中发起普通 `/v1/*` relay 请求时，会在渠道选择前短路返回 OpenAI chat completion 形状的 `200` 响应，正文提示“连通性检测已完成，请联系管理员并提供 Request ID。”。
+- 若用户软件请求体含 `stream=true`，连通性测试 Key 会返回 OpenAI-compatible SSE，最后输出 `data: [DONE]`，避免默认流式客户端把检测响应当成异常格式。
+- 连通性测试 Key 不要求用户填写真实模型，`admin_info.probe_mode=transparent_key`，并会记录用户侧请求里传入的 `requested_model`。
+- `/admin/debug-traces` 新增连通性探测 cURL 复制卡片；debug mock 增加一条连通性探测样例记录。
+- 令牌管理页在“调试 Key”下新增“连通性测试 Key”开关，列表和手机卡片会显示对应标识。
+- 已更新 `docs/uiweb/features.md`、`docs/uiweb/api-contracts.md`、`docs/uiweb/admin.md`、`docs/uiweb/database-and-migrations.md`。
+
+### 验证结果
+
+- `go test ./controller -run "DebugKeyConnectivity|DebugKeyTrace|Token" -count=1` 通过。
+- `go test ./router ./controller ./middleware ./service -run "DebugKeyConnectivity|DebugKeyTrace|Token" -count=1` 通过。
+- `npm run build` 于 `uiweb/` 通过，仅有既有大 chunk 警告。
+- `git diff --check` 通过。
+- `go test ./... -count=1` 仍失败于既有 `relay/helper` 的 `time.NewTicker(0)` panic，和本次调试 Key 改动无关。
+
+### 下一步
+
+- 如需上线，只提交本次相关文件；不要误加入既有未跟踪的问卷 xlsx、`cpa2/`、`kpay-epay-api/`、`log目录/`。
+- 生产 `NODE_TYPE=slave` 不会自动迁移；上线前除之前的 `tokens.debug_enabled` 和 `debug_key_traces` 外，还需要给主库补 `tokens.debug_connectivity_enabled`，SQL 见 `docs/uiweb/database-and-migrations.md`。
+
 ## 当前可接手状态：Claude assistant prefill 渠道兼容开关（2026-05-16）
 
 ### 已完成
@@ -54,6 +82,7 @@
 - `go test ./model ./controller ./service -run "DebugKeyTrace|Token|KPay" -count=1` 通过。
 - `go test ./... -count=1` 通过。
 - `git diff --check` 通过。
+- 2026-05-16 已从干净 `git archive` 上下文构建并推送 GHCR 镜像 `ghcr.io/youkies/new-api:latest` 与 `:release-20260516-2358`，对应提交 `15db16e7`，平台 `linux/amd64`，digest `sha256:b898b97f1f23690dfefb4afb2e0cc9937604aa0e3606b11d8161b4c6b46c3818`。
 
 ## 当前可接手状态：管理员调试 Key 记录（2026-05-16）
 
@@ -219,6 +248,7 @@
 - `https://newapi-jp.youkies.space/` 返回 404，符合 API-only 预期。
 - `https://newapi-jp.youkies.space/v1/models` 未带 token 返回 401，说明请求进入 relay 鉴权层。
 - 容器健康状态为 `healthy`，初始内存占用约 21MiB。
+- 2026-05-17 已将东京节点更新到 GHCR `latest` digest `sha256:b898b97f1f23690dfefb4afb2e0cc9937604aa0e3606b11d8161b4c6b46c3818`；容器 `healthy`，`/api/status` 200、根路径 404、`/v1/models` 401，最近启动日志未见 `FATAL` / `Error 1406`。
 
 ### 下一步
 

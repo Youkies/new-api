@@ -215,6 +215,15 @@
 - 下游返回 headers/body、HTTP status、上游 status。
 - 错误类型、错误码、错误消息、模型、渠道、使用渠道链路、耗时。
 
+连通性探测：
+
+- `GET/POST /v1/debug/connectivity` 仅允许管理员调试 Key 调用。
+- 该接口只验证用户端请求是否到达当前服务器，不选择渠道、不请求上游、不扣费。
+- 成功返回 `object=debug.connectivity`、`message=client_to_server_ok` 和 `request_id`；后台可用该 `request_id` 精确查询记录。
+- 记录中的 `model_name` 固定为 `debug-connectivity`，`admin_info.diagnostic=client_connectivity`。
+- 管理员也可以在开启“调试 Key”后额外开启“连通性测试 Key”。这类 Key 复制到用户软件后，用户仍按原软件请求 `/v1/chat/completions` 等普通接口，服务端会在渠道选择前短路返回 `200` 与“连通性检测已完成，请联系管理员并提供 Request ID。”，不要求模型真实存在。
+- 连通性测试 Key 只用于一次性链路验证；验证完应关闭该开关或删除该 Key，避免用户误以为它能正常调用模型。
+
 安全边界：
 
 - `Authorization`、`x-api-key`、`x-goog-api-key`、Cookie、token、secret 等敏感头会脱敏。
@@ -228,6 +237,7 @@
 - `GET /api/ui/admin/debug-traces/:id`
 - `GET /api/ui/admin/debug-traces/:id/download`
 - `DELETE /api/ui/admin/debug-traces/:id`
+- `GET/POST /v1/debug/connectivity`
 
 ## Claude assistant prefill 兼容
 

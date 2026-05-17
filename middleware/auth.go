@@ -410,6 +410,7 @@ func SetupContextForToken(c *gin.Context, token *model.Token, parts ...string) e
 	if token == nil {
 		return fmt.Errorf("token is nil")
 	}
+	isAdminToken := model.IsAdmin(token.UserId)
 	c.Set("id", token.UserId)
 	c.Set("token_id", token.Id)
 	c.Set("token_key", token.Key)
@@ -426,9 +427,10 @@ func SetupContextForToken(c *gin.Context, token *model.Token, parts ...string) e
 	}
 	common.SetContextKey(c, constant.ContextKeyTokenGroup, token.Group)
 	common.SetContextKey(c, constant.ContextKeyTokenCrossGroupRetry, token.CrossGroupRetry)
-	common.SetContextKey(c, constant.ContextKeyTokenDebugEnabled, token.DebugEnabled && model.IsAdmin(token.UserId))
+	common.SetContextKey(c, constant.ContextKeyTokenDebugEnabled, token.DebugEnabled && isAdminToken)
+	common.SetContextKey(c, constant.ContextKeyTokenDebugConnectivity, token.DebugEnabled && token.DebugConnectivity && isAdminToken)
 	if len(parts) > 1 {
-		if model.IsAdmin(token.UserId) {
+		if isAdminToken {
 			c.Set("specific_channel_id", parts[1])
 		} else {
 			c.Header("specific_channel_version", "701e3ae1dc3f7975556d354e0675168d004891c8")

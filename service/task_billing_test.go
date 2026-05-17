@@ -35,6 +35,7 @@ func TestMain(m *testing.M) {
 	common.RedisEnabled = false
 	common.BatchUpdateEnabled = false
 	common.LogConsumeEnabled = true
+	model.InitCol()
 
 	if err := db.AutoMigrate(
 		&model.Task{},
@@ -44,6 +45,8 @@ func TestMain(m *testing.M) {
 		&model.Channel{},
 		&model.TopUp{},
 		&model.UserSubscription{},
+		&model.UserModelArchive{},
+		&model.UserModelAlias{},
 	); err != nil {
 		panic("failed to migrate: " + err.Error())
 	}
@@ -65,6 +68,8 @@ func truncate(t *testing.T) {
 		model.DB.Exec("DELETE FROM channels")
 		model.DB.Exec("DELETE FROM top_ups")
 		model.DB.Exec("DELETE FROM user_subscriptions")
+		model.DB.Exec("DELETE FROM user_model_aliases")
+		model.DB.Exec("DELETE FROM user_model_archives")
 	})
 }
 

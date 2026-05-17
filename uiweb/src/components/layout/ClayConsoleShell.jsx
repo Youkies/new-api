@@ -13,6 +13,7 @@ import {
   Link2,
   Bell,
   Gamepad2,
+  Layers,
 } from 'lucide-react'
 import ClayCard from '../clay/ClayCard.jsx'
 import ClayFooter from './ClayFooter.jsx'
@@ -29,6 +30,7 @@ import { logout as apiLogout } from '../../services/auth.js'
 const NAV = [
   { to: '/dashboard', label: '仪表盘', icon: LayoutDashboard },
   { to: '/tokens', label: '令牌', icon: KeyRound },
+  { to: '/archives', label: '存档', icon: Layers },
   { to: '/api-urls', label: 'URL', icon: Link2 },
   { to: '/logs', label: '日志', icon: FileText },
   { to: '/topup', label: '充值', icon: Wallet },

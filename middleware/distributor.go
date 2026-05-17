@@ -36,6 +36,12 @@ func Distribute() func(c *gin.Context) {
 			abortWithOpenAiMessage(c, http.StatusBadRequest, i18n.T(c, i18n.MsgDistributorInvalidRequest, map[string]any{"Error": err.Error()}))
 			return
 		}
+		if resolved, aliasErr := service.ResolveModelAlias(c, modelRequest.Model); aliasErr != nil {
+			abortWithOpenAiMessage(c, http.StatusForbidden, aliasErr.Error())
+			return
+		} else {
+			modelRequest.Model = resolved
+		}
 		if ok {
 			id, err := strconv.Atoi(channelId.(string))
 			if err != nil {

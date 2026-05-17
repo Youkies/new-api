@@ -24,6 +24,21 @@ func buildMaskedTokenResponse(token *model.Token) *model.Token {
 	return &maskedToken
 }
 
+// resolveTokenArchiveId validates that the requested archive id (if any)
+// belongs to the user. Returns nil to mean "no archive bound". Any archive
+// that does not exist for the user is silently dropped to nil — this is
+// intentional: stale ids in payloads should not block token updates.
+func resolveTokenArchiveId(userId int, archiveId *int) *int {
+	if archiveId == nil || *archiveId <= 0 {
+		return nil
+	}
+	if _, err := model.GetUserArchive(*archiveId, userId); err != nil {
+		return nil
+	}
+	id := *archiveId
+	return &id
+}
+
 func buildMaskedTokenResponses(tokens []*model.Token) []*model.Token {
 	maskedTokens := make([]*model.Token, 0, len(tokens))
 	for _, token := range tokens {
@@ -254,6 +269,7 @@ func AddToken(c *gin.Context) {
 		CrossGroupRetry:    token.CrossGroupRetry,
 		DebugEnabled:       token.DebugEnabled && c.GetInt("role") >= common.RoleAdminUser,
 		DebugConnectivity:  token.DebugEnabled && token.DebugConnectivity && c.GetInt("role") >= common.RoleAdminUser,
+		ArchiveId:          resolveTokenArchiveId(c.GetInt("id"), token.ArchiveId),
 	}
 	err = cleanToken.Insert()
 	if err != nil {
@@ -351,6 +367,9 @@ func UpdateToken(c *gin.Context) {
 		if cleanToken.DebugConnectivity && !cleanToken.DebugEnabled {
 			common.ApiErrorMsg(c, "连通性测试 Key 需要先开启调试 Key")
 			return
+		}
+		if fields["archive_id"] {
+			cleanToken.ArchiveId = resolveTokenArchiveId(userId, token.ArchiveId)
 		}
 	}
 	err = cleanToken.Update()

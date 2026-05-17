@@ -19,6 +19,9 @@ import TopUp from './pages/TopUp.jsx'
 import PersonalSetting from './pages/PersonalSetting.jsx'
 import Chat2Link from './pages/Chat2Link.jsx'
 import TokenManage from './pages/TokenManage.jsx'
+import ArchiveList from './pages/ArchiveList.jsx'
+import ArchiveDetail from './pages/ArchiveDetail.jsx'
+import ArchiveSharePreview from './pages/ArchiveSharePreview.jsx'
 import LogList from './pages/LogList.jsx'
 import Checkin from './pages/Checkin.jsx'
 import ApiUrls from './pages/ApiUrls.jsx'
@@ -109,6 +112,30 @@ export default function App() {
         element={
           <ProtectedRoute>
             <TokenManage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/archives"
+        element={
+          <ProtectedRoute>
+            <ArchiveList />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/archives/share/:code"
+        element={
+          <ProtectedRoute>
+            <ArchiveSharePreview />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/archives/:id"
+        element={
+          <ProtectedRoute>
+            <ArchiveDetail />
           </ProtectedRoute>
         }
       />

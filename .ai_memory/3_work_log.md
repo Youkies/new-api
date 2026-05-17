@@ -13,6 +13,7 @@
 - [2026-04-30 22:38] 使用提交 `20ce0426` 构建 Docker 生产镜像，并推送 `ghcr.io/youkies/new-api:latest` 与 `ghcr.io/youkies/new-api:20ce0426` 到 GHCR。
 - [2026-05-01 12:44] 压缩整理 `.ai_memory`：活动任务改为当前状态，项目上下文改为稳定知识，归档和工作日志改为主题索引。
 - [2026-05-01 21:00] 扩展 `non_stream_to_stream_enabled` 到 OpenAI 转 Gemini/Gemini-on-Vertex 上游，新增 Gemini SSE 聚合为 OpenAI 非流 JSON；`go test ./relay ./relay/channel/gemini ./relay/channel/openai ./relay/channel/vertex -count=1` 通过。
+- [2026-05-18 03:10] 新增用户级"模型别名存档"feature：每个用户可建多个存档（slug 自动生成），存档内别名仅自身唯一，Token 可绑定默认存档，请求支持 `slug/alias` 前缀显式覆盖；relay hook 在 `middleware/distributor.go` getModelRequest 之后改写 `modelRequest.Model` 与 `ContextKeyUsingGroup`，二次校验源分组权限；分享走服务端短码 + 可吊销，导入按权限自动给无源分组的别名打 `disabled_reason`。Clay UI 三个新页：`/archives`、`/archives/:id`、`/archives/share/:code`；TokenManage 加默认存档下拉框。`go test ./model ./service -count=1` 通过，`uiweb npm run build` 通过。
 - [2026-05-01 22:25] 新增 `empty_stream_diagnostic` 空流诊断日志，用户正常访问即可抓取首包前空关闭的渠道/模型/流状态/上游响应元信息；`go test ./relay ./relay/channel/openai ./relay/channel/gemini -count=1` 通过。
 - [2026-05-03 21:03] 完成新 UI 页面配置页、API 地址自定义、令牌复制兼容 fallback、移动端模型名换行与 Vite `/api-urls` 代理冲突修复；`go test ./model ./controller ./router` 和 `uiweb npm run build` 通过。
 - [2026-05-03 21:10] 复核并纳入 relay/error 客户端断开归一化改动，修复 channel affinity 测试唯一键碰撞；排除 `.tmp_mysql_migration/` 临时目录；`git diff --check`、相关 Go 测试和 `uiweb npm run build` 通过。
@@ -108,3 +109,6 @@
 - [2026-05-17 18:27] 补齐连通性测试 Key 的流式客户端兼容：`stream=true` 时返回 OpenAI-compatible SSE 和 `[DONE]`；定向 Go 测试通过，全量 Go 测试仍卡在既有 `relay/helper` ticker panic。
 - [2026-05-17 18:50] 拉长连通性测试 Key 的流式探测：默认 60 秒、每 5 秒发送 SSE 进度，最后完成并 `[DONE]`；定向 router/controller/middleware/service 测试与 `git diff --check` 通过。
 - [2026-05-17 19:08] 在 `/admin/debug-traces` 增加连通性测试设置弹窗，支持保存流式时长、进度间隔和非流等待；定向 Go 测试、`git diff --check` 与 `uiweb npm run build` 通过。
+- [2026-05-18 01:24] 完成 KPay 管理员到账总览页 + 长期 pending 全局扫描：新增 `GET /api/ui/admin/topups/kpay` 与 `POST /api/ui/admin/topups/kpay/:trade_no/replay`，抽出 `reconcileKPayTopUp` 共用查单逻辑；`StartKPayPendingSweepTask` 每 5 分钟扫描 master 节点 `[now-7d, now-2min]` 窗口内的 pending 订单。从干净 worktree 推送 GHCR `ghcr.io/youkies/new-api:latest` / `:6feb0d81` / `:kpay-admin-topups-20260518`，digest `sha256:3a702820fdb689070e7f6f8db93ff42e02fc9fe82abc29b33e9943540a4df442`。
+- [2026-05-18 01:48] 新增 KPay 下单后短期高频跟踪：`SchedulePostCreateKPayWatch` 在 `RequestKPay` 保存平台单号后启动 master goroutine，按 25s/35s/45s/60s/90s/90s/2m/2m/2m 退避序列查单约 12 分钟，并发上限 200，订单脱离 pending 即提前退出，覆盖用户切后台 / 关浏览器 / webhook 延迟场景。从干净 worktree 推送 GHCR `latest` / `:3bd0f87f` / `:kpay-post-create-watch-20260518`，digest `sha256:d34a9cb76551f4e81cc1d412737a2f7278c6cb81db66c26122ce38c49b561228`。
+- [2026-05-18 02:05] 确认 slave 节点不跑 KPay watcher / 全局扫描（以及订阅 reset、Codex refresh、AutoTestChannels 等所有 `IsMasterNode` 后台任务）；用户在 slave 测试机上观察到 watcher 未生效是预期行为，正式生产侧验证良好。规则并入 `1_project_context.md` 部署约束。

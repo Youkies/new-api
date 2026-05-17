@@ -1,5 +1,87 @@
 # 当前任务
 
+## 当前可接手状态：用户模型别名存档（archive）feature 第一版（2026-05-18）
+
+### 已完成
+
+- 数据模型：新建 `model/user_model_archive.go`，两张表
+  - `user_model_archives`（id/user_id/name/slug/description/share_code/share_enabled/timestamps，软删除）
+    - `(user_id, slug)` 复合唯一索引，`share_code` 全局唯一（nullable）
+    - slug 由 `slugify(name)` 自动生成，冲突自动加 `-2/-3/...` 或随机后缀
+  - `user_model_aliases`（id/archive_id/alias_name/source_group/source_model/disabled_reason/timestamps）
+    - `(archive_id, alias_name)` 复合唯一索引（仅存档内唯一）
+  - `tokens` 表新增 `archive_id *int` nullable 字段；GORM `AutoMigrate` 自动加列，三库通用，`Token.Update().Select(...)` 白名单已加 `"archive_id"`。
+  - `model/main.go` 两处 AutoMigrate 列表已加新表。
+- Controller：`controller/user_model_archive.go`，路由 `/api/archive`（中间件 `UserAuth`）
+  - 存档 CRUD：list / get / create / update / delete
+  - 分享：`POST /:id/share` 开启（生成 10 位短码）、`DELETE /:id/share` 吊销
+  - 别名 CRUD：`POST/PUT/DELETE /:id/aliases[/:aliasId]`
+  - 别名选项：`GET /options` 返回用户可用 (group, models[]) 列表，供前端下拉用
+  - 分享预览：`GET /share/:code`（标记每个别名 `accessible`）
+  - 分享导入：`POST /share/:code/import`（无权限的别名打 `disabled_reason`，不阻断导入）
+  - 别名 source_group 在创建/编辑时按 `service.GroupInUserUsableGroups` 校验。
+  - Token controller 加 `resolveTokenArchiveId(userId, archiveId)` 帮 helper，确保不能绑定别人的存档。`AddToken` / `UpdateToken`（仅 fields["archive_id"] 命中时）写入。
+- Relay hook：`service/model_alias.go` `ResolveModelAlias(c, modelName) (string, error)`
+  - 插入点：`middleware/distributor.go:38`（`getModelRequest` 之后、所有协议汇聚处），改写 `modelRequest.Model` 后 `SetupContextForSelectedChannel` 自动把新值灌入 `original_model`，所有下游一致。
+  - 解析顺序：(1) `slug/alias` 前缀且 slug 命中用户存档 → 用该存档；(2) Token 绑定的默认存档 → 用该存档；(3) 都没有 → 透传。
+  - 命中后再次按 `service.GroupInUserUsableGroups` 校验源分组（防止存档创建后被撤销权限），改写 `ContextKeyUsingGroup` 为 alias.source_group，同时把用户输入存到新 context key `ContextKeyUserInputAlias`（保留给后续"用户视角日志"用，本期暂不读）。
+  - 别名 `disabled_reason` 非空时直接报错。
+- 单测：`service/model_alias_test.go` 7 个场景全通过（透传、命中改写并改 group、未命中透传、disabled 报错、源分组无权限报错、显式前缀命中、显式前缀 miss 报错、未知前缀走原模型名）。修复了 `model.initCol` 改为导出 `InitCol`，并让 service TestMain 调用一次以避免 `commonGroupCol` 为空导致 SQL 拼接出错。
+- 前端 uiweb（Clay Edition，路径 `uiweb/`，React 18 + Vite 5）：
+  - `services/archives.js` 全套 API client（13 个调用）
+  - `pages/ArchiveList.jsx` 存档列表，卡片流（桌面 grid），新建 / 编辑 / 删除 / 导入按钮
+  - `pages/ArchiveDetail.jsx` 存档详情，分享开关 + 复制短码 + 复制链接 + 别名 CRUD，源分组级联源模型下拉
+  - `pages/ArchiveSharePreview.jsx` 分享预览页（每个别名标 ✓ 可用 / ⚠ 无权限），导入按钮
+  - `App.jsx` 加 `/archives`、`/archives/:id`、`/archives/share/:code` 三条受保护路由
+  - `ClayConsoleShell.jsx` 顶部导航加"存档"入口（Layers 图标）
+  - `TokenManage.jsx` 编辑模态框加"默认存档"下拉框（"不绑定" + 用户的存档列表），payload 加 `archive_id`
+
+### 验证结果
+
+- `go build ./...` 通过
+- `go test ./model ./service -count=1` 通过
+- `cd uiweb && npm run build` 通过（仅既有大 chunk 警告）
+
+### 上线注意
+
+- 生产 `NODE_TYPE=slave` 不会自动迁移；上线前需要给主库执行：
+  - `CREATE TABLE user_model_archives(...)` / `CREATE TABLE user_model_aliases(...)` —— 实际由 AutoMigrate 完成，但 slave 节点要等主库迁移完后才能跑。
+  - `ALTER TABLE tokens ADD COLUMN archive_id INT NULL`（或等主节点 AutoMigrate 自动加列；SQLite/MySQL/PG 都支持加 nullable int 列）。
+- 用户已准备 5.2 迁移后的旧服务器旧数据库作为测试机，本次功能可直接在该测试机验证。
+- Token Redis 缓存：旧条目反序列化新 `archive_id` 字段会得到 nil → 优雅降级为"未绑定"，安全；缓存自然 TTL 过期后即更新。
+
+### 下一步
+
+- 用户视角日志（已加 `ContextKeyUserInputAlias` 占位）：日志列表展示用户输入别名 + 真实模型，需要 `logs` 表加字段 + 改前端展示，独立特性，需求明确再做。
+- 分享码暂不做过期 / 限次，仅手动吊销；如需要后续可加。
+- 显式前缀 `slug/alias` 与现有 `provider/model` 风格的真实模型名（如 `anthropic/claude-3-5-sonnet`）有"歧义可能"，目前实现：slug 不匹配用户任何存档时透传为真实模型名，匹配则按别名路由。文档里建议给容易冲突的存档起非品牌名 slug。
+
+## 当前可接手状态：KPay 到账可靠性四层兜底 + 管理员充值到账页（2026-05-18）
+
+### 已完成
+
+- 后端：在 `controller/topup_kpay.go` 抽出 `reconcileKPayTopUp` 共用查单 + 入账 + 终态同步逻辑，前端 check、管理员 replay、全局 sweeper、下单后 watcher 四种触发器共用同一段代码。
+- 后端：新增 `model.GetAllKPayTopUps(statuses, keyword, pageInfo)` 与 `model.ScanStalePendingKPayTopUps(minAge, maxAge, limit)`；管理员列表支持按状态多值 + 关键字（trade_no 与 provider_order_no 同时 LIKE，走 `sanitizeLikePattern`）过滤。
+- 后端：新增管理员路由 `GET /api/ui/admin/topups/kpay` 与 `POST /api/ui/admin/topups/kpay/:trade_no/replay`，replay 加 `LockOrder` 互斥，按 KPay 真实状态入账或同步终态，不强制把订单标为 success。
+- 后端：`controller/kpay_pending_sweep.go` 新增两个 master 限定任务：(1) `StartKPayPendingSweepTask` 每 5 分钟全局扫描 `payment_provider=kpay AND status=pending AND provider_order_no<>''` 且创建时间在 `[now-7d, now-2min]` 的订单，每轮 ≤50 单、50ms 限速；(2) `SchedulePostCreateKPayWatch` 在 `RequestKPay` 保存平台单号后立刻启动一个 goroutine，按 25s/35s/45s/60s/90s/90s/2m/2m/2m 退避序列查单约 12 分钟，并发上限 200 由 `atomic.Int64` 控制；订单脱离 pending 即提前退出，`RechargeKPay` 的原子 `Where status IN (pending,failed,expired)` 切换保证 webhook / watcher 同时命中也不会重复加额度。
+- 前端 uiweb：新增 `/admin/kpay-topups` 页面（`AdminKPayTopUps.jsx` + `services/adminKpayTopups.js`），列表展示状态、本地与平台订单号、用户、金额、支付方式、创建/到账时间，已到账自动禁用"查单补单"按钮；接入 `ClayAdminShell` 侧栏（Wallet 图标）与 `AdminHome` 卡片。
+- 测试：新增 `TestParseKPayStatusFilter` 覆盖空 / all / 单值 / 多值 / 未知值 / 去重；既有 `TestVerifyKPaySignature` / `TestMapKPayOrderStatus` / `TestKPayLocalFallbackExpired` / `TestKPayNotifyAlwaysReturnsOKForRejectedWebhook` / `TestBuildKPayReturnURLUsesUIWebTopUp` 全部仍通过。
+
+### 验证结果
+
+- `go build ./...` 通过；`go test ./controller -run KPay -count=1`、`go test ./model -count=1`、`go test ./service -count=1` 均通过。
+- `npm run build` 于 `uiweb/` 通过；仅有既有大 chunk 警告。
+- `git diff --check` 通过；既有 `TestAdminDebugConnectivitySettingCanBeSaved` panic 与本次改动无关。
+- 提交：`6feb0d81 新增 KPay 充值到账管理页与 pending 自动扫描`、`3bd0f87f 新增 KPay 下单后短期高频跟踪`；均已推到 `origin/main`。
+- GHCR：从干净 `git worktree` 上下文构建并推送 `ghcr.io/youkies/new-api:latest` 与 `:3bd0f87f` / `:kpay-post-create-watch-20260518`，digest `sha256:d34a9cb76551f4e81cc1d412737a2f7278c6cb81db66c26122ce38c49b561228`，platform `linux/amd64`。
+- 生产侧验证良好；用户在 slave 测试机上观察不到 watcher 是预期行为（master-only 后台任务）。
+
+### 注意事项
+
+- 所有 KPay 后台兜底（watcher + 全局扫描）都依赖 `common.IsMasterNode`。验证必须在 `NODE_TYPE=master` 节点上跑；slave 只承担 API relay，已并入 `1_project_context.md`。
+- "管理员补单"按真实 KPay 状态入账，不要把它当成"无视上游强制 success"的工具——后者由旧的 `AdminCompleteTopUp` 提供，风险更高。
+- KPay 官方 webhook 待签字符串当前仍按 5 候选兼容（event\\nts\\nnonce\\nbodyHash 等）；待官方明确格式后应收敛到唯一一种以收紧攻击面。
+
 ## 当前可接手状态：调试 Key 用户端连通性探测（2026-05-17）
 
 ### 已完成

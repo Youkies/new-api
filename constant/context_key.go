@@ -21,6 +21,12 @@ const (
 	ContextKeyTokenCrossGroupRetry   ContextKey = "token_cross_group_retry"
 	ContextKeyTokenDebugEnabled      ContextKey = "token_debug_enabled"
 	ContextKeyTokenDebugConnectivity ContextKey = "token_debug_connectivity_enabled"
+	ContextKeyTokenArchiveId         ContextKey = "token_archive_id"
+
+	// ContextKeyUserInputAlias holds the user-typed model name when an alias
+	// rewrite occurred. Empty when no alias was resolved. Reserved for future
+	// log display of "user view" model names.
+	ContextKeyUserInputAlias ContextKey = "user_input_alias"
 
 	/* channel related keys */
 	ContextKeyChannelId                ContextKey = "channel_id"

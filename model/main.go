@@ -25,7 +25,7 @@ var commonFalseVal string
 var logKeyCol string
 var logGroupCol string
 
-func initCol() {
+func InitCol() {
 	// init common column names
 	if common.UsingPostgreSQL {
 		commonGroupCol = `"group"`
@@ -117,7 +117,7 @@ func CheckSetup() {
 
 func chooseDB(envName string, isLog bool) (*gorm.DB, error) {
 	defer func() {
-		initCol()
+		InitCol()
 	}()
 	dsn := os.Getenv(envName)
 	if dsn != "" {
@@ -296,6 +296,8 @@ func migrateDB() error {
 		&UIAssistantConversation{},
 		&UIAssistantConversationMessage{},
 		&PerfMetric{},
+		&UserModelArchive{},
+		&UserModelAlias{},
 	)
 	if err != nil {
 		return err
@@ -360,6 +362,8 @@ func migrateDBFast() error {
 		{&UIAssistantConversation{}, "UIAssistantConversation"},
 		{&UIAssistantConversationMessage{}, "UIAssistantConversationMessage"},
 		{&PerfMetric{}, "PerfMetric"},
+		{&UserModelArchive{}, "UserModelArchive"},
+		{&UserModelAlias{}, "UserModelAlias"},
 	}
 	// 动态计算migration数量，确保errChan缓冲区足够大
 	errChan := make(chan error, len(migrations))

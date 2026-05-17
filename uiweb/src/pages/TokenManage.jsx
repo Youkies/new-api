@@ -17,6 +17,7 @@ import {
   listTokens, addToken, updateToken, updateTokenStatus,
   deleteToken, getTokenKey, getUserGroups,
 } from '../services/tokens.js'
+import { listArchives } from '../services/archives.js'
 import { copyTextToClipboard } from '../utils/clipboard.js'
 import { useUser } from '../context/UserContext.jsx'
 
@@ -166,9 +167,10 @@ export default function TokenManage() {
 
   const [showModal, setShowModal] = useState(false)
   const [editing, setEditing] = useState(null)
-  const [form, setForm] = useState({ name: '', remain_quota: 0, expired_time: -1, unlimited_quota: true, group: '', display_amount: '', debug_enabled: false, debug_connectivity_enabled: false })
+  const [form, setForm] = useState({ name: '', remain_quota: 0, expired_time: -1, unlimited_quota: true, group: '', display_amount: '', debug_enabled: false, debug_connectivity_enabled: false, archive_id: null })
   const [saving, setSaving] = useState(false)
   const [groupOptions, setGroupOptions] = useState([])
+  const [archiveOptions, setArchiveOptions] = useState([])
 
   const [revealedKeys, setRevealedKeys] = useState({})
   const [expandedRow, setExpandedRow] = useState(null)
@@ -204,6 +206,15 @@ export default function TokenManage() {
         setGroupOptions(opts)
       }
     }).catch(() => {})
+    listArchives().then((res) => {
+      const items = res?.data ?? []
+      const opts = items.map((a) => ({
+        value: String(a.id),
+        label: a.name,
+        subtitle: `${a.slug} · ${a.alias_count} 个别名`,
+      }))
+      setArchiveOptions(opts)
+    }).catch(() => {})
   }, [])
 
   const onSearch = (e) => {
@@ -217,7 +228,7 @@ export default function TokenManage() {
   const openCreate = () => {
     setEditing(null)
     const defaultGroup = groupOptions.find((o) => o.value === 'default') ? 'default' : (groupOptions[0]?.value || '')
-    setForm({ name: '', remain_quota: 0, expired_time: -1, unlimited_quota: true, group: defaultGroup, display_amount: '', debug_enabled: false, debug_connectivity_enabled: false })
+    setForm({ name: '', remain_quota: 0, expired_time: -1, unlimited_quota: true, group: defaultGroup, display_amount: '', debug_enabled: false, debug_connectivity_enabled: false, archive_id: null })
     setShowModal(true)
   }
 
@@ -233,6 +244,7 @@ export default function TokenManage() {
       display_amount: da,
       debug_enabled: Boolean(t.debug_enabled),
       debug_connectivity_enabled: Boolean(t.debug_connectivity_enabled),
+      archive_id: t.archive_id ?? null,
     })
     setShowModal(true)
   }
@@ -246,6 +258,7 @@ export default function TokenManage() {
       unlimited_quota: form.unlimited_quota,
       remain_quota: form.unlimited_quota ? 0 : displayToQuota(parseFloat(form.display_amount) || 0),
       group: form.group,
+      archive_id: form.archive_id,
     }
     if (isAdmin) {
       payload.debug_enabled = Boolean(form.debug_enabled)
@@ -554,6 +567,18 @@ export default function TokenManage() {
               />
             </div>
           )}
+          <div>
+            <label className="block ml-4 mb-2 font-bold text-sm text-clay-ink">默认存档（可选）</label>
+            <ClaySelect
+              value={form.archive_id != null ? String(form.archive_id) : ''}
+              onChange={(v) => setForm({ ...form, archive_id: v ? parseInt(v, 10) : null })}
+              options={[{ value: '', label: '不绑定', subtitle: '走原模型路由' }, ...archiveOptions]}
+              placeholder="不绑定"
+            />
+            <p className="ml-4 mt-1 text-[11px] text-clay-faint">
+              绑定后用这把 Key 调用别名会自动解析到该存档的源模型/分组。
+            </p>
+          </div>
           <div className="flex items-center gap-3">
             <label className="text-sm font-bold">无限额度</label>
             <button type="button" onClick={() => setForm({ ...form, unlimited_quota: !form.unlimited_quota })} className="p-0.5">

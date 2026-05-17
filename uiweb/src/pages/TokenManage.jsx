@@ -1,8 +1,8 @@
-import { useEffect, useState, useCallback, useSyncExternalStore } from 'react'
+import { useEffect, useState, useCallback, useMemo, useSyncExternalStore } from 'react'
 import {
   KeyRound, Plus, Search, Copy, Trash2, Eye, EyeOff,
   ToggleLeft, ToggleRight, Pencil, ChevronLeft, ChevronRight,
-  Clock, Shield, Layers, Infinity, RefreshCw, Bug, Wifi,
+  Clock, Shield, Layers, Infinity, RefreshCw, Bug, Wifi, Tag,
 } from 'lucide-react'
 import ClayCard from '../components/clay/ClayCard.jsx'
 import ClayButton from '../components/clay/ClayButton.jsx'
@@ -62,7 +62,7 @@ function parseModels(str) {
   }
 }
 
-function TokenCard({ t, revealedKeys, onRevealKey, onCopyKey, onToggleStatus, openEdit, onDelete }) {
+function TokenCard({ t, revealedKeys, onRevealKey, onCopyKey, onToggleStatus, openEdit, onDelete, archiveName }) {
   const st = STATUS_MAP[t.status] ?? STATUS_MAP[2]
   const revealed = revealedKeys[t.id]
   const group = t.group || '-'
@@ -77,17 +77,35 @@ function TokenCard({ t, revealedKeys, onRevealKey, onCopyKey, onToggleStatus, op
             <KeyRound className="w-4 h-4 text-clay-blue-300" />
           </div>
           <div className="min-w-0">
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1.5 flex-wrap">
               <div className="font-bold text-sm truncate max-w-[160px]">{t.name}</div>
               {t.debug_enabled && <Bug className="w-3.5 h-3.5 text-clay-pink-400 shrink-0" title="调试 Key" />}
               {t.debug_connectivity_enabled && <Wifi className="w-3.5 h-3.5 text-clay-blue-300 shrink-0" title="连通性测试 Key" />}
             </div>
-            {t.model_limits_enabled && models.length > 0 && (
-              <div className="text-[11px] text-clay-faint mt-0.5">
-                <Shield className="w-3 h-3 inline mr-0.5 -mt-0.5" />
-                限 {models.length} 个模型
-              </div>
-            )}
+            <div className="flex items-center gap-1.5 flex-wrap mt-1">
+              {archiveName ? (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-clay-pill bg-clay-purple-100 text-[#6b4d83] shadow-clay">
+                  <Tag className="w-3 h-3" strokeWidth={2.6} />
+                  <span className="text-[11px] font-extrabold truncate max-w-[140px]" title={`绑定存档: ${archiveName}`}>绑定·{archiveName}</span>
+                </span>
+              ) : (
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); openEdit(t) }}
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-clay-pill bg-clay-bg shadow-clay-inset text-clay-faint hover:text-[#6b4d83] transition-colors"
+                  title="点击绑定存档"
+                >
+                  <Plus className="w-3 h-3" strokeWidth={2.6} />
+                  <span className="text-[11px] font-extrabold">绑定存档</span>
+                </button>
+              )}
+              {t.model_limits_enabled && models.length > 0 && (
+                <span className="text-[11px] text-clay-faint inline-flex items-center gap-0.5">
+                  <Shield className="w-3 h-3" />
+                  限 {models.length} 个模型
+                </span>
+              )}
+            </div>
           </div>
         </div>
         <span className={`text-[11px] font-extrabold px-2.5 py-0.5 rounded-clay-pill shrink-0 ${st.cls}`}>{st.label}</span>
@@ -193,6 +211,17 @@ export default function TokenManage() {
   }, [toast])
 
   useEffect(() => { load(page, keyword) }, [page]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // archive id -> archive name lookup for rendering bound-archive chips on token rows
+  const archiveNameById = useMemo(() => {
+    const map = new Map()
+    archiveOptions.forEach((o) => { map.set(o.value, o.label) })
+    return map
+  }, [archiveOptions])
+  const getArchiveName = useCallback((id) => {
+    if (id == null) return null
+    return archiveNameById.get(String(id)) ?? null
+  }, [archiveNameById])
 
   useEffect(() => {
     getUserGroups().then((res) => {
@@ -395,6 +424,7 @@ export default function TokenManage() {
             <TokenCard
               key={t.id}
               t={t}
+              archiveName={getArchiveName(t.archive_id)}
               revealedKeys={revealedKeys}
               onRevealKey={onRevealKey}
               onCopyKey={onCopyKey}
@@ -431,6 +461,7 @@ export default function TokenManage() {
               const group = t.group || '-'
               const models = parseModels(t.model_limits)
               const isExpanded = expandedRow === t.id
+              const archiveName = getArchiveName(t.archive_id)
 
               return (
                 <tr
@@ -444,7 +475,7 @@ export default function TokenManage() {
                         <KeyRound className="w-4 h-4 text-clay-blue-300" />
                       </div>
                       <div className="min-w-0">
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex items-center gap-1.5 flex-wrap">
                           <div className="font-bold text-sm truncate max-w-[160px]">{t.name}</div>
                           {t.debug_enabled && (
                             <span className="inline-flex items-center gap-1 rounded-clay-pill bg-clay-pink-100 px-2 py-0.5 text-[10px] font-black text-[#8a4860]">
@@ -459,12 +490,30 @@ export default function TokenManage() {
                             </span>
                           )}
                         </div>
-                        {t.model_limits_enabled && models.length > 0 && (
-                          <div className="text-[11px] text-clay-faint mt-0.5">
-                            <Shield className="w-3 h-3 inline mr-0.5 -mt-0.5" />
-                            限 {models.length} 个模型
-                          </div>
-                        )}
+                        <div className="flex items-center gap-1.5 flex-wrap mt-1" onClick={(e) => e.stopPropagation()}>
+                          {archiveName ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-clay-pill bg-clay-purple-100 text-[#6b4d83] shadow-clay">
+                              <Tag className="w-3 h-3" strokeWidth={2.6} />
+                              <span className="text-[11px] font-extrabold truncate max-w-[140px]" title={`绑定存档: ${archiveName}`}>绑定·{archiveName}</span>
+                            </span>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => openEdit(t)}
+                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-clay-pill bg-clay-bg shadow-clay-inset text-clay-faint hover:text-[#6b4d83] transition-colors"
+                              title="点击绑定存档"
+                            >
+                              <Plus className="w-3 h-3" strokeWidth={2.6} />
+                              <span className="text-[11px] font-extrabold">绑定存档</span>
+                            </button>
+                          )}
+                          {t.model_limits_enabled && models.length > 0 && (
+                            <span className="text-[11px] text-clay-faint inline-flex items-center gap-0.5">
+                              <Shield className="w-3 h-3" />
+                              限 {models.length} 个模型
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </td>

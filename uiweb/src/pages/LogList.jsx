@@ -721,17 +721,21 @@ function LogCard({ log, onClick }) {
 
               {/* Subtitle: actual routing target — group / real_model (slash separator) */}
               {showModelHeader && (
-                <div className="text-xs font-bold mt-1 leading-snug break-all">
+                <div className="text-xs font-bold mt-1 leading-snug flex items-baseline gap-1.5 min-w-0">
                   {hasAlias ? (
                     <>
-                      <span className="text-[#6b4d83]">{log.group || '默认'}</span>
-                      <span className="text-clay-faint/60 font-black mx-1.5">/</span>
-                      <span className="text-[#8a6a32] font-mono" title={log.model_name}>{log.model_name}</span>
+                      {log.group && log.group !== log.requested_model_name && (
+                        <>
+                          <span className="text-[#6b4d83] shrink-0">{log.group}</span>
+                          <span className="text-clay-faint/60 font-black shrink-0">/</span>
+                        </>
+                      )}
+                      <span className="text-[#8a6a32] font-mono truncate min-w-0" title={log.model_name}>{log.model_name}</span>
                     </>
                   ) : log.group ? (
                     <>
-                      <span className="text-[#6b4d83]">{log.group}</span>
-                      <span className="text-clay-faint/60 ml-1.5">· 透传</span>
+                      <span className="text-[#6b4d83] shrink-0">{log.group}</span>
+                      <span className="text-clay-faint/60 shrink-0">· 透传</span>
                     </>
                   ) : (
                     <span className="text-clay-faint/60">透传</span>
@@ -740,24 +744,23 @@ function LogCard({ log, onClick }) {
               )}
             </div>
 
-            {/* Right column: category chip (+ stream chip for consume) above amount */}
+            {/* Right column: single chip (stream for consume / type label for non-consume) above amount */}
             <div className="flex flex-col items-end gap-1.5 shrink-0">
-              <div className="flex items-center gap-1 flex-wrap justify-end">
+              {isConsume ? (
+                <span
+                  className={`text-[10px] font-extrabold px-2 py-0.5 rounded-clay-pill ${
+                    log.is_stream
+                      ? 'bg-clay-blue-100 text-[#43658b] shadow-clay'
+                      : 'bg-clay-bg shadow-clay-inset text-clay-faint'
+                  }`}
+                >
+                  {log.is_stream ? '流式' : '非流'}
+                </span>
+              ) : (
                 <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-clay-pill ${meta.bg} ${meta.text}`}>
                   {meta.label}
                 </span>
-                {isConsume && (
-                  <span
-                    className={`text-[10px] font-extrabold px-2 py-0.5 rounded-clay-pill ${
-                      log.is_stream
-                        ? 'bg-clay-blue-100 text-[#43658b] shadow-clay'
-                        : 'bg-clay-bg shadow-clay-inset text-clay-faint'
-                    }`}
-                  >
-                    {log.is_stream ? '流式' : '非流'}
-                  </span>
-                )}
-              </div>
+              )}
               {quotaText && (
                 <span className={`text-base font-black tabular-nums whitespace-nowrap ${quotaCls}`}>{quotaText}</span>
               )}
@@ -1141,7 +1144,7 @@ export default function LogList() {
       )}
 
       {/* Unified card grid — same layout on all viewports */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-3">
         {loading && (
           <ClayCard className="!py-12 text-center col-span-full">
             <div className="flex flex-col items-center gap-3">

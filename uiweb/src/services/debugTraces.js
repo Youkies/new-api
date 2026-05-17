@@ -23,3 +23,13 @@ export async function deleteDebugTrace(id) {
   const res = await api.delete(`/api/ui/admin/debug-traces/${id}`)
   return res.data
 }
+
+export async function getDebugConnectivitySettings() {
+  const res = await api.get('/api/ui/admin/debug-traces/settings')
+  return res.data
+}
+
+export async function saveDebugConnectivitySettings(payload) {
+  const res = await api.put('/api/ui/admin/debug-traces/settings', payload)
+  return res.data
+}

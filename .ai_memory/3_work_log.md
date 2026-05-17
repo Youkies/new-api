@@ -106,3 +106,5 @@
 - [2026-05-17 18:14] 为管理员调试 Key 新增 `/v1/debug/connectivity` 用户端连通性探测，后台调试记录页增加 cURL 复制卡片；定向 Go 测试、`uiweb npm run build` 与 `git diff --check` 通过。
 - [2026-05-17 18:24] 将连通性探测扩展为调试 Key 子开关 `debug_connectivity_enabled`：用户可直接替换原软件 Key 发起普通模型请求，服务端短路返回检测完成并写调试记录；定向 Go 测试、`uiweb npm run build` 与 `git diff --check` 通过。
 - [2026-05-17 18:27] 补齐连通性测试 Key 的流式客户端兼容：`stream=true` 时返回 OpenAI-compatible SSE 和 `[DONE]`；定向 Go 测试通过，全量 Go 测试仍卡在既有 `relay/helper` ticker panic。
+- [2026-05-17 18:50] 拉长连通性测试 Key 的流式探测：默认 60 秒、每 5 秒发送 SSE 进度，最后完成并 `[DONE]`；定向 router/controller/middleware/service 测试与 `git diff --check` 通过。
+- [2026-05-17 19:08] 在 `/admin/debug-traces` 增加连通性测试设置弹窗，支持保存流式时长、进度间隔和非流等待；定向 Go 测试、`git diff --check` 与 `uiweb npm run build` 通过。

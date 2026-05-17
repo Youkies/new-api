@@ -91,6 +91,8 @@ func SetApiRouter(router *gin.Engine) {
 				uiAdminRoute.POST("/playground-foods/:id/reject", controller.AdminRejectUIPlaygroundFood)
 				uiAdminRoute.DELETE("/playground-foods/:id", controller.AdminDeleteUIPlaygroundFood)
 				uiAdminRoute.GET("/debug-traces", controller.AdminListDebugKeyTraces)
+				uiAdminRoute.GET("/debug-traces/settings", controller.AdminGetDebugConnectivitySetting)
+				uiAdminRoute.PUT("/debug-traces/settings", controller.AdminSaveDebugConnectivitySetting)
 				uiAdminRoute.GET("/debug-traces/:id/download", controller.AdminDownloadDebugKeyTrace)
 				uiAdminRoute.GET("/debug-traces/:id", controller.AdminGetDebugKeyTrace)
 				uiAdminRoute.DELETE("/debug-traces/:id", controller.AdminDeleteDebugKeyTrace)

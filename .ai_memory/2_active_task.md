@@ -9,7 +9,8 @@
 - 成功响应返回 `object=debug.connectivity`、`message=client_to_server_ok`、服务器时间、客户端 IP、User-Agent、Content-Type、Content-Length 和 `request_id`。
 - 同一次探测会写入 `debug_key_traces`，`model_name=debug-connectivity`，`admin_info.diagnostic=client_connectivity`，方便在 `/admin/debug-traces` 用 `request_id` 精确查询。
 - 新增 `tokens.debug_connectivity_enabled` 作为调试 Key 的子开关；开启后这把 Key 复制到用户软件中发起普通 `/v1/*` relay 请求时，会在渠道选择前短路返回 OpenAI chat completion 形状的 `200` 响应，正文提示“连通性检测已完成，请联系管理员并提供 Request ID。”。
-- 若用户软件请求体含 `stream=true`，连通性测试 Key 会返回 OpenAI-compatible SSE，最后输出 `data: [DONE]`，避免默认流式客户端把检测响应当成异常格式。
+- 若用户软件请求体含 `stream=true`，连通性测试 Key 会返回 OpenAI-compatible SSE 长流：默认保持约 60 秒，每 5 秒发送一次进度 chunk，最后输出完成信息和 `data: [DONE]`，避免默认流式客户端把检测响应当成异常格式，并可排查长连接中途断开。
+- `/admin/debug-traces` 的连通性探测卡片新增“设置”按钮，可配置流式总时长、进度间隔和非流等待时长；配置保存到既有 `options` 表，键名前缀为 `debug_connectivity_setting.*`，环境变量 `DEBUG_CONNECTIVITY_STREAM_SECONDS` / `DEBUG_CONNECTIVITY_STREAM_INTERVAL_SECONDS` / `DEBUG_CONNECTIVITY_NON_STREAM_SECONDS` 只作为初始默认值。
 - 连通性测试 Key 不要求用户填写真实模型，`admin_info.probe_mode=transparent_key`，并会记录用户侧请求里传入的 `requested_model`。
 - `/admin/debug-traces` 新增连通性探测 cURL 复制卡片；debug mock 增加一条连通性探测样例记录。
 - 令牌管理页在“调试 Key”下新增“连通性测试 Key”开关，列表和手机卡片会显示对应标识。
@@ -19,6 +20,8 @@
 
 - `go test ./controller -run "DebugKeyConnectivity|DebugKeyTrace|Token" -count=1` 通过。
 - `go test ./router ./controller ./middleware ./service -run "DebugKeyConnectivity|DebugKeyTrace|Token" -count=1` 通过。
+- 2026-05-17 拉长流式连通性测试后，`go test ./router ./controller ./middleware ./service -run "DebugKeyConnectivity|DebugKeyTrace|Token" -count=1` 与 `git diff --check` 通过。
+- 2026-05-17 管理端新增连通性测试设置弹窗后，`go test ./router ./controller ./middleware ./service ./setting/operation_setting -run "DebugKeyConnectivity|DebugKeyTrace|Token" -count=1`、`git diff --check`、`uiweb npm run build` 通过。
 - `npm run build` 于 `uiweb/` 通过，仅有既有大 chunk 警告。
 - `git diff --check` 通过。
 - `go test ./... -count=1` 仍失败于既有 `relay/helper` 的 `time.NewTicker(0)` panic，和本次调试 Key 改动无关。

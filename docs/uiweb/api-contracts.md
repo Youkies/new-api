@@ -121,6 +121,8 @@
 - 通过管理员调试 Key 调用 `/v1/debug/connectivity` 会直接返回服务器收到的客户端 IP、User-Agent、协议、Content-Type、Content-Length、服务器时间和 `request_id`，用于确认用户端到服务器的链路已打通。
 - 连通性探测不选择渠道、不调用上游、不扣费；普通 Key 或非管理员 Key 会返回 `403 debug_key_required`。
 - 开启 `debug_connectivity_enabled` 的 Key 可以直接复制到用户软件里替换原 Key。用户按原软件发起任意模型请求时，服务端返回 OpenAI chat completion 形状的 `200` 响应，正文包含“连通性检测已完成，请联系管理员并提供 Request ID。”，并将 `admin_info.probe_mode` 记为 `transparent_key`。
+- 若用户请求中包含 `stream=true`，连通性测试 Key 会返回 OpenAI-compatible SSE 长流：默认持续约 60 秒，每 5 秒发送一次进度 chunk，最后发送完成信息与 `data: [DONE]`。`admin_info` 会记录 `stream_probe_duration_seconds`、`stream_probe_interval_seconds` 和实际完成耗时。
+- `GET /api/ui/admin/debug-traces/settings` 返回连通性测试时长设置；`PUT /api/ui/admin/debug-traces/settings` 可保存 `stream_probe_seconds`、`stream_probe_interval_seconds`、`non_stream_probe_seconds`。非流等待默认 `0`，设置后普通非流 chat completion 也会先等待对应秒数再返回。
 - 请求头、上游请求头和 body 会做基础脱敏，body 按 256KB 截断。
 - 列表接口不返回大字段；详情接口返回 request/upstream/response body 和 admin info。
 - download 接口返回 `text/plain; charset=utf-8` 附件，文件名为 `debug-trace-<request_id>.log`。

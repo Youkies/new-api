@@ -151,11 +151,56 @@ func TestDebugKeyConnectivityProbeShortCircuitsRelayRequest(t *testing.T) {
 	}
 }
 
+func TestDebugKeyConnectivityProbeSupportsNonStreamingDelay(t *testing.T) {
+	db := setupTokenControllerTestDB(t)
+	if err := db.AutoMigrate(&model.DebugKeyTrace{}); err != nil {
+		t.Fatalf("failed to migrate debug trace table: %v", err)
+	}
+	previousDelay := debugConnectivityNonStreamProbeDurationOverride
+	debugConnectivityNonStreamProbeDurationOverride = 15 * time.Millisecond
+	t.Cleanup(func() {
+		debugConnectivityNonStreamProbeDurationOverride = previousDelay
+	})
+
+	body := map[string]any{
+		"model":    "non-stream-any-model",
+		"messages": []map[string]string{{"role": "user", "content": "ping"}},
+	}
+	ctx, recorder := newAuthenticatedContext(t, http.MethodPost, "/v1/chat/completions", body, 1)
+	ctx.Set(common.RequestIdKey, "debug-connectivity-non-stream-delay")
+	ctx.Set("token_id", 203)
+	ctx.Set("token_name", "non-stream-connectivity-token")
+	common.SetContextKey(ctx, constant.ContextKeyTokenGroup, "default")
+	common.SetContextKey(ctx, constant.ContextKeyTokenDebugEnabled, true)
+	common.SetContextKey(ctx, constant.ContextKeyTokenDebugConnectivity, true)
+
+	DebugKeyConnectivityProbe()(ctx)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected 200 response, got %d: %s", recorder.Code, recorder.Body.String())
+	}
+	if !strings.Contains(recorder.Body.String(), "连通性检测已完成") {
+		t.Fatalf("expected non-stream connectivity response, got %q", recorder.Body.String())
+	}
+	trace := waitForDebugTrace(t, "debug-connectivity-non-stream-delay")
+	if !strings.Contains(string(trace.AdminInfo), "non_stream_probe_seconds") || !strings.Contains(string(trace.AdminInfo), "non_stream_probe_completed") {
+		t.Fatalf("expected non-stream probe timing admin info, got %q", trace.AdminInfo)
+	}
+}
+
 func TestDebugKeyConnectivityProbeSupportsStreamingRequest(t *testing.T) {
 	db := setupTokenControllerTestDB(t)
 	if err := db.AutoMigrate(&model.DebugKeyTrace{}); err != nil {
 		t.Fatalf("failed to migrate debug trace table: %v", err)
 	}
+	previousDuration := debugConnectivityStreamProbeDurationOverride
+	previousInterval := debugConnectivityStreamProbeIntervalOverride
+	debugConnectivityStreamProbeDurationOverride = 20 * time.Millisecond
+	debugConnectivityStreamProbeIntervalOverride = 5 * time.Millisecond
+	t.Cleanup(func() {
+		debugConnectivityStreamProbeDurationOverride = previousDuration
+		debugConnectivityStreamProbeIntervalOverride = previousInterval
+	})
 
 	body := map[string]any{
 		"model":    "stream-any-model",
@@ -179,6 +224,9 @@ func TestDebugKeyConnectivityProbeSupportsStreamingRequest(t *testing.T) {
 		t.Fatalf("expected SSE content type, got %q", contentType)
 	}
 	bodyText := recorder.Body.String()
+	if !strings.Contains(bodyText, "连通性长流测试已开始") || !strings.Contains(bodyText, "连通性检测进行中") {
+		t.Fatalf("expected streaming connectivity progress response, got %q", bodyText)
+	}
 	if !strings.Contains(bodyText, "连通性检测已完成") || !strings.Contains(bodyText, "data: [DONE]") {
 		t.Fatalf("expected streaming connectivity response, got %q", bodyText)
 	}
@@ -189,6 +237,54 @@ func TestDebugKeyConnectivityProbeSupportsStreamingRequest(t *testing.T) {
 	}
 	if !strings.Contains(string(trace.AdminInfo), `"stream":true`) {
 		t.Fatalf("expected stream admin info, got %q", trace.AdminInfo)
+	}
+	if !strings.Contains(string(trace.AdminInfo), "stream_probe_duration_seconds") || !strings.Contains(string(trace.AdminInfo), "stream_probe_completed") {
+		t.Fatalf("expected stream probe timing admin info, got %q", trace.AdminInfo)
+	}
+}
+
+func TestAdminDebugConnectivitySettingCanBeSaved(t *testing.T) {
+	db := setupTokenControllerTestDB(t)
+	if err := db.AutoMigrate(&model.Option{}); err != nil {
+		t.Fatalf("failed to migrate option table: %v", err)
+	}
+	t.Cleanup(func() {
+		_ = model.UpdateOption("debug_connectivity_setting.stream_probe_seconds", "60")
+		_ = model.UpdateOption("debug_connectivity_setting.stream_probe_interval_seconds", "5")
+		_ = model.UpdateOption("debug_connectivity_setting.non_stream_probe_seconds", "0")
+	})
+
+	body := map[string]any{
+		"stream_probe_seconds":          12,
+		"stream_probe_interval_seconds": 15,
+		"non_stream_probe_seconds":      7,
+	}
+	ctx, recorder := newAuthenticatedContext(t, http.MethodPut, "/api/ui/admin/debug-traces/settings", body, 1)
+	AdminSaveDebugConnectivitySetting(ctx)
+
+	response := decodeAPIResponse(t, recorder)
+	if !response.Success {
+		t.Fatalf("expected settings save to succeed, got %s", response.Message)
+	}
+	var setting debugConnectivitySettingResponse
+	if err := common.Unmarshal(response.Data, &setting); err != nil {
+		t.Fatalf("failed to decode settings response: %v", err)
+	}
+	if setting.StreamProbeSeconds != 12 || setting.StreamProbeIntervalSeconds != 12 || setting.NonStreamProbeSeconds != 7 {
+		t.Fatalf("unexpected normalized settings: %+v", setting)
+	}
+
+	ctx, recorder = newAuthenticatedContext(t, http.MethodGet, "/api/ui/admin/debug-traces/settings", nil, 1)
+	AdminGetDebugConnectivitySetting(ctx)
+	response = decodeAPIResponse(t, recorder)
+	if !response.Success {
+		t.Fatalf("expected settings get to succeed, got %s", response.Message)
+	}
+	if err := common.Unmarshal(response.Data, &setting); err != nil {
+		t.Fatalf("failed to decode get settings response: %v", err)
+	}
+	if setting.StreamProbeSeconds != 12 || setting.StreamProbeIntervalSeconds != 12 || setting.NonStreamProbeSeconds != 7 {
+		t.Fatalf("unexpected saved settings: %+v", setting)
 	}
 }
 

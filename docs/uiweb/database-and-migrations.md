@@ -199,6 +199,7 @@ uiweb 相关表：
 
 - 管理员调试 Key 的子开关。
 - 开启后该 Key 用于用户端连通性测试，普通 relay 请求会在渠道选择前短路返回检测完成，不请求上游、不扣费。
+- 连通性测试时长配置保存到既有 `options` 表，键为 `debug_connectivity_setting.stream_probe_seconds`、`debug_connectivity_setting.stream_probe_interval_seconds`、`debug_connectivity_setting.non_stream_probe_seconds`，不需要新增表。
 
 `debug_key_traces`：
 

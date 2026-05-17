@@ -506,6 +506,13 @@ function createInitialState() {
         admin_info: JSON.stringify({ use_channel: ['18'] }),
       },
     ],
+    debugConnectivitySettings: {
+      stream_probe_seconds: 60,
+      stream_probe_interval_seconds: 5,
+      non_stream_probe_seconds: 0,
+      max_probe_seconds: 600,
+      max_stream_probe_interval_seconds: 60,
+    },
     topups: [
       {
         id: 1001,
@@ -1428,6 +1435,21 @@ export async function mockApiResponse(config) {
   }
 
   if (path === '/api/ui/admin/debug-traces' && method === 'GET') return adminDebugTraceResponse(url)
+  if (path === '/api/ui/admin/debug-traces/settings' && method === 'GET') return ok(debugState.debugConnectivitySettings)
+  if (path === '/api/ui/admin/debug-traces/settings' && method === 'PUT') {
+    const maxProbe = debugState.debugConnectivitySettings.max_probe_seconds
+    const maxInterval = debugState.debugConnectivitySettings.max_stream_probe_interval_seconds
+    const streamSeconds = Math.min(Math.max(Number(body.stream_probe_seconds) || 60, 1), maxProbe)
+    const intervalSeconds = Math.min(Math.max(Number(body.stream_probe_interval_seconds) || 5, 1), maxInterval, streamSeconds)
+    const nonStreamSeconds = Math.min(Math.max(Number(body.non_stream_probe_seconds) || 0, 0), maxProbe)
+    debugState.debugConnectivitySettings = {
+      ...debugState.debugConnectivitySettings,
+      stream_probe_seconds: streamSeconds,
+      stream_probe_interval_seconds: intervalSeconds,
+      non_stream_probe_seconds: nonStreamSeconds,
+    }
+    return ok(debugState.debugConnectivitySettings)
+  }
   const adminDebugTraceDownloadMatch = path.match(/^\/api\/ui\/admin\/debug-traces\/(\d+)\/download$/)
   if (adminDebugTraceDownloadMatch && method === 'GET') {
     const trace = debugState.debugTraces.find((item) => Number(item.id) === Number(adminDebugTraceDownloadMatch[1]))

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Activity, Bug, Copy, Download, Eye, Loader2, RefreshCw, Search, Terminal, Trash2, Wifi } from 'lucide-react'
+import { Activity, Bug, Copy, Download, Eye, Loader2, RefreshCw, Save, Search, Settings, Terminal, Trash2, Wifi } from 'lucide-react'
 import ClayAlert from '../../components/clay/ClayAlert.jsx'
 import ClayButton from '../../components/clay/ClayButton.jsx'
 import ClayCard from '../../components/clay/ClayCard.jsx'
@@ -9,7 +9,14 @@ import ClaySelect from '../../components/clay/ClaySelect.jsx'
 import ClayAdminShell from '../../components/layout/ClayAdminShell.jsx'
 import { useToast } from '../../context/ToastContext.jsx'
 import { copyTextToClipboard } from '../../utils/clipboard.js'
-import { deleteDebugTrace, downloadDebugTraceLog, getDebugTrace, listDebugTraces } from '../../services/debugTraces.js'
+import {
+  deleteDebugTrace,
+  downloadDebugTraceLog,
+  getDebugConnectivitySettings,
+  getDebugTrace,
+  listDebugTraces,
+  saveDebugConnectivitySettings,
+} from '../../services/debugTraces.js'
 
 const statusOptions = [
   { value: '', label: '全部状态' },
@@ -22,6 +29,14 @@ const statusMeta = {
   success: { label: '成功', cls: 'bg-clay-green-100 text-[#3d6b4f]' },
   error: { label: '错误', cls: 'bg-clay-pink-100 text-[#8a4860]' },
   client_canceled: { label: '客户端取消', cls: 'bg-clay-yellow-100 text-[#8a6a32]' },
+}
+
+const defaultConnectivitySettings = {
+  stream_probe_seconds: 60,
+  stream_probe_interval_seconds: 5,
+  non_stream_probe_seconds: 0,
+  max_probe_seconds: 600,
+  max_stream_probe_interval_seconds: 60,
 }
 
 function formatTime(ts) {
@@ -52,6 +67,27 @@ function pretty(value) {
   }
 }
 
+function normalizeConnectivitySettings(value) {
+  return {
+    ...defaultConnectivitySettings,
+    ...(value || {}),
+  }
+}
+
+function toSettingForm(value) {
+  const setting = normalizeConnectivitySettings(value)
+  return {
+    stream_probe_seconds: String(setting.stream_probe_seconds),
+    stream_probe_interval_seconds: String(setting.stream_probe_interval_seconds),
+    non_stream_probe_seconds: String(setting.non_stream_probe_seconds),
+  }
+}
+
+function parseSeconds(value, fallback = 0) {
+  const parsed = Number.parseInt(String(value ?? '').trim(), 10)
+  return Number.isFinite(parsed) ? parsed : fallback
+}
+
 export default function AdminDebugTraces() {
   const toast = useToast()
   const [items, setItems] = useState([])
@@ -63,6 +99,11 @@ export default function AdminDebugTraces() {
   const [requestId, setRequestId] = useState('')
   const [detail, setDetail] = useState(null)
   const [detailLoading, setDetailLoading] = useState(false)
+  const [connectivitySettings, setConnectivitySettings] = useState(defaultConnectivitySettings)
+  const [connectivitySettingsForm, setConnectivitySettingsForm] = useState(toSettingForm(defaultConnectivitySettings))
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const [settingsLoading, setSettingsLoading] = useState(false)
+  const [settingsSaving, setSettingsSaving] = useState(false)
   const connectivityEndpoint = useMemo(() => {
     if (typeof window === 'undefined') return '/v1/debug/connectivity'
     return `${window.location.origin}/v1/debug/connectivity`
@@ -93,8 +134,47 @@ export default function AdminDebugTraces() {
     }
   }
 
+  const loadConnectivitySettings = async ({ open = false, silent = false } = {}) => {
+    if (open) setSettingsOpen(true)
+    if (!silent) setSettingsLoading(true)
+    try {
+      const res = await getDebugConnectivitySettings()
+      if (res?.success === false) throw new Error(res.message || '连通性设置加载失败')
+      const setting = normalizeConnectivitySettings(res.data)
+      setConnectivitySettings(setting)
+      setConnectivitySettingsForm(toSettingForm(setting))
+    } catch (err) {
+      if (!silent) toast(err?.response?.data?.message || err.message || '连通性设置加载失败', 'error')
+    } finally {
+      if (!silent) setSettingsLoading(false)
+    }
+  }
+
+  const saveConnectivitySettings = async () => {
+    const payload = {
+      stream_probe_seconds: parseSeconds(connectivitySettingsForm.stream_probe_seconds, connectivitySettings.stream_probe_seconds),
+      stream_probe_interval_seconds: parseSeconds(connectivitySettingsForm.stream_probe_interval_seconds, connectivitySettings.stream_probe_interval_seconds),
+      non_stream_probe_seconds: parseSeconds(connectivitySettingsForm.non_stream_probe_seconds, connectivitySettings.non_stream_probe_seconds),
+    }
+    setSettingsSaving(true)
+    try {
+      const res = await saveDebugConnectivitySettings(payload)
+      if (res?.success === false) throw new Error(res.message || '连通性设置保存失败')
+      const setting = normalizeConnectivitySettings(res.data)
+      setConnectivitySettings(setting)
+      setConnectivitySettingsForm(toSettingForm(setting))
+      setSettingsOpen(false)
+      toast('连通性设置已保存')
+    } catch (err) {
+      toast(err?.response?.data?.message || err.message || '连通性设置保存失败', 'error')
+    } finally {
+      setSettingsSaving(false)
+    }
+  }
+
   useEffect(() => {
     fetchData()
+    loadConnectivitySettings({ silent: true })
   }, [])
 
   const stats = useMemo(() => {
@@ -200,10 +280,21 @@ export default function AdminDebugTraces() {
               <span>返回 Request ID 后可在本页精确查询</span>
             </div>
           </div>
-          <ClayButton type="button" variant="secondary" onClick={copyConnectivityCommand} className="!px-5">
-            <Copy className="h-4 w-4" />
-            复制 cURL
-          </ClayButton>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            <ClayButton type="button" variant="ghost" onClick={() => loadConnectivitySettings({ open: true })} className="!px-5">
+              <Settings className="h-4 w-4" />
+              设置
+            </ClayButton>
+            <ClayButton type="button" variant="secondary" onClick={copyConnectivityCommand} className="!px-5">
+              <Copy className="h-4 w-4" />
+              复制 cURL
+            </ClayButton>
+          </div>
+        </div>
+        <div className="mt-4 grid gap-2 text-xs font-black text-clay-faint sm:grid-cols-3">
+          <span className="rounded-clay-sm bg-clay-bg px-3 py-2 shadow-clay-inset">流式 {connectivitySettings.stream_probe_seconds}s</span>
+          <span className="rounded-clay-sm bg-clay-bg px-3 py-2 shadow-clay-inset">进度间隔 {connectivitySettings.stream_probe_interval_seconds}s</span>
+          <span className="rounded-clay-sm bg-clay-bg px-3 py-2 shadow-clay-inset">非流等待 {connectivitySettings.non_stream_probe_seconds}s</span>
         </div>
         <div className="mt-4 flex items-start gap-3 rounded-clay bg-[#16202d] p-4 text-[#e8f1ff] shadow-clay-inset">
           <Terminal className="mt-0.5 h-4 w-4 shrink-0 text-clay-blue-100" />
@@ -293,7 +384,94 @@ export default function AdminDebugTraces() {
         onDownload={downloadLog}
         onCopyRequestId={copyRequestId}
       />
+      <ConnectivitySettingsModal
+        open={settingsOpen}
+        loading={settingsLoading}
+        saving={settingsSaving}
+        form={connectivitySettingsForm}
+        limits={connectivitySettings}
+        onChange={setConnectivitySettingsForm}
+        onClose={() => setSettingsOpen(false)}
+        onSave={saveConnectivitySettings}
+      />
     </ClayAdminShell>
+  )
+}
+
+function ConnectivitySettingsModal({ open, loading, saving, form, limits, onChange, onClose, onSave }) {
+  const update = (key, value) => onChange({ ...form, [key]: value })
+  return (
+    <ClayModal
+      open={open}
+      onClose={onClose}
+      title="连通性测试设置"
+      size="lg"
+      footer={(
+        <>
+          <ClayButton type="button" variant="ghost" onClick={onClose} disabled={saving}>
+            取消
+          </ClayButton>
+          <ClayButton type="button" variant="primary" onClick={onSave} disabled={saving || loading} className="!px-5">
+            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+            保存
+          </ClayButton>
+        </>
+      )}
+    >
+      {loading ? (
+        <div className="flex items-center justify-center gap-3 py-12 text-clay-faint">
+          <Loader2 className="h-6 w-6 animate-spin" />
+          <span className="font-bold">加载设置中…</span>
+        </div>
+      ) : (
+        <div className="grid gap-4 md:grid-cols-3">
+          <SettingNumber
+            label="流式总时长"
+            suffix="秒"
+            value={form.stream_probe_seconds}
+            min={1}
+            max={limits.max_probe_seconds}
+            onChange={(value) => update('stream_probe_seconds', value)}
+          />
+          <SettingNumber
+            label="进度间隔"
+            suffix="秒"
+            value={form.stream_probe_interval_seconds}
+            min={1}
+            max={limits.max_stream_probe_interval_seconds}
+            onChange={(value) => update('stream_probe_interval_seconds', value)}
+          />
+          <SettingNumber
+            label="非流等待"
+            suffix="秒"
+            value={form.non_stream_probe_seconds}
+            min={0}
+            max={limits.max_probe_seconds}
+            onChange={(value) => update('non_stream_probe_seconds', value)}
+          />
+        </div>
+      )}
+    </ClayModal>
+  )
+}
+
+function SettingNumber({ label, suffix, value, min, max, onChange }) {
+  return (
+    <label className="block rounded-clay bg-clay-bg p-4 shadow-clay-inset">
+      <span className="text-xs font-black text-clay-faint">{label}</span>
+      <div className="mt-2 flex items-center gap-2">
+        <ClayInput
+          type="number"
+          min={min}
+          max={max}
+          step="1"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="!h-11 !px-4 text-base font-black"
+        />
+        <span className="shrink-0 text-sm font-black text-clay-faint">{suffix}</span>
+      </div>
+    </label>
   )
 }
 

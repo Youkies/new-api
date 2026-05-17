@@ -1,6 +1,8 @@
 package controller
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -12,11 +14,19 @@ import (
 	"github.com/QuantumNous/new-api/constant"
 	"github.com/QuantumNous/new-api/model"
 	"github.com/QuantumNous/new-api/service"
+	"github.com/QuantumNous/new-api/setting/operation_setting"
+	"github.com/QuantumNous/new-api/types"
 	"github.com/gin-gonic/gin"
 )
 
 const debugConnectivityModelName = "debug-connectivity"
 const debugConnectivityCompletionMessage = "连通性检测已完成，请联系管理员并提供 Request ID。"
+
+var (
+	debugConnectivityStreamProbeDurationOverride    time.Duration
+	debugConnectivityStreamProbeIntervalOverride    time.Duration
+	debugConnectivityNonStreamProbeDurationOverride time.Duration
+)
 
 type debugConnectivityResponse struct {
 	Object          string                       `json:"object"`
@@ -85,6 +95,14 @@ type debugConnectivityUsage struct {
 	TotalTokens      int `json:"total_tokens"`
 }
 
+type debugConnectivitySettingResponse struct {
+	StreamProbeSeconds            int `json:"stream_probe_seconds"`
+	StreamProbeIntervalSeconds    int `json:"stream_probe_interval_seconds"`
+	NonStreamProbeSeconds         int `json:"non_stream_probe_seconds"`
+	MaxProbeSeconds               int `json:"max_probe_seconds"`
+	MaxStreamProbeIntervalSeconds int `json:"max_stream_probe_interval_seconds"`
+}
+
 func DebugKeyConnectivityProbe() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if !common.GetContextKeyBool(c, constant.ContextKeyTokenDebugConnectivity) {
@@ -124,8 +142,11 @@ func respondDebugKeyConnectivity(c *gin.Context, completionMode bool) {
 	common.SetContextKey(c, constant.ContextKeyIsStream, completionMode && requestOptions.Stream)
 
 	finishDebugTrace := service.StartDebugKeyTrace(c, nil)
+	var finalErr *types.NewAPIError
 	if finishDebugTrace != nil {
-		defer finishDebugTrace(nil)
+		defer func() {
+			finishDebugTrace(finalErr)
+		}()
 	}
 
 	requestInfo := buildDebugConnectivityRequestInfo(c)
@@ -171,7 +192,10 @@ func respondDebugKeyConnectivity(c *gin.Context, completionMode bool) {
 	})
 	if completionMode {
 		if requestOptions.Stream {
-			writeDebugConnectivityChatCompletionStream(c, response, requestedModel)
+			finalErr = writeDebugConnectivityChatCompletionStream(c, response, requestedModel)
+			return
+		}
+		if finalErr = waitDebugConnectivityNonStreamProbe(c, startedAt, &response); finalErr != nil {
 			return
 		}
 		c.JSON(http.StatusOK, buildDebugConnectivityChatCompletion(response, requestedModel))
@@ -214,42 +238,193 @@ func buildDebugConnectivityChatCompletion(response debugConnectivityResponse, re
 	}
 }
 
-func writeDebugConnectivityChatCompletionStream(c *gin.Context, response debugConnectivityResponse, requestedModel string) {
+func writeDebugConnectivityChatCompletionStream(c *gin.Context, response debugConnectivityResponse, requestedModel string) *types.NewAPIError {
 	modelName := common.GetStringIfEmpty(requestedModel, debugConnectivityModelName)
-	message := fmt.Sprintf("%s Request ID: %s", debugConnectivityCompletionMessage, response.RequestId)
 	id := "debug-connectivity-" + common.GetStringIfEmpty(response.RequestId, fmt.Sprintf("%d", response.ServerTimestamp))
+	probeDuration, probeInterval, probeSeconds, intervalSeconds := debugConnectivityStreamProbeConfig()
 	c.Header("Content-Type", "text/event-stream")
 	c.Header("Cache-Control", "no-cache")
 	c.Header("Connection", "keep-alive")
+	c.Header("X-Accel-Buffering", "no")
 
-	writeSSEData := func(value any) {
+	service.AppendDebugKeyTraceAdminInfo(c, map[string]interface{}{
+		"stream_probe_duration_seconds": probeSeconds,
+		"stream_probe_interval_seconds": intervalSeconds,
+	})
+
+	writeSSEData := func(value any) error {
 		data, err := common.Marshal(value)
 		if err != nil {
-			return
+			return err
 		}
-		_, _ = c.Writer.Write([]byte("data: "))
-		_, _ = c.Writer.Write(data)
-		_, _ = c.Writer.Write([]byte("\n\n"))
+		if _, err = c.Writer.Write([]byte("data: ")); err != nil {
+			return err
+		}
+		if _, err = c.Writer.Write(data); err != nil {
+			return err
+		}
+		if _, err = c.Writer.Write([]byte("\n\n")); err != nil {
+			return err
+		}
 		if flusher, ok := c.Writer.(http.Flusher); ok {
 			flusher.Flush()
 		}
+		return nil
 	}
 
-	writeSSEData(gin.H{
-		"id":      id,
-		"object":  "chat.completion.chunk",
-		"created": response.ServerTimestamp,
-		"model":   modelName,
-		"choices": []gin.H{{
-			"index": 0,
-			"delta": gin.H{
-				"role":    "assistant",
-				"content": message,
-			},
-			"finish_reason": nil,
-		}},
+	writeContentChunk := func(content string, includeRole bool) error {
+		delta := gin.H{"content": content}
+		if includeRole {
+			delta["role"] = "assistant"
+		}
+		return writeSSEData(gin.H{
+			"id":      id,
+			"object":  "chat.completion.chunk",
+			"created": response.ServerTimestamp,
+			"model":   modelName,
+			"choices": []gin.H{{
+				"index":         0,
+				"delta":         delta,
+				"finish_reason": nil,
+			}},
+		})
+	}
+
+	startedAt := time.Now()
+	if err := writeContentChunk(fmt.Sprintf("连通性长流测试已开始，将持续约 %d 秒。Request ID: %s", probeSeconds, response.RequestId), true); err != nil {
+		return debugConnectivityProbeError(c, err)
+	}
+
+	ticker := time.NewTicker(probeInterval)
+	defer ticker.Stop()
+	deadline := time.NewTimer(probeDuration)
+	defer deadline.Stop()
+
+	for {
+		select {
+		case <-c.Request.Context().Done():
+			return debugConnectivityProbeError(c, c.Request.Context().Err())
+		case <-deadline.C:
+			elapsed := time.Since(startedAt)
+			response.ProcessingMs = elapsed.Milliseconds()
+			service.AppendDebugKeyTraceAdminInfo(c, map[string]interface{}{
+				"stream_probe_completed":          true,
+				"stream_probe_actual_duration_ms": response.ProcessingMs,
+			})
+			if err := writeContentChunk(fmt.Sprintf("%s Request ID: %s", debugConnectivityCompletionMessage, response.RequestId), false); err != nil {
+				return debugConnectivityProbeError(c, err)
+			}
+			if err := writeSSEData(buildDebugConnectivityStreamStopChunk(response, id, modelName)); err != nil {
+				return debugConnectivityProbeError(c, err)
+			}
+			if _, err := c.Writer.Write([]byte("data: [DONE]\n\n")); err != nil {
+				return debugConnectivityProbeError(c, err)
+			}
+			if flusher, ok := c.Writer.(http.Flusher); ok {
+				flusher.Flush()
+			}
+			return nil
+		case <-ticker.C:
+			elapsedSeconds := int(time.Since(startedAt).Seconds())
+			if elapsedSeconds < 1 {
+				elapsedSeconds = 1
+			}
+			if elapsedSeconds > probeSeconds {
+				elapsedSeconds = probeSeconds
+			}
+			if err := writeContentChunk(fmt.Sprintf("连通性检测进行中：已保持约 %d/%d 秒。", elapsedSeconds, probeSeconds), false); err != nil {
+				return debugConnectivityProbeError(c, err)
+			}
+		}
+	}
+}
+
+func waitDebugConnectivityNonStreamProbe(c *gin.Context, startedAt time.Time, response *debugConnectivityResponse) *types.NewAPIError {
+	probeDuration, probeSeconds := debugConnectivityNonStreamProbeConfig()
+	if probeDuration <= 0 {
+		if response != nil {
+			response.ProcessingMs = time.Since(startedAt).Milliseconds()
+		}
+		return nil
+	}
+	service.AppendDebugKeyTraceAdminInfo(c, map[string]interface{}{
+		"non_stream_probe_seconds": probeSeconds,
 	})
-	writeSSEData(gin.H{
+	timer := time.NewTimer(probeDuration)
+	defer timer.Stop()
+	select {
+	case <-c.Request.Context().Done():
+		return debugConnectivityProbeError(c, c.Request.Context().Err())
+	case <-timer.C:
+		actualMs := time.Since(startedAt).Milliseconds()
+		if response != nil {
+			response.ProcessingMs = actualMs
+		}
+		service.AppendDebugKeyTraceAdminInfo(c, map[string]interface{}{
+			"non_stream_probe_completed":          true,
+			"non_stream_probe_actual_duration_ms": actualMs,
+		})
+		return nil
+	}
+}
+
+func debugConnectivityStreamProbeConfig() (time.Duration, time.Duration, int, int) {
+	probeDuration := debugConnectivityStreamProbeDurationOverride
+	if probeDuration <= 0 {
+		setting := operation_setting.GetDebugConnectivitySetting()
+		probeDuration = time.Duration(setting.StreamProbeSeconds) * time.Second
+	}
+
+	probeInterval := debugConnectivityStreamProbeIntervalOverride
+	if probeInterval <= 0 {
+		setting := operation_setting.GetDebugConnectivitySetting()
+		probeInterval = time.Duration(setting.StreamProbeIntervalSeconds) * time.Second
+	}
+	if probeInterval > probeDuration {
+		probeInterval = probeDuration
+	}
+	return probeDuration, probeInterval, ceilDurationSeconds(probeDuration), ceilDurationSeconds(probeInterval)
+}
+
+func debugConnectivityNonStreamProbeConfig() (time.Duration, int) {
+	probeDuration := debugConnectivityNonStreamProbeDurationOverride
+	if probeDuration <= 0 {
+		setting := operation_setting.GetDebugConnectivitySetting()
+		probeDuration = time.Duration(setting.NonStreamProbeSeconds) * time.Second
+	}
+	return probeDuration, ceilDurationSeconds(probeDuration)
+}
+
+func ceilDurationSeconds(duration time.Duration) int {
+	if duration <= 0 {
+		return 1
+	}
+	seconds := int(duration / time.Second)
+	if duration%time.Second != 0 {
+		seconds++
+	}
+	if seconds <= 0 {
+		return 1
+	}
+	return seconds
+}
+
+func debugConnectivityProbeError(c *gin.Context, err error) *types.NewAPIError {
+	if err == nil {
+		return nil
+	}
+	statusCode := http.StatusInternalServerError
+	if c != nil && c.Request != nil && service.IsClientCanceledError(c.Request.Context(), err) {
+		statusCode = service.StatusClientClosedRequest
+	}
+	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+		statusCode = service.StatusClientClosedRequest
+	}
+	return types.NewOpenAIError(err, types.ErrorCodeBadResponse, statusCode)
+}
+
+func buildDebugConnectivityStreamStopChunk(response debugConnectivityResponse, id string, modelName string) gin.H {
+	return gin.H{
 		"id":      id,
 		"object":  "chat.completion.chunk",
 		"created": response.ServerTimestamp,
@@ -260,10 +435,6 @@ func writeDebugConnectivityChatCompletionStream(c *gin.Context, response debugCo
 			"finish_reason": "stop",
 		}},
 		"debug_connectivity": response,
-	})
-	_, _ = c.Writer.Write([]byte("data: [DONE]\n\n"))
-	if flusher, ok := c.Writer.(http.Flusher); ok {
-		flusher.Flush()
 	}
 }
 
@@ -350,6 +521,45 @@ func detectDebugConnectivityRequestOptions(c *gin.Context) debugConnectivityRequ
 		options.Stream = strings.EqualFold(strings.TrimSpace(stream), "true") || strings.TrimSpace(stream) == "1"
 	}
 	return options
+}
+
+func AdminGetDebugConnectivitySetting(c *gin.Context) {
+	common.ApiSuccess(c, buildDebugConnectivitySettingResponse(operation_setting.GetDebugConnectivitySetting()))
+}
+
+func AdminSaveDebugConnectivitySetting(c *gin.Context) {
+	var request operation_setting.DebugConnectivitySetting
+	if err := common.DecodeJson(c.Request.Body, &request); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": "无效的参数",
+		})
+		return
+	}
+	setting := operation_setting.NormalizeDebugConnectivitySetting(request)
+	updates := map[string]int{
+		"debug_connectivity_setting.stream_probe_seconds":          setting.StreamProbeSeconds,
+		"debug_connectivity_setting.stream_probe_interval_seconds": setting.StreamProbeIntervalSeconds,
+		"debug_connectivity_setting.non_stream_probe_seconds":      setting.NonStreamProbeSeconds,
+	}
+	for key, value := range updates {
+		if err := model.UpdateOption(key, strconv.Itoa(value)); err != nil {
+			common.ApiError(c, err)
+			return
+		}
+	}
+	common.ApiSuccess(c, buildDebugConnectivitySettingResponse(operation_setting.GetDebugConnectivitySetting()))
+}
+
+func buildDebugConnectivitySettingResponse(setting operation_setting.DebugConnectivitySetting) debugConnectivitySettingResponse {
+	setting = operation_setting.NormalizeDebugConnectivitySetting(setting)
+	return debugConnectivitySettingResponse{
+		StreamProbeSeconds:            setting.StreamProbeSeconds,
+		StreamProbeIntervalSeconds:    setting.StreamProbeIntervalSeconds,
+		NonStreamProbeSeconds:         setting.NonStreamProbeSeconds,
+		MaxProbeSeconds:               operation_setting.MaxDebugConnectivityProbeSeconds,
+		MaxStreamProbeIntervalSeconds: operation_setting.MaxDebugConnectivityStreamProbeIntervalSeconds,
+	}
 }
 
 func AdminListDebugKeyTraces(c *gin.Context) {

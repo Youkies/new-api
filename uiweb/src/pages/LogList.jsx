@@ -749,13 +749,21 @@ function LogCard({ log, onClick }) {
         </div>
       )}
 
-      {/* Footer: time + token name + use_time */}
+      {/* Footer: time + group + use_time + token_name */}
       <div className="flex items-center justify-between gap-2 text-[10px] text-clay-faint">
         <span className="inline-flex items-center gap-1 shrink-0">
           <Clock className="w-3 h-3" />
           {fmtTs(log.created_at)}
         </span>
-        <div className="flex items-center gap-2 min-w-0">
+        <div className="flex items-center gap-1.5 min-w-0">
+          {log.group && (
+            <span
+              className="px-1.5 py-0.5 rounded-clay-sm bg-clay-bg shadow-clay-inset text-clay-faint font-bold shrink-0 max-w-[120px] truncate"
+              title={`分组: ${log.group}`}
+            >
+              {log.group}
+            </span>
+          )}
           {isConsume && log.use_time ? (
             <span className="font-mono shrink-0">
               {fmtUseTime(log.use_time)}

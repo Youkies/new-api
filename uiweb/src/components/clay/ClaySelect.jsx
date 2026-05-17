@@ -32,16 +32,22 @@ export default function ClaySelect({
       if (panelRef.current?.contains(e.target)) return
       setOpen(false)
     }
-    const onScroll = () => setOpen(false)
+    // Close when an ancestor (page / modal body) scrolls — the portal stays
+    // fixed and would float away from the trigger. But DON'T close when the
+    // panel itself scrolls (e.g. user spinning the wheel inside the option
+    // list on mobile or desktop); that's exactly the gesture we want to keep
+    // working.
+    const onScroll = (e) => {
+      if (panelRef.current?.contains(e.target)) return
+      setOpen(false)
+    }
     document.addEventListener('mousedown', onDown)
-    // Capture phase so we catch scrolls in any nested overflow container
-    // (e.g. the modal body that hosts this select).
     window.addEventListener('scroll', onScroll, true)
-    window.addEventListener('resize', onScroll)
+    window.addEventListener('resize', () => setOpen(false))
     return () => {
       document.removeEventListener('mousedown', onDown)
       window.removeEventListener('scroll', onScroll, true)
-      window.removeEventListener('resize', onScroll)
+      window.removeEventListener('resize', () => setOpen(false))
     }
   }, [open])
 

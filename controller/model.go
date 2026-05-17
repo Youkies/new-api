@@ -200,6 +200,45 @@ func ListModels(c *gin.Context, modelType int) {
 		}
 	}
 
+	// Append alias names from the token-bound archive so clients see what
+	// they can actually call. We skip aliases whose source group the user
+	// can't access (the relay hook would reject them at request time), and
+	// skip ones explicitly disabled. Deduplicate against the model list
+	// already gathered above.
+	if v, ok := common.GetContextKey(c, constant.ContextKeyTokenArchiveId); ok {
+		archiveId, _ := v.(int)
+		if archiveId > 0 {
+			userId := c.GetInt("id")
+			userGroup, _ := model.GetUserGroup(userId, false)
+			aliases, err := model.ListArchiveAliases(archiveId)
+			if err == nil {
+				existing := make(map[string]bool, len(userOpenAiModels))
+				for _, m := range userOpenAiModels {
+					existing[m.Id] = true
+				}
+				for _, al := range aliases {
+					if al.DisabledReason != "" {
+						continue
+					}
+					if !service.GroupInUserUsableGroups(userGroup, al.SourceGroup) {
+						continue
+					}
+					if existing[al.AliasName] {
+						continue
+					}
+					existing[al.AliasName] = true
+					userOpenAiModels = append(userOpenAiModels, dto.OpenAIModels{
+						Id:                     al.AliasName,
+						Object:                 "model",
+						Created:                int(al.CreatedTime),
+						OwnedBy:                "archive-alias",
+						SupportedEndpointTypes: model.GetModelSupportEndpointTypes(al.SourceModel),
+					})
+				}
+			}
+		}
+	}
+
 	switch modelType {
 	case constant.ChannelTypeAnthropic:
 		useranthropicModels := make([]dto.AnthropicModel, len(userOpenAiModels))

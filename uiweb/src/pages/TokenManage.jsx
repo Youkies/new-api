@@ -30,10 +30,10 @@ function useIsMobile() {
 }
 
 const STATUS_MAP = {
-  1: { label: '已启用', cls: 'bg-emerald-100 text-emerald-700' },
-  2: { label: '已禁用', cls: 'bg-gray-200 text-gray-600' },
-  3: { label: '已过期', cls: 'bg-amber-100 text-amber-700' },
-  4: { label: '已耗尽', cls: 'bg-red-100 text-red-600' },
+  1: { label: '已启用', tone: 'green', dot: 'bg-clay-green-300' },
+  2: { label: '已禁用', tone: 'faint', dot: 'bg-clay-faint/60' },
+  3: { label: '已过期', tone: 'yellow', dot: 'bg-clay-yellow-300' },
+  4: { label: '已耗尽', tone: 'pink', dot: 'bg-clay-pink-300' },
 }
 
 function fmtTime(ts) {
@@ -85,7 +85,7 @@ function TokenCard({ t, revealedKeys, onRevealKey, onCopyKey, onToggleStatus, op
             </div>
             <div className="flex items-center gap-1.5 flex-wrap mt-1">
               {archiveName ? (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-clay-pill bg-clay-purple-100 text-[#6b4d83] shadow-clay-sm">
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-clay-pill bg-clay-purple-100 text-clay-purple-ink shadow-clay-sm">
                   <Tag className="w-3 h-3" strokeWidth={2.6} />
                   <span className="text-[11px] font-extrabold truncate max-w-[140px]" title={`绑定存档: ${archiveName}`}>绑定·{archiveName}</span>
                 </span>
@@ -93,7 +93,7 @@ function TokenCard({ t, revealedKeys, onRevealKey, onCopyKey, onToggleStatus, op
                 <button
                   type="button"
                   onClick={(e) => { e.stopPropagation(); openEdit(t) }}
-                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-clay-pill bg-clay-bg shadow-clay-inset text-clay-faint hover:text-[#6b4d83] transition-colors"
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-clay-pill bg-clay-bg shadow-clay-inset-sm text-clay-faint hover:text-clay-purple-ink transition-colors"
                   title="点击绑定存档"
                 >
                   <Plus className="w-3 h-3" strokeWidth={2.6} />
@@ -109,15 +109,15 @@ function TokenCard({ t, revealedKeys, onRevealKey, onCopyKey, onToggleStatus, op
             </div>
           </div>
         </div>
-        <span className={`inline-flex items-center gap-1.5 font-extrabold text-xs shrink-0 ${isEnabled ? 'text-emerald-700' : 'text-clay-faint'}`}>
-          <span className={`inline-block w-2 h-2 rounded-full shadow-clay-sm ${isEnabled ? 'bg-emerald-500' : 'bg-gray-400'}`} />
+        <span className={`inline-flex items-center gap-1.5 font-extrabold text-xs shrink-0 ${isEnabled ? 'text-clay-green-ink' : 'text-clay-faint'}`}>
+          <span className={`inline-block w-2 h-2 rounded-full shadow-clay-xs ${st.dot}`} aria-hidden="true" />
           {st.label}
         </span>
       </div>
 
       {/* Row 2: key (clay-inset pill with icons inside) */}
       <div className="bg-clay-bg shadow-clay-inset rounded-clay-pill px-3.5 py-2 mb-3 flex items-center gap-2">
-        <code className="text-xs flex-1 truncate font-mono font-bold text-[#43658b]">
+        <code className="text-xs flex-1 truncate font-mono font-bold text-clay-blue-ink">
           {revealed || (t.key ? `sk-${t.key}` : '***')}
         </code>
         <button onClick={() => onRevealKey(t)} className="p-1 rounded-full hover:bg-white/40 transition-colors shrink-0 text-clay-faint" title={revealed ? '隐藏' : '显示'}>
@@ -145,7 +145,7 @@ function TokenCard({ t, revealedKeys, onRevealKey, onCopyKey, onToggleStatus, op
       <div className="flex items-center justify-between gap-3 text-xs">
         <div className="flex items-center gap-2 min-w-0 flex-1">
           {group !== '-' ? (
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-clay-pill bg-clay-purple-100 text-[#6b4d83] shadow-clay-sm">
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-clay-pill bg-clay-purple-100 text-clay-purple-ink shadow-clay-sm">
               <Layers className="w-3 h-3" strokeWidth={2.5} />
               <span className="text-[11px] font-black truncate max-w-[100px]">{group}</span>
             </span>
@@ -154,7 +154,7 @@ function TokenCard({ t, revealedKeys, onRevealKey, onCopyKey, onToggleStatus, op
           )}
           <span className="text-clay-faint flex items-center gap-1 font-bold truncate">
             <Clock className="w-3 h-3 shrink-0" />
-            <span className={`truncate ${t.expired_time > 0 && t.expired_time * 1000 < Date.now() ? 'text-red-500' : ''}`}>
+            <span className={`truncate ${t.expired_time > 0 && t.expired_time * 1000 < Date.now() ? 'text-clay-pink-400' : ''}`}>
               {fmtTime(t.expired_time)}
             </span>
           </span>
@@ -163,7 +163,7 @@ function TokenCard({ t, revealedKeys, onRevealKey, onCopyKey, onToggleStatus, op
           <button
             onClick={() => onToggleStatus(t)}
             className={`w-8 h-8 rounded-full shadow-clay-sm flex items-center justify-center transition-all hover:-translate-y-0.5 ${
-              isEnabled ? 'bg-clay-green-100 text-[#3d6b4f]' : 'bg-clay-bg text-clay-faint'
+              isEnabled ? 'bg-clay-green-100 text-clay-green-ink' : 'bg-clay-bg text-clay-faint'
             }`}
             title={isEnabled ? '禁用' : '启用'}
           >
@@ -178,7 +178,7 @@ function TokenCard({ t, revealedKeys, onRevealKey, onCopyKey, onToggleStatus, op
           </button>
           <button
             onClick={() => onDelete(t)}
-            className="w-8 h-8 rounded-full bg-clay-pink-100 shadow-clay-sm flex items-center justify-center text-[#8a4860] hover:-translate-y-0.5 transition-all"
+            className="w-8 h-8 rounded-full bg-clay-pink-100 shadow-clay-sm flex items-center justify-center text-clay-pink-ink hover:-translate-y-0.5 transition-all"
             title="删除"
           >
             <Trash2 className="w-3.5 h-3.5" />
@@ -454,7 +454,7 @@ export default function TokenManage() {
       <ClayCard className="!p-0 overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-black/5 text-left text-clay-faint">
+            <tr className="border-b border-clay-line/10 text-left text-clay-faint">
               <th className="px-5 py-3 font-bold">名称 / 绑定存档</th>
               <th className="px-5 py-3 font-bold">密钥</th>
               <th className="px-5 py-3 font-bold">状态</th>
@@ -483,7 +483,7 @@ export default function TokenManage() {
               return (
                 <tr
                   key={t.id}
-                  className="border-b border-black/5 last:border-0 hover:bg-white/30 transition-colors group/row cursor-pointer"
+                  className="border-b border-clay-line/10 last:border-0 hover:bg-white/30 transition-colors group/row cursor-pointer"
                   onClick={() => setExpandedRow(isExpanded ? null : t.id)}
                 >
                   <td className="px-5 py-4">
@@ -495,7 +495,7 @@ export default function TokenManage() {
                         <div className="flex items-center gap-1.5 flex-wrap">
                           <div className="font-black text-sm truncate max-w-[160px]">{t.name}</div>
                           {t.debug_enabled && (
-                            <span className="inline-flex items-center gap-1 rounded-clay-pill bg-clay-pink-100 shadow-clay-sm px-2 py-0.5 text-[10px] font-black text-[#8a4860]">
+                            <span className="inline-flex items-center gap-1 rounded-clay-pill bg-clay-pink-100 shadow-clay-sm px-2 py-0.5 text-[10px] font-black text-clay-pink-ink">
                               <Bug className="w-3 h-3" />
                               调试
                             </span>
@@ -509,7 +509,7 @@ export default function TokenManage() {
                         </div>
                         <div className="flex items-center gap-1.5 flex-wrap mt-1.5" onClick={(e) => e.stopPropagation()}>
                           {archiveName ? (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-clay-pill bg-clay-purple-100 text-[#6b4d83] shadow-clay-sm">
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-clay-pill bg-clay-purple-100 text-clay-purple-ink shadow-clay-sm">
                               <Tag className="w-3 h-3" strokeWidth={2.6} />
                               <span className="text-[11px] font-extrabold truncate max-w-[160px]" title={`绑定存档: ${archiveName}`}>绑定·{archiveName}</span>
                             </span>
@@ -517,7 +517,7 @@ export default function TokenManage() {
                             <button
                               type="button"
                               onClick={() => openEdit(t)}
-                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-clay-pill bg-clay-bg shadow-clay-inset text-clay-faint hover:text-[#6b4d83] transition-colors"
+                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-clay-pill bg-clay-bg shadow-clay-inset text-clay-faint hover:text-clay-purple-ink transition-colors"
                               title="点击绑定存档"
                             >
                               <Plus className="w-3 h-3" strokeWidth={2.6} />
@@ -536,7 +536,7 @@ export default function TokenManage() {
                   </td>
                   <td className="px-5 py-4" onClick={(e) => e.stopPropagation()}>
                     <div className="inline-flex items-center gap-1 bg-clay-bg shadow-clay-inset rounded-clay-pill px-3 py-1.5 max-w-[230px]">
-                      <code className="text-xs font-mono font-bold text-[#43658b] truncate flex-1 min-w-0">
+                      <code className="text-xs font-mono font-bold text-clay-blue-ink truncate flex-1 min-w-0">
                         {revealed || (t.key ? `sk-${t.key}` : '***')}
                       </code>
                       <button onClick={() => onRevealKey(t)} className="p-0.5 rounded-full hover:bg-white/40 transition-colors shrink-0 text-clay-faint" title={revealed ? '隐藏' : '显示'}>
@@ -548,8 +548,8 @@ export default function TokenManage() {
                     </div>
                   </td>
                   <td className="px-5 py-4">
-                    <span className={`inline-flex items-center gap-2 font-extrabold text-xs ${isEnabled ? 'text-emerald-700' : 'text-clay-faint'}`}>
-                      <span className={`inline-block w-2 h-2 rounded-full shadow-clay-sm ${isEnabled ? 'bg-emerald-500' : 'bg-gray-400'}`} />
+                    <span className={`inline-flex items-center gap-2 font-extrabold text-xs ${isEnabled ? 'text-clay-green-ink' : 'text-clay-faint'}`}>
+                      <span className={`inline-block w-2 h-2 rounded-full shadow-clay-xs ${isEnabled ? 'bg-clay-green-300' : 'bg-clay-faint/60'}`} aria-hidden="true" />
                       {st.label}
                     </span>
                   </td>
@@ -565,7 +565,7 @@ export default function TokenManage() {
                   </td>
                   <td className="px-5 py-4">
                     {group !== '-' ? (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-clay-pill bg-clay-purple-100 text-[#6b4d83] shadow-clay-sm">
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-clay-pill bg-clay-purple-100 text-clay-purple-ink shadow-clay-sm">
                         <Layers className="w-3 h-3" strokeWidth={2.5} />
                         <span className="text-xs font-black">{group}</span>
                       </span>
@@ -578,7 +578,7 @@ export default function TokenManage() {
                       <div className="text-clay-faint font-bold">
                         创建 <span className="text-clay-ink/80 font-extrabold tabular-nums">{fmtCreated(t.created_time)}</span>
                       </div>
-                      <div className={`flex items-center gap-1 font-bold ${t.expired_time > 0 && t.expired_time * 1000 < Date.now() ? 'text-red-500' : 'text-clay-faint'}`}>
+                      <div className={`flex items-center gap-1 font-bold ${t.expired_time > 0 && t.expired_time * 1000 < Date.now() ? 'text-clay-pink-400' : 'text-clay-faint'}`}>
                         <Clock className="w-3 h-3" />
                         {fmtTime(t.expired_time)}
                       </div>
@@ -589,7 +589,7 @@ export default function TokenManage() {
                       <button
                         onClick={() => onToggleStatus(t)}
                         className={`w-8 h-8 rounded-full shadow-clay-sm flex items-center justify-center transition-all hover:-translate-y-0.5 ${
-                          isEnabled ? 'bg-clay-green-100 text-[#3d6b4f]' : 'bg-clay-bg text-clay-faint'
+                          isEnabled ? 'bg-clay-green-100 text-clay-green-ink' : 'bg-clay-bg text-clay-faint'
                         }`}
                         title={isEnabled ? '禁用' : '启用'}
                       >
@@ -604,7 +604,7 @@ export default function TokenManage() {
                       </button>
                       <button
                         onClick={() => onDelete(t)}
-                        className="w-8 h-8 rounded-full bg-clay-pink-100 shadow-clay-sm flex items-center justify-center text-[#8a4860] hover:-translate-y-0.5 transition-all"
+                        className="w-8 h-8 rounded-full bg-clay-pink-100 shadow-clay-sm flex items-center justify-center text-clay-pink-ink hover:-translate-y-0.5 transition-all"
                         title="删除"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
@@ -666,8 +666,8 @@ export default function TokenManage() {
             <label className="text-sm font-bold">无限额度</label>
             <button type="button" onClick={() => setForm({ ...form, unlimited_quota: !form.unlimited_quota })} className="p-0.5">
               {form.unlimited_quota
-                ? <ToggleRight className="w-6 h-6 text-emerald-500" />
-                : <ToggleLeft className="w-6 h-6 text-gray-400" />}
+                ? <ToggleRight className="w-6 h-6 text-clay-green-300" />
+                : <ToggleLeft className="w-6 h-6 text-clay-faint/60" />}
             </button>
           </div>
           {!form.unlimited_quota && (
@@ -717,7 +717,7 @@ export default function TokenManage() {
                 >
                   {form.debug_enabled
                     ? <ToggleRight className="w-7 h-7 text-clay-pink-400" />
-                    : <ToggleLeft className="w-7 h-7 text-gray-400" />}
+                    : <ToggleLeft className="w-7 h-7 text-clay-faint/60" />}
                 </button>
               </div>
               {form.debug_enabled && (
@@ -734,7 +734,7 @@ export default function TokenManage() {
                   <button type="button" onClick={() => setForm({ ...form, debug_connectivity_enabled: !form.debug_connectivity_enabled })} className="p-0.5 shrink-0">
                     {form.debug_connectivity_enabled
                       ? <ToggleRight className="w-7 h-7 text-clay-blue-300" />
-                      : <ToggleLeft className="w-7 h-7 text-gray-400" />}
+                      : <ToggleLeft className="w-7 h-7 text-clay-faint/60" />}
                   </button>
                 </div>
               )}

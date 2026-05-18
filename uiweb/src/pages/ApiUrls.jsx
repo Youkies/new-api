@@ -47,8 +47,8 @@ const TONE_CARD = {
 const TONE_ICON = {
   pink: 'bg-clay-pink-200 text-white',
   blue: 'bg-clay-blue-200 text-white',
-  green: 'bg-clay-green-200 text-[#3d6b4f]',
-  yellow: 'bg-clay-yellow-200 text-[#8a6a32]',
+  green: 'bg-clay-green-200 text-clay-green-ink',
+  yellow: 'bg-clay-yellow-200 text-clay-yellow-ink',
 }
 
 function normalizeUrls(items) {
@@ -155,9 +155,9 @@ export default function ApiUrls() {
               >
                 <div className="flex items-start gap-4 mb-5">
                   <div
-                    className={`w-14 h-14 rounded-full flex items-center justify-center shadow-clay shrink-0 ${TONE_ICON[item.tone] || TONE_ICON.blue}`}
+                    className={`w-12 h-12 rounded-full flex items-center justify-center shadow-clay-sm shrink-0 ${TONE_ICON[item.tone] || TONE_ICON.blue}`}
                   >
-                    <Icon className="w-6 h-6" strokeWidth={2.5} />
+                    <Icon className="w-5 h-5" strokeWidth={2.5} />
                   </div>
                   <div className="min-w-0">
                     <h3 className="text-xl font-black tracking-tight break-words">{item.label}</h3>
@@ -202,7 +202,7 @@ export default function ApiUrls() {
           <div className="text-sm leading-relaxed">
             <div className="font-extrabold text-base mb-1">使用提示</div>
             <p className="text-clay-ink/80">
-              上方地址会原样复制。部分 OpenAI 兼容客户端需要使用以 <code className="px-1.5 py-0.5 rounded bg-white/70 font-mono">/v1</code> 结尾的 BaseURL，请按客户端要求填写。
+              上方地址会原样复制。部分 OpenAI 兼容客户端需要使用以 <code className="px-1.5 py-0.5 rounded-clay-sm bg-clay-surface/80 font-mono font-extrabold text-clay-blue-ink shadow-clay-xs">/v1</code> 结尾的 BaseURL，请按客户端要求填写。
             </p>
           </div>
         </div>
@@ -227,7 +227,7 @@ export default function ApiUrls() {
             {pendingUrl}
           </div>
           <p className="text-clay-ink leading-relaxed">
-            部分软件需要在 BaseURL 末尾使用 <code className="px-1.5 py-0.5 rounded bg-white/70 font-mono">/v1</code>，请按客户端要求确认。
+            部分软件需要在 BaseURL 末尾使用 <code className="px-1.5 py-0.5 rounded-clay-sm bg-clay-surface/80 font-mono font-extrabold text-clay-blue-ink shadow-clay-xs">/v1</code>，请按客户端要求确认。
           </p>
           <div className="pt-1">
             <ClayCheckbox

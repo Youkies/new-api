@@ -388,9 +388,8 @@ function IconButton({ title, danger = false, disabled = false, onClick, children
       onClick={onClick}
       disabled={disabled}
       title={title}
-      className={`w-10 h-10 rounded-full bg-clay-bg shadow-clay flex items-center justify-center transition-opacity ${
-        danger ? 'text-clay-pink-400' : ''
-      } ${disabled ? 'opacity-40 cursor-not-allowed' : 'hover:shadow-clay-hover'}`}
+      aria-label={title}
+      className={`clay-icon-btn-lg ${danger ? 'clay-icon-btn-danger' : ''} ${disabled ? 'opacity-40 pointer-events-none' : ''}`}
     >
       {children}
     </button>
@@ -399,9 +398,9 @@ function IconButton({ title, danger = false, disabled = false, onClick, children
 
 function Stat({ label, value, tone }) {
   const cls = {
-    blue: 'text-[#2c5582]',
-    pink: 'text-[#8a4860]',
-    green: 'text-[#3d6b4f]',
+    blue: 'text-clay-blue-ink',
+    pink: 'text-clay-pink-ink',
+    green: 'text-clay-green-ink',
   }[tone]
   return (
     <ClayCard className="!p-5">

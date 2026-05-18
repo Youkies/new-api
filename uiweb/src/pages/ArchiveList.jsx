@@ -30,8 +30,8 @@ function ArchiveCard({ a, onOpen, onEdit, onDelete }) {
     >
       <div className="flex items-start justify-between gap-2 mb-3">
         <div className="flex items-center gap-2.5 min-w-0">
-          <div className="w-9 h-9 rounded-full shadow-clay bg-clay-blue-100 flex items-center justify-center shrink-0">
-            <Layers className="w-4 h-4 text-clay-blue-300" />
+          <div className="w-9 h-9 rounded-full shadow-clay-sm bg-clay-purple-100 flex items-center justify-center shrink-0">
+            <Layers className="w-4 h-4 text-clay-purple-ink" />
           </div>
           <div className="min-w-0">
             <div className="font-bold text-sm truncate max-w-[180px]">{a.name}</div>
@@ -50,23 +50,23 @@ function ArchiveCard({ a, onOpen, onEdit, onDelete }) {
 
       <div className="flex items-center justify-between gap-2 text-xs">
         <div className="flex items-center gap-2">
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-clay-pill text-xs font-black bg-clay-blue-100 text-[#43658b] shadow-clay">
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-clay-pill text-xs font-black bg-clay-purple-100 text-clay-purple-ink shadow-clay-sm">
             <Layers className="w-3 h-3" strokeWidth={2.5} />
             {a.alias_count} 个别名
           </span>
           {a.share_enabled && (
-            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-clay-pill text-xs font-black bg-emerald-100 text-emerald-700 shadow-clay">
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-clay-pill text-xs font-black bg-clay-green-100 text-clay-green-ink shadow-clay-sm">
               <Share2 className="w-3 h-3" strokeWidth={2.5} />
               已分享
             </span>
           )}
         </div>
         <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-          <button onClick={onEdit} className="p-1.5 rounded-clay-sm hover:bg-white/40 transition-colors" title="重命名">
-            <Pencil className="w-4 h-4 text-clay-faint" />
+          <button onClick={onEdit} className="clay-icon-btn" title="重命名" aria-label="重命名">
+            <Pencil className="w-4 h-4" />
           </button>
-          <button onClick={onDelete} className="p-1.5 rounded-clay-sm hover:bg-clay-pink-100/40 transition-colors" title="删除">
-            <Trash2 className="w-4 h-4 text-clay-pink-400" />
+          <button onClick={onDelete} className="clay-icon-btn-danger" title="删除" aria-label="删除">
+            <Trash2 className="w-4 h-4" />
           </button>
         </div>
       </div>

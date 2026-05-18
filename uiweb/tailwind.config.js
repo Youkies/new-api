@@ -42,6 +42,12 @@ export default {
           },
           ink: clayVar('--clay-ink'),
           faint: clayVar('--clay-faint'),
+          line: clayVar('--clay-line'),
+          'pink-ink': clayVar('--clay-pink-ink'),
+          'blue-ink': clayVar('--clay-blue-ink'),
+          'purple-ink': clayVar('--clay-purple-ink'),
+          'green-ink': clayVar('--clay-green-ink'),
+          'yellow-ink': clayVar('--clay-yellow-ink'),
         },
       },
       fontFamily: {
@@ -55,11 +61,13 @@ export default {
         'clay-pill': '50px',
       },
       boxShadow: {
+        'clay-xs': 'var(--clay-shadow-xs)',
         'clay-sm': 'var(--clay-shadow-sm)',
         clay: 'var(--clay-shadow)',
         'clay-hover': 'var(--clay-shadow-hover)',
         'clay-active': 'var(--clay-shadow-active)',
         'clay-inset': 'var(--clay-shadow-inset)',
+        'clay-inset-sm': 'var(--clay-shadow-inset-sm)',
       },
       transitionTimingFunction: {
         clay: 'cubic-bezier(0.34, 1.56, 0.64, 1)',

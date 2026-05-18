@@ -8,14 +8,14 @@ export default function ClayAuthShell({ title, subtitle, children, footer }) {
     <div className="min-h-screen bg-clay-bg flex items-center justify-center px-4 py-8 relative overflow-hidden">
       {/* decorative blobs */}
       <div
-        className="absolute w-72 h-72 bg-clay-pink-100 shadow-clay animate-float -top-16 -left-20 opacity-70 pointer-events-none"
+        className="absolute w-72 h-72 rounded-full bg-clay-pink-100 shadow-clay animate-float -top-16 -left-20 opacity-70 pointer-events-none"
       />
       <div
-        className="absolute w-64 h-64 bg-clay-blue-100 shadow-clay animate-float bottom-0 -right-16 opacity-70 pointer-events-none"
+        className="absolute w-64 h-64 rounded-full bg-clay-blue-100 shadow-clay animate-float bottom-0 -right-16 opacity-70 pointer-events-none"
         style={{ animationDelay: '2s' }}
       />
       <div
-        className="absolute w-44 h-44 bg-clay-green-100 shadow-clay animate-float top-1/3 right-10 opacity-50 pointer-events-none"
+        className="absolute w-44 h-44 rounded-full bg-clay-green-100 shadow-clay animate-float top-1/3 right-10 opacity-50 pointer-events-none"
         style={{ animationDelay: '1s' }}
       />
 

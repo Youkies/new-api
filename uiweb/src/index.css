@@ -43,6 +43,11 @@ html[data-theme='light'] {
   --clay-green-ink: 61 107 79;
   --clay-yellow-ink: 138 106 50;
 
+  --clay-shadow-xs:
+    2px 2px 5px rgba(163, 177, 198, 0.26),
+    -2px -2px 5px rgba(255, 255, 255, 0.65),
+    inset 1px 1px 2px rgba(255, 255, 255, 0.5),
+    inset -1px -1px 2px rgba(163, 177, 198, 0.1);
   --clay-shadow-sm:
     3px 3px 8px rgba(163, 177, 198, 0.3),
     -3px -3px 8px rgba(255, 255, 255, 0.7),
@@ -64,6 +69,9 @@ html[data-theme='light'] {
   --clay-shadow-inset:
     inset 6px 6px 10px rgba(163, 177, 198, 0.7),
     inset -6px -6px 10px rgba(255, 255, 255, 0.8);
+  --clay-shadow-inset-sm:
+    inset 3px 3px 6px rgba(163, 177, 198, 0.4),
+    inset -3px -3px 6px rgba(255, 255, 255, 0.6);
   --clay-focus-shadow:
     inset 8px 8px 12px rgba(163, 177, 198, 0.8),
     inset -8px -8px 12px rgba(255, 255, 255, 0.9),
@@ -110,6 +118,11 @@ html[data-theme='dark'] {
   --clay-green-ink: 183 230 200;
   --clay-yellow-ink: 255 221 153;
 
+  --clay-shadow-xs:
+    2px 2px 5px rgba(7, 10, 16, 0.34),
+    -2px -2px 5px rgba(255, 255, 255, 0.06),
+    inset 1px 1px 2px rgba(255, 255, 255, 0.06),
+    inset -1px -1px 2px rgba(7, 10, 16, 0.22);
   --clay-shadow-sm:
     3px 3px 8px rgba(7, 10, 16, 0.4),
     -3px -3px 8px rgba(255, 255, 255, 0.08),
@@ -131,6 +144,9 @@ html[data-theme='dark'] {
   --clay-shadow-inset:
     inset 7px 7px 12px rgba(7, 10, 16, 0.55),
     inset -7px -7px 12px rgba(255, 255, 255, 0.055);
+  --clay-shadow-inset-sm:
+    inset 3px 3px 6px rgba(7, 10, 16, 0.45),
+    inset -3px -3px 6px rgba(255, 255, 255, 0.045);
   --clay-focus-shadow:
     inset 8px 8px 12px rgba(7, 10, 16, 0.58),
     inset -8px -8px 12px rgba(255, 255, 255, 0.06),
@@ -199,6 +215,16 @@ body {
     background-color: rgb(var(--clay-surface));
   }
 
+  .clay-btn-danger {
+    @apply clay-btn bg-clay-pink-200 text-white;
+    text-shadow: 1px 1px 2px rgba(138, 72, 96, 0.25);
+  }
+
+  .clay-btn-warning {
+    @apply clay-btn bg-clay-yellow-200;
+    color: rgb(var(--clay-yellow-ink));
+  }
+
   .clay-input {
     @apply w-full px-6 py-4 rounded-[25px] text-clay-ink
            shadow-clay-inset outline-none border-0 transition-shadow duration-200;
@@ -217,6 +243,68 @@ body {
   .clay-badge {
     @apply inline-block px-4 py-1 rounded-clay-sm text-xs font-extrabold bg-clay-pink-100 shadow-clay-sm;
     color: rgb(var(--clay-pink-ink));
+  }
+
+  .clay-chip {
+    @apply inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold shadow-clay-sm whitespace-nowrap;
+  }
+
+  .clay-chip-purple {
+    @apply clay-chip bg-clay-purple-100;
+    color: rgb(var(--clay-purple-ink));
+  }
+
+  .clay-chip-yellow {
+    @apply clay-chip bg-clay-yellow-100;
+    color: rgb(var(--clay-yellow-ink));
+  }
+
+  .clay-chip-blue {
+    @apply clay-chip bg-clay-blue-100;
+    color: rgb(var(--clay-blue-ink));
+  }
+
+  .clay-chip-green {
+    @apply clay-chip bg-clay-green-100;
+    color: rgb(var(--clay-green-ink));
+  }
+
+  .clay-chip-pink {
+    @apply clay-chip bg-clay-pink-100;
+    color: rgb(var(--clay-pink-ink));
+  }
+
+  .clay-chip-inset {
+    @apply inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-extrabold shadow-clay-inset-sm whitespace-nowrap text-clay-faint;
+    background-color: rgb(var(--clay-input));
+  }
+
+  .clay-dot {
+    @apply inline-block w-2 h-2 rounded-full shadow-clay-xs;
+  }
+
+  .clay-hairline {
+    @apply border-clay-line/10;
+  }
+
+  .clay-icon-btn {
+    @apply inline-flex items-center justify-center w-8 h-8 rounded-full shadow-clay-sm transition-all duration-200 ease-clay hover:shadow-clay-hover active:shadow-clay-active active:scale-95 select-none;
+    background-color: rgb(var(--clay-surface));
+    color: rgb(var(--clay-ink));
+  }
+
+  .clay-icon-btn-lg {
+    @apply clay-icon-btn w-10 h-10;
+  }
+
+  .clay-icon-btn-danger {
+    @apply clay-icon-btn bg-clay-pink-100;
+    color: rgb(var(--clay-pink-ink));
+  }
+
+  .clay-inset-panel {
+    @apply rounded-clay shadow-clay-inset-sm p-4;
+    background-color: rgb(var(--clay-input));
   }
 
   .clay-toggle {

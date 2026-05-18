@@ -250,7 +250,7 @@ function StatusPill({ enabled, requireAck }) {
     )
   }
   return (
-    <span className={`shrink-0 px-3 py-1 rounded-clay-pill text-xs font-black ${requireAck ? 'bg-clay-yellow-100 text-[#8a6a32]' : 'bg-clay-green-100 text-[#3d6b4f]'}`}>
+    <span className={`shrink-0 px-3 py-1 rounded-clay-pill text-xs font-black shadow-clay-sm ${requireAck ? 'bg-clay-yellow-100 text-clay-yellow-ink' : 'bg-clay-green-100 text-clay-green-ink'}`}>
       {requireAck ? '需确认' : '仅未读'}
     </span>
   )
@@ -267,9 +267,9 @@ function ToggleCell({ label, checked, disabled = false, onChange }) {
 
 function Stat({ label, value, tone }) {
   const cls = {
-    blue: 'text-[#2c5582]',
-    green: 'text-[#3d6b4f]',
-    yellow: 'text-[#8a6a32]',
+    blue: 'text-clay-blue-ink',
+    green: 'text-clay-green-ink',
+    yellow: 'text-clay-yellow-ink',
   }[tone]
   return (
     <ClayCard className="!p-5">

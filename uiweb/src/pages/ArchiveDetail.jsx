@@ -35,20 +35,20 @@ function AliasCard({ a, onEdit, onDelete }) {
           <span className="truncate">{a.alias_name}</span>
         </div>
         {a.disabled_reason && (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-clay-pill text-[11px] font-black bg-amber-100 text-amber-700 shadow-clay shrink-0">
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-clay-pill text-[11px] font-black bg-clay-yellow-100 text-clay-yellow-ink shadow-clay shrink-0">
             <AlertTriangle className="w-3 h-3" />
             已禁用
           </span>
         )}
       </div>
       <div className="flex items-center gap-2 text-xs mb-3 min-w-0 flex-wrap">
-        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-clay-pill bg-clay-purple-100 text-[#6b4d83] shadow-clay shrink-0">
+        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-clay-pill bg-clay-purple-100 text-clay-purple-ink shadow-clay shrink-0">
           <Layers className="w-3 h-3" strokeWidth={2.5} />
           <span className="text-xs font-black">{a.source_group}</span>
         </span>
         <ArrowRight className="w-4 h-4 text-clay-faint shrink-0" strokeWidth={3} />
         <span
-          className="inline-flex items-center gap-1.5 font-mono text-xs font-black bg-clay-yellow-100 text-[#8a6a32] shadow-clay px-2.5 py-1 rounded-clay-pill flex-1 min-w-0 truncate"
+          className="inline-flex items-center gap-1.5 font-mono text-xs font-black bg-clay-yellow-100 text-clay-yellow-ink shadow-clay px-2.5 py-1 rounded-clay-pill flex-1 min-w-0 truncate"
           title={a.source_model}
         >
           <Cpu className="w-3 h-3 shrink-0" strokeWidth={2.5} />
@@ -56,7 +56,7 @@ function AliasCard({ a, onEdit, onDelete }) {
         </span>
       </div>
       {a.disabled_reason && (
-        <div className="text-[11px] text-amber-700 mb-2 break-words font-bold">{a.disabled_reason}</div>
+        <div className="text-[11px] text-clay-yellow-ink mb-2 break-words font-bold">{a.disabled_reason}</div>
       )}
       <div className="flex items-center justify-end gap-1">
         <button onClick={onEdit} className="p-1.5 rounded-clay-sm hover:bg-white/40 transition-colors" title="编辑">
@@ -260,8 +260,8 @@ export default function ArchiveDetail() {
                 </div>
                 <button type="button" onClick={onToggleShare} className="p-0.5 shrink-0">
                   {archive.share_enabled
-                    ? <ToggleRight className="w-7 h-7 text-emerald-500" />
-                    : <ToggleLeft className="w-7 h-7 text-gray-400" />}
+                    ? <ToggleRight className="w-7 h-7 text-clay-green-300" />
+                    : <ToggleLeft className="w-7 h-7 text-clay-faint/70" />}
                 </button>
               </div>
               {archive.share_enabled && archive.share_code && (
@@ -365,7 +365,7 @@ export default function ArchiveDetail() {
                 />
               </div>
               {collision && autoPrefixed && (
-                <div className="rounded-clay-sm bg-amber-100/60 px-3 py-2 text-xs text-amber-700">
+                <div className="rounded-clay-sm bg-clay-yellow-100/60 px-3 py-2 text-xs text-clay-yellow-ink">
                   存档内已存在「{effectiveAlias}」，保存后将自动重命名为「{autoPrefixed}」。
                 </div>
               )}

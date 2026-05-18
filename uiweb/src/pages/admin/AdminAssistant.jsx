@@ -357,7 +357,7 @@ export default function AdminAssistant() {
                   >
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2 mb-1">
-                        <span className={`text-[11px] font-black px-3 py-1 rounded-clay-pill ${doc.enabled ? 'bg-clay-green-100 text-[#3d6b4f]' : 'bg-white/60 text-clay-faint'}`}>
+                        <span className={`text-[11px] font-black px-3 py-1 rounded-clay-pill ${doc.enabled ? 'bg-clay-green-100 text-clay-green-ink' : 'bg-white/60 text-clay-faint'}`}>
                           {doc.enabled ? '启用' : '停用'}
                         </span>
                         <span className="text-[11px] font-black px-3 py-1 rounded-clay-pill bg-white/60 text-clay-faint">
@@ -393,7 +393,7 @@ export default function AdminAssistant() {
                   <div key={item.id} className="rounded-clay bg-white/45 shadow-clay-inset p-4">
                     <div className="flex flex-wrap items-center justify-between gap-3 mb-2">
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="text-[11px] font-black px-3 py-1 rounded-clay-pill bg-clay-blue-100 text-[#2c5582]">
+                        <span className="text-[11px] font-black px-3 py-1 rounded-clay-pill bg-clay-blue-100 text-clay-blue-ink">
                           {decisionLabel(item.decision)}
                         </span>
                         <span className="text-xs font-bold text-clay-faint">用户 #{item.user_id}</span>
@@ -482,7 +482,8 @@ function IconButton({ title, danger = false, onClick, children }) {
       type="button"
       onClick={onClick}
       title={title}
-      className={`w-10 h-10 rounded-full bg-clay-bg shadow-clay flex items-center justify-center hover:shadow-clay-hover ${danger ? 'text-clay-pink-400' : ''}`}
+      aria-label={title}
+      className={`clay-icon-btn-lg ${danger ? 'clay-icon-btn-danger' : ''}`}
     >
       {children}
     </button>
@@ -491,10 +492,10 @@ function IconButton({ title, danger = false, onClick, children }) {
 
 function Stat({ label, value, tone }) {
   const cls = {
-    blue: 'text-[#2c5582]',
-    pink: 'text-[#8a4860]',
-    green: 'text-[#3d6b4f]',
-    purple: 'text-[#6b4d83]',
+    blue: 'text-clay-blue-ink',
+    pink: 'text-clay-pink-ink',
+    green: 'text-clay-green-ink',
+    purple: 'text-clay-purple-ink',
   }[tone]
   return (
     <ClayCard className="!p-5">

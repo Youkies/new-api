@@ -1,15 +1,14 @@
 import { Link, NavLink } from 'react-router-dom'
 import { LogIn, UserPlus } from 'lucide-react'
 import ClayButton from '../clay/ClayButton.jsx'
-import ClayCard from '../clay/ClayCard.jsx'
 import { MembershipAvatar } from '../membership/MembershipBadge.jsx'
 import ThemeToggle from './ThemeToggle.jsx'
 import { useUser } from '../../context/UserContext.jsx'
 import { getFaviconSrc } from '../../utils/favicon.js'
 
 const linkBase =
-  'px-4 py-2 rounded-clay-pill font-bold text-sm transition-all hover:text-clay-pink-300'
-const linkActive = 'text-clay-pink-300'
+  'px-4 py-2 rounded-clay-pill font-extrabold text-sm transition-all text-clay-faint hover:text-clay-ink'
+const linkActive = '!text-clay-ink shadow-clay-sm bg-clay-surface'
 
 export default function ClayNav({ hideGuestActions = false, compactBottom = false }) {
   const { user } = useUser()
@@ -17,17 +16,15 @@ export default function ClayNav({ hideGuestActions = false, compactBottom = fals
 
   return (
     <header className={`flex items-center justify-between gap-3 ${compactBottom ? 'mb-3' : 'mb-10'}`}>
-      <Link to="/" className="min-w-0">
-        <ClayCard
-          interactive
-          className="!p-2 !px-4 md:!px-5 !rounded-clay-pill !flex-row !flex gap-2 items-center !border-0"
-        >
-          <img src={logoSrc} alt="logo" className="w-6 h-6 shrink-0" />
-          <span className="truncate text-base font-black md:text-lg">Youkies API</span>
-        </ClayCard>
+      <Link
+        to="/"
+        className="min-w-0 inline-flex items-center gap-2 px-4 py-2 rounded-clay-pill bg-clay-surface shadow-clay-sm hover:shadow-clay-hover transition-all duration-300 ease-clay"
+      >
+        <img src={logoSrc} alt="logo" className="w-6 h-6 shrink-0" />
+        <span className="truncate text-base font-black md:text-lg text-clay-ink">Youkies API</span>
       </Link>
 
-      <nav className="hidden md:flex gap-1 items-center">
+      <nav className="hidden md:flex gap-1 items-center px-2 py-1 rounded-clay-pill bg-clay-bg shadow-clay-inset-sm">
         <NavLink to="/" end className={({ isActive }) => `${linkBase} ${isActive ? linkActive : ''}`}>
           首页
         </NavLink>
@@ -55,19 +52,19 @@ export default function ClayNav({ hideGuestActions = false, compactBottom = fals
               src={user.has_avatar ? `/api/user/avatar/${user.id}?t=${user._avatar_t || ''}` : undefined}
               size={34}
             />
-            <ClayButton variant="primary" className="!px-6 !py-2 !text-sm hidden md:flex">
+            <ClayButton variant="primary" size="sm" className="hidden md:flex">
               进入控制台
             </ClayButton>
           </Link>
         ) : hideGuestActions ? null : (
           <>
             <Link to="/login">
-              <ClayButton variant="ghost" className="!px-5 !py-2 !text-sm">
+              <ClayButton variant="ghost" size="sm">
                 <LogIn className="w-4 h-4" /> 登录
               </ClayButton>
             </Link>
             <Link to="/register">
-              <ClayButton variant="primary" className="!px-5 !py-2 !text-sm">
+              <ClayButton variant="primary" size="sm">
                 <UserPlus className="w-4 h-4" /> 注册
               </ClayButton>
             </Link>

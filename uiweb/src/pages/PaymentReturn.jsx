@@ -40,9 +40,9 @@ export default function PaymentReturn() {
           }`}
         >
           {success ? (
-            <CheckCircle2 className="w-8 h-8 text-emerald-600" />
+            <CheckCircle2 className="w-8 h-8 text-clay-green-ink" />
           ) : (
-            <AlertTriangle className="w-8 h-8 text-rose-500" />
+            <AlertTriangle className="w-8 h-8 text-clay-pink-400" />
           )}
         </div>
         <h2 className="text-2xl font-black mb-2">

@@ -93,8 +93,8 @@ export default function ClaySelect({
                 }}
                 className={`w-full text-left px-4 py-2.5 rounded-clay-sm text-sm transition-all flex items-center justify-between gap-2 ${
                   active
-                    ? 'bg-clay-pink-100 text-[#8a4860] shadow-clay-active'
-                    : 'hover:bg-white/40'
+                    ? 'bg-clay-pink-100 text-clay-pink-ink shadow-clay-active'
+                    : 'hover:bg-white/40 hover:shadow-clay-xs'
                 }`}
               >
                 <div className="flex flex-col min-w-0">
@@ -105,7 +105,7 @@ export default function ClaySelect({
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   {o.extra && (
-                    <span className="text-xs px-2 py-0.5 rounded-full bg-white/60 text-clay-faint shadow-sm">
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-white/60 text-clay-faint shadow-clay-xs">
                       {o.extra}
                     </span>
                   )}

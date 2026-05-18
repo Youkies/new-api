@@ -13,10 +13,10 @@ const ICON = {
 }
 
 const COLOR = {
-  success: 'bg-clay-green-100 text-[#3d6b4f]',
-  error: 'bg-clay-pink-200 text-[#8a4860]',
-  warning: 'bg-clay-yellow-200 text-[#8a6a32]',
-  info: 'bg-clay-blue-100 text-[#43658b]',
+  success: 'bg-clay-green-100 text-clay-green-ink',
+  error: 'bg-clay-pink-200 text-clay-pink-ink',
+  warning: 'bg-clay-yellow-200 text-clay-yellow-ink',
+  info: 'bg-clay-blue-100 text-clay-blue-ink',
 }
 
 let counter = 0

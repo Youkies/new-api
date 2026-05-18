@@ -24,7 +24,7 @@ const MEMBERSHIP_TIERS = [
     tagline: '充值活跃用户专属签到福利',
     icon: 'badge',
     tone: {
-      text: 'text-[#3d6b4f]',
+      text: 'text-clay-green-ink',
       bg: 'bg-clay-green-100',
       softBg: 'bg-clay-green-100/55',
       border: 'border-clay-green-200/60',
@@ -41,7 +41,7 @@ const MEMBERSHIP_TIERS = [
     tagline: '更优价格与常用高级模型',
     icon: 'sparkles',
     tone: {
-      text: 'text-[#43658b]',
+      text: 'text-clay-blue-ink',
       bg: 'bg-clay-blue-100',
       softBg: 'bg-clay-blue-100/55',
       border: 'border-clay-blue-200/60',
@@ -58,7 +58,7 @@ const MEMBERSHIP_TIERS = [
     tagline: '更高调用优先级与扩展权益',
     icon: 'crown',
     tone: {
-      text: 'text-[#8a4860]',
+      text: 'text-clay-pink-ink',
       bg: 'bg-clay-pink-100',
       softBg: 'bg-clay-pink-100/55',
       border: 'border-clay-pink-200/60',
@@ -75,7 +75,7 @@ const MEMBERSHIP_TIERS = [
     tagline: '最高阶权限与旗舰模型体验',
     icon: 'gem',
     tone: {
-      text: 'text-[#8a6a32]',
+      text: 'text-clay-yellow-ink',
       bg: 'bg-clay-yellow-100',
       softBg: 'bg-clay-yellow-100/60',
       border: 'border-clay-yellow-200/70',

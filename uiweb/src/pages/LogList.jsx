@@ -36,18 +36,18 @@ const TYPE_OPTIONS = [
 ]
 
 const TYPE_META = {
-  1: { label: '充值', icon: CreditCard, bg: 'bg-emerald-100', text: 'text-emerald-700', ring: 'ring-emerald-200' },
-  2: { label: '消费', icon: Activity, bg: 'bg-clay-blue-100', text: 'text-[#43658b]', ring: 'ring-blue-200' },
-  3: { label: '管理', icon: Settings, bg: 'bg-clay-purple-100', text: 'text-[#6b4d83]', ring: 'ring-purple-200' },
-  4: { label: '系统', icon: Terminal, bg: 'bg-gray-200', text: 'text-gray-600', ring: 'ring-gray-300' },
-  5: { label: '错误', icon: AlertCircle, bg: 'bg-red-100', text: 'text-red-600', ring: 'ring-red-200' },
-  6: { label: '退款', icon: RotateCcw, bg: 'bg-clay-yellow-100', text: 'text-[#8a6a32]', ring: 'ring-amber-200' },
+  1: { label: '充值', icon: CreditCard, bg: 'bg-clay-green-100', text: 'text-clay-green-ink', ring: 'ring-clay-green-200/60' },
+  2: { label: '消费', icon: Activity, bg: 'bg-clay-blue-100', text: 'text-clay-blue-ink', ring: 'ring-clay-blue-200/60' },
+  3: { label: '管理', icon: Settings, bg: 'bg-clay-purple-100', text: 'text-clay-purple-ink', ring: 'ring-clay-purple-200/60' },
+  4: { label: '系统', icon: Terminal, bg: 'bg-clay-bg', text: 'text-clay-faint', ring: 'ring-clay-line/15' },
+  5: { label: '错误', icon: AlertCircle, bg: 'bg-clay-pink-100', text: 'text-clay-pink-ink', ring: 'ring-clay-pink-200/60' },
+  6: { label: '退款', icon: RotateCcw, bg: 'bg-clay-yellow-100', text: 'text-clay-yellow-ink', ring: 'ring-clay-yellow-200/60' },
 }
 
 const REFUND_STATUS_META = {
-  pending: { label: '待审核', icon: Clock, cls: 'bg-clay-yellow-100 text-[#8a6a32]' },
-  approved: { label: '已补偿', icon: CheckCircle2, cls: 'bg-clay-green-100 text-[#3d6b4f]' },
-  rejected: { label: '已驳回', icon: XCircle, cls: 'bg-clay-pink-100 text-[#8a4860]' },
+  pending: { label: '待审核', icon: Clock, cls: 'bg-clay-yellow-100 text-clay-yellow-ink' },
+  approved: { label: '已补偿', icon: CheckCircle2, cls: 'bg-clay-green-100 text-clay-green-ink' },
+  rejected: { label: '已驳回', icon: XCircle, cls: 'bg-clay-pink-100 text-clay-pink-ink' },
 }
 
 function fmtTs(ts) {
@@ -105,7 +105,7 @@ function getCacheTokens(other) {
 function DetailRow({ label, value, mono }) {
   if (value === null || value === undefined || value === '') return null
   return (
-    <div className="flex items-start py-2 border-b border-black/5 last:border-0">
+    <div className="flex items-start py-2 border-b border-clay-line/10 last:border-0">
       <span className="text-xs text-clay-faint w-28 shrink-0 pt-0.5">{label}</span>
       <span className={`text-sm flex-1 break-all ${mono ? 'font-mono text-xs' : ''}`}>{value}</span>
     </div>
@@ -151,13 +151,13 @@ function LogDetailContent({ log }) {
             {cache.read > 0 && (
               <div>
                 <span className="text-[11px] text-clay-faint">缓存读取</span>
-                <p className="text-xl font-black font-mono text-emerald-600">{cache.read.toLocaleString()}</p>
+                <p className="text-xl font-black font-mono text-clay-green-ink">{cache.read.toLocaleString()}</p>
               </div>
             )}
             {cache.write > 0 && (
               <div>
                 <span className="text-[11px] text-clay-faint">缓存写入</span>
-                <p className="text-xl font-black font-mono text-amber-600">{cache.write.toLocaleString()}</p>
+                <p className="text-xl font-black font-mono text-clay-yellow-ink">{cache.write.toLocaleString()}</p>
               </div>
             )}
           </div>
@@ -177,7 +177,7 @@ function LogDetailContent({ log }) {
             {frt ? (
               <div>
                 <span className="text-[11px] text-clay-faint">首字延迟</span>
-                <p className="text-xl font-black font-mono text-emerald-600">{fmtFrt(frt)}</p>
+                <p className="text-xl font-black font-mono text-clay-green-ink">{fmtFrt(frt)}</p>
               </div>
             ) : null}
             <div>
@@ -192,7 +192,7 @@ function LogDetailContent({ log }) {
         <DetailRow
           label="额度消耗"
           value={
-            <span className={`font-extrabold ${log.quota > 0 ? 'text-clay-pink-400' : 'text-emerald-600'}`}>
+            <span className={`font-extrabold ${log.quota > 0 ? 'text-clay-pink-400' : 'text-clay-green-ink'}`}>
               {quotaToDisplay(Math.abs(log.quota), 4).text}
             </span>
           }
@@ -258,7 +258,7 @@ function RefundAppealRecordsContent({ appeals, total, loading }) {
             </div>
             <div>
               <div className="text-[11px] font-bold text-clay-faint">补偿额度</div>
-              <div className="text-sm font-black text-[#8a4860] mt-1">{quotaToDisplay(appeal.refund_quota || 0).text}</div>
+              <div className="text-sm font-black text-clay-pink-ink mt-1">{quotaToDisplay(appeal.refund_quota || 0).text}</div>
             </div>
             <div>
               <div className="text-[11px] font-bold text-clay-faint">审核时间</div>
@@ -376,9 +376,9 @@ function ClayTimeColumn({ options, value, onSelect, tone = 'blue' }) {
     )).flat()
   ), [options])
   const highlightClass = tone === 'pink'
-    ? 'bg-clay-pink-100/80 text-[#8a4860]'
-    : 'bg-clay-blue-100/80 text-[#43658b]'
-  const activeTextClass = tone === 'pink' ? 'text-[#8a4860]' : 'text-[#43658b]'
+    ? 'bg-clay-pink-100/80 text-clay-pink-ink'
+    : 'bg-clay-blue-100/80 text-clay-blue-ink'
+  const activeTextClass = tone === 'pink' ? 'text-clay-pink-ink' : 'text-clay-blue-ink'
 
   const scrollToOption = useCallback((optionValue, behavior = 'auto') => {
     const container = scrollRef.current
@@ -501,7 +501,7 @@ function formatQuotaDelta(quota) {
 
 function quotaDeltaClass(quota) {
   // quota > 0 = consumption (deduction) = pink; quota < 0 = credit/refund = emerald
-  return quota > 0 ? 'text-clay-pink-400' : 'text-emerald-600'
+  return quota > 0 ? 'text-clay-pink-400' : 'text-clay-green-ink'
 }
 
 function ClayDateTimeField({ label, value, onChange, align = 'left' }) {
@@ -592,11 +592,11 @@ function ClayDateTimeField({ label, value, onChange, align = 'left' }) {
       {open && (
         <div className={panelClassName}>
           <div className="flex items-center justify-between mb-2.5">
-            <button type="button" onClick={() => jumpMonth(-1)} className="w-8 h-8 rounded-full bg-clay-bg shadow-clay flex items-center justify-center">
+            <button type="button" onClick={() => jumpMonth(-1)} className="clay-icon-btn" aria-label="上一月">
               <ChevronLeft className="w-4 h-4" />
             </button>
             <div className="text-sm font-black">{monthLabel}</div>
-            <button type="button" onClick={() => jumpMonth(1)} className="w-8 h-8 rounded-full bg-clay-bg shadow-clay flex items-center justify-center">
+            <button type="button" onClick={() => jumpMonth(1)} className="clay-icon-btn" aria-label="下一月">
               <ChevronRight className="w-4 h-4" />
             </button>
           </div>
@@ -616,7 +616,7 @@ function ClayDateTimeField({ label, value, onChange, align = 'left' }) {
                   onClick={() => setDate(day)}
                   className={`aspect-square rounded-[14px] text-[11px] font-black transition-all sm:rounded-clay-sm sm:text-xs ${
                     active
-                      ? 'bg-clay-blue-100 text-[#43658b] shadow-clay-inset'
+                      ? 'bg-clay-blue-100 text-clay-blue-ink shadow-clay-inset'
                       : today
                         ? 'bg-clay-pink-50 text-clay-pink-400 shadow-clay'
                         : 'hover:bg-white/40'
@@ -645,16 +645,16 @@ function ClayDateTimeField({ label, value, onChange, align = 'left' }) {
           </div>
 
           <div className="mt-2.5 grid grid-cols-2 gap-2 sm:mt-4 sm:flex sm:flex-wrap">
-            <button type="button" onClick={setTodayStart} className="px-3 py-2 rounded-clay-pill bg-clay-pink-50 shadow-clay text-[11px] font-black text-[#8a4860]">
+            <button type="button" onClick={setTodayStart} className="px-3 py-2 rounded-clay-pill bg-clay-pink-50 shadow-clay text-[11px] font-black text-clay-pink-ink">
               今天 0 点
             </button>
-            <button type="button" onClick={setNow} className="px-3 py-2 rounded-clay-pill bg-clay-blue-50 shadow-clay text-[11px] font-black text-[#43658b]">
+            <button type="button" onClick={setNow} className="px-3 py-2 rounded-clay-pill bg-clay-blue-50 shadow-clay text-[11px] font-black text-clay-blue-ink">
               现在
             </button>
             <button type="button" onClick={() => { onChange(''); setOpen(false) }} className="px-3 py-2 rounded-clay-pill bg-clay-bg shadow-clay text-[11px] font-black text-clay-faint">
               清空
             </button>
-            <button type="button" onClick={() => setOpen(false)} className="px-3 py-2 rounded-clay-pill bg-clay-green-100 shadow-clay text-[11px] font-black text-[#3d6b4f]">
+            <button type="button" onClick={() => setOpen(false)} className="px-3 py-2 rounded-clay-pill bg-clay-green-100 shadow-clay text-[11px] font-black text-clay-green-ink">
               确认
             </button>
           </div>
@@ -687,7 +687,7 @@ function LogCard({ log, onClick }) {
 
   return (
     <div
-      className={`clay-card-interactive !p-5 !rounded-clay cursor-pointer ${isError ? '!bg-red-50/40' : ''}`}
+      className={`clay-card-interactive !p-5 !rounded-clay cursor-pointer ${isError ? '!bg-clay-pink-50/60' : ''}`}
       onClick={onClick}
     >
       <div className="flex items-start gap-3.5">
@@ -705,9 +705,9 @@ function LogCard({ log, onClick }) {
               <div className="flex items-baseline gap-1.5 min-w-0">
                 {showModelHeader && (
                   hasAlias ? (
-                    <Tag className="w-3.5 h-3.5 text-[#6b4d83] shrink-0 self-baseline translate-y-0.5" strokeWidth={2.6} />
+                    <Tag className="w-3.5 h-3.5 text-clay-purple-ink shrink-0 self-baseline translate-y-0.5" strokeWidth={2.6} />
                   ) : (
-                    <Cpu className="w-3.5 h-3.5 text-[#8a6a32] shrink-0 self-baseline translate-y-0.5" strokeWidth={2.6} />
+                    <Cpu className="w-3.5 h-3.5 text-clay-yellow-ink shrink-0 self-baseline translate-y-0.5" strokeWidth={2.6} />
                   )
                 )}
                 <span
@@ -725,15 +725,15 @@ function LogCard({ log, onClick }) {
                     <>
                       {log.group && log.group !== log.requested_model_name && (
                         <>
-                          <span className="text-[#6b4d83]">{log.group}</span>
+                          <span className="text-clay-purple-ink">{log.group}</span>
                           <span className="text-clay-faint/60 font-black mx-1.5">/</span>
                         </>
                       )}
-                      <span className="text-[#8a6a32]" title={log.model_name}>{log.model_name}</span>
+                      <span className="text-clay-yellow-ink" title={log.model_name}>{log.model_name}</span>
                     </>
                   ) : log.group ? (
                     <>
-                      <span className="text-[#6b4d83]">{log.group}</span>
+                      <span className="text-clay-purple-ink">{log.group}</span>
                       <span className="text-clay-faint/60 ml-1.5">· 透传</span>
                     </>
                   ) : (
@@ -744,7 +744,7 @@ function LogCard({ log, onClick }) {
 
               {/* Error content — plain red text, no pill styling */}
               {isError && log.content && (
-                <div className="mt-1.5 text-[11px] text-red-600 font-bold leading-relaxed break-all line-clamp-3">
+                <div className="mt-1.5 text-[11px] text-clay-pink-400 font-bold leading-relaxed break-all line-clamp-3">
                   {log.content}
                 </div>
               )}
@@ -756,7 +756,7 @@ function LogCard({ log, onClick }) {
                 <span
                   className={`text-[10px] font-extrabold px-2 py-0.5 rounded-clay-pill ${
                     log.is_stream
-                      ? 'bg-clay-blue-100 text-[#43658b] shadow-clay-sm'
+                      ? 'bg-clay-blue-100 text-clay-blue-ink shadow-clay-sm'
                       : 'bg-clay-bg shadow-clay-inset text-clay-faint'
                   }`}
                 >
@@ -792,12 +792,12 @@ function LogCard({ log, onClick }) {
                 </span>
               ) : null}
               {isConsume && hasCache && cache.read > 0 ? (
-                <span className="inline-flex items-center gap-1 text-emerald-600">
+                <span className="inline-flex items-center gap-1 text-clay-green-ink">
                   缓读<b className="font-black ml-0.5 tabular-nums">{fmtTokens(cache.read)}</b>
                 </span>
               ) : null}
               {isConsume && hasCache && cache.write > 0 ? (
-                <span className="inline-flex items-center gap-1 text-amber-600">
+                <span className="inline-flex items-center gap-1 text-clay-yellow-ink">
                   缓写<b className="font-black ml-0.5 tabular-nums">{fmtTokens(cache.write)}</b>
                 </span>
               ) : null}
@@ -1119,7 +1119,7 @@ export default function LogList() {
             <div className="mb-4 flex items-center justify-between gap-3 md:mb-6">
               <div className="flex min-w-0 items-center gap-2">
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-clay-blue-50 shadow-clay">
-                  <Filter className="h-4 w-4 text-[#43658b]" />
+                  <Filter className="h-4 w-4 text-clay-blue-ink" />
                 </div>
                 <div className="min-w-0 text-lg font-black text-clay-ink">筛选日志</div>
               </div>

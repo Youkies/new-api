@@ -83,7 +83,7 @@ export default function ClayConsoleShell({
   const linkCls = ({ isActive }) =>
     `px-2.5 lg:px-3.5 py-2 rounded-clay-pill font-bold text-sm transition-all flex items-center gap-1.5 whitespace-nowrap ${
       isActive
-        ? 'bg-clay-pink-100 text-[#8a4860] shadow-clay'
+        ? 'bg-clay-pink-100 text-clay-pink-ink shadow-clay'
         : 'text-clay-faint hover:text-clay-ink'
     }`
 
@@ -144,7 +144,7 @@ export default function ClayConsoleShell({
 
               {userOpen && (
                 <div className="absolute right-0 mt-3 w-72 p-2 rounded-clay bg-clay-bg shadow-clay z-50">
-                  <div className="px-4 py-3 border-b border-black/5 mb-2">
+                  <div className="px-4 py-3 border-b border-clay-line/10 mb-2">
                     <div className="font-extrabold truncate">{displayName}</div>
                     <div className="text-xs text-clay-faint truncate">
                       {user?.email || `ID ${user?.id ?? '-'}`}
@@ -163,7 +163,7 @@ export default function ClayConsoleShell({
                       通知中心
                     </span>
                     {unreadCount > 0 && (
-                      <span className="min-w-6 h-6 px-2 rounded-clay-pill bg-clay-pink-100 text-[#8a4860] text-xs font-black flex items-center justify-center">
+                      <span className="min-w-6 h-6 px-2 rounded-clay-pill bg-clay-pink-100 text-clay-pink-ink text-xs font-black flex items-center justify-center">
                         {unreadCount > 99 ? '99+' : unreadCount}
                       </span>
                     )}

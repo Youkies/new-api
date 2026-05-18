@@ -134,9 +134,9 @@ function formToPayload(form) {
 function activeLabel(item) {
   if (!item.enabled) return { text: '停用', cls: 'bg-white/60 text-clay-faint' }
   const now = Math.floor(Date.now() / 1000)
-  if (item.starts_at && item.starts_at > now) return { text: '待生效', cls: 'bg-clay-yellow-100 text-[#8a6a32]' }
+  if (item.starts_at && item.starts_at > now) return { text: '待生效', cls: 'bg-clay-yellow-100 text-clay-yellow-ink' }
   if (item.ends_at && item.ends_at < now) return { text: '已过期', cls: 'bg-white/60 text-clay-faint' }
-  return { text: '生效中', cls: 'bg-clay-green-100 text-[#3d6b4f]' }
+  return { text: '生效中', cls: 'bg-clay-green-100 text-clay-green-ink' }
 }
 
 export default function AdminAnnouncements() {
@@ -313,7 +313,7 @@ export default function AdminAnnouncements() {
         </ClayCard>
       ) : (
         <ClayCard className="!p-0 overflow-hidden">
-          <div className="hidden lg:grid grid-cols-[1.2fr_120px_160px_180px_190px] gap-4 px-6 py-4 text-xs font-black text-clay-faint uppercase border-b border-black/5 bg-clay-bg/50">
+          <div className="hidden lg:grid grid-cols-[1.2fr_120px_160px_180px_190px] gap-4 px-6 py-4 text-xs font-black text-clay-faint uppercase border-b border-clay-line/10 bg-clay-bg/50">
             <span>标题</span>
             <span>状态</span>
             <span>开关</span>
@@ -439,9 +439,9 @@ function ToggleField({ label, checked, onChange }) {
 
 function Stat({ label, value, tone }) {
   const cls = {
-    blue: 'text-[#2c5582]',
-    pink: 'text-[#8a4860]',
-    green: 'text-[#3d6b4f]',
+    blue: 'text-clay-blue-ink',
+    pink: 'text-clay-pink-ink',
+    green: 'text-clay-green-ink',
   }[tone]
   return (
     <ClayCard className="!p-5">
@@ -458,25 +458,25 @@ function AnnouncementRow({ item, onEdit, onPatch, onDelete }) {
       <div className="min-w-0">
         <div className="flex flex-wrap items-center gap-2 mb-2">
           {item.pinned && (
-            <span className="inline-flex items-center gap-1 text-[11px] font-black px-2.5 py-1 rounded-clay-pill bg-clay-yellow-100 text-[#8a6a32]">
+            <span className="inline-flex items-center gap-1 text-[11px] font-black px-2.5 py-1 rounded-clay-pill bg-clay-yellow-100 text-clay-yellow-ink">
               <Pin className="w-3 h-3" />
               置顶
             </span>
           )}
           {item.force_popup && (
-            <span className="inline-flex items-center gap-1 text-[11px] font-black px-2.5 py-1 rounded-clay-pill bg-clay-pink-100 text-[#8a4860]">
+            <span className="inline-flex items-center gap-1 text-[11px] font-black px-2.5 py-1 rounded-clay-pill bg-clay-pink-100 text-clay-pink-ink">
               <Bell className="w-3 h-3" />
               强制
             </span>
           )}
           {item.notify_enabled && (
-            <span className="inline-flex items-center gap-1 text-[11px] font-black px-2.5 py-1 rounded-clay-pill bg-clay-blue-100 text-[#2c5582]">
+            <span className="inline-flex items-center gap-1 text-[11px] font-black px-2.5 py-1 rounded-clay-pill bg-clay-blue-100 text-clay-blue-ink">
               <Bell className="w-3 h-3" />
               通知
             </span>
           )}
           {item.require_ack && (
-            <span className="inline-flex items-center gap-1 text-[11px] font-black px-2.5 py-1 rounded-clay-pill bg-clay-yellow-100 text-[#8a6a32]">
+            <span className="inline-flex items-center gap-1 text-[11px] font-black px-2.5 py-1 rounded-clay-pill bg-clay-yellow-100 text-clay-yellow-ink">
               确认
             </span>
           )}
@@ -515,24 +515,27 @@ function AnnouncementRow({ item, onEdit, onPatch, onDelete }) {
         <button
           type="button"
           onClick={() => onPatch(item, { pinned: !item.pinned })}
-          className="w-10 h-10 rounded-full bg-clay-bg shadow-clay flex items-center justify-center hover:shadow-clay-hover"
+          className="clay-icon-btn-lg"
           title={item.pinned ? '取消置顶' : '置顶'}
+          aria-label={item.pinned ? '取消置顶' : '置顶'}
         >
           <Pin className="w-4 h-4" />
         </button>
         <button
           type="button"
           onClick={() => onEdit(item)}
-          className="w-10 h-10 rounded-full bg-clay-bg shadow-clay flex items-center justify-center hover:shadow-clay-hover"
+          className="clay-icon-btn-lg"
           title="编辑"
+          aria-label="编辑"
         >
           <Edit3 className="w-4 h-4" />
         </button>
         <button
           type="button"
           onClick={() => onDelete(item)}
-          className="w-10 h-10 rounded-full bg-clay-bg shadow-clay flex items-center justify-center hover:shadow-clay-hover text-clay-pink-400"
+          className="clay-icon-btn-lg clay-icon-btn-danger"
           title="删除"
+          aria-label="删除"
         >
           <Trash2 className="w-4 h-4" />
         </button>

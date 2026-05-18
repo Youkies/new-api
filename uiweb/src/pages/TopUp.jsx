@@ -37,7 +37,7 @@ function PayMethodIcon({ type, className = 'w-7 h-7' }) {
   if (type === 'alipay' || type === 'kpay_alipay') {
     return (
       <span
-        className={`${className} inline-flex items-center justify-center rounded-full text-white font-black text-xs shadow-clay`}
+        className={`${className} inline-flex items-center justify-center rounded-full text-white font-black text-xs shadow-clay-sm`}
         style={{ background: '#1677FF' }}
         aria-label="支付宝"
       >
@@ -48,7 +48,7 @@ function PayMethodIcon({ type, className = 'w-7 h-7' }) {
   if (type === 'wxpay' || type === 'wechat' || type === 'kpay_wechat') {
     return (
       <span
-        className={`${className} inline-flex items-center justify-center rounded-full text-white font-black text-xs shadow-clay`}
+        className={`${className} inline-flex items-center justify-center rounded-full text-white font-black text-xs shadow-clay-sm`}
         style={{ background: '#07C160' }}
         aria-label="微信支付"
       >
@@ -68,10 +68,10 @@ const PAY_NAME = {
 }
 
 const TOPUP_STATUS = {
-  success: { label: '已到账', cls: 'bg-clay-green-100 text-[#3d6b4f]' },
-  pending: { label: '待支付/待到账', cls: 'bg-clay-yellow-100 text-[#8a6a32]' },
-  failed: { label: '失败', cls: 'bg-clay-pink-100 text-[#8a4860]' },
-  expired: { label: '已过期', cls: 'bg-clay-pink-100 text-[#8a4860]' },
+  success: { label: '已到账', tone: 'green', dot: 'bg-clay-green-300' },
+  pending: { label: '待支付/待到账', tone: 'yellow', dot: 'bg-clay-yellow-300' },
+  failed: { label: '失败', tone: 'pink', dot: 'bg-clay-pink-300' },
+  expired: { label: '已过期', tone: 'pink', dot: 'bg-clay-pink-300/60' },
 }
 
 const isKpayMethod = (type) => String(type || '').startsWith('kpay_')
@@ -769,7 +769,7 @@ export default function TopUp() {
                       <div className="font-black text-lg">{p.value}</div>
                       <div className="text-xs text-clay-faint">额度</div>
                       {showDiscount && (
-                        <span className="absolute top-2 right-2 inline-flex items-center gap-1 text-[10px] font-bold text-rose-500 bg-white/70 rounded-full px-2 py-0.5 shadow-clay">
+                        <span className="absolute top-2 right-2 inline-flex items-center gap-1 text-[10px] font-bold text-clay-pink-400 bg-white/70 rounded-full px-2 py-0.5 shadow-clay-xs">
                           <Tag className="w-3 h-3" />
                           {Math.round(d * 100)}%
                         </span>
@@ -826,18 +826,18 @@ export default function TopUp() {
                       {originalAmount.toFixed(2)} 元
                     </span>
                   )}
-                  <span className="text-2xl font-black text-rose-500">
+                  <span className="text-2xl font-black text-clay-pink-400">
                     {amountLoading ? '…' : `${(amount || 0).toFixed(2)} 元`}
                   </span>
                 </div>
               </div>
               {hasDiscount && !amountLoading && (
                 <div className="mt-2 flex items-center justify-end gap-2 text-xs">
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-rose-100 text-rose-500 font-bold">
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-clay-pink-100 text-clay-pink-ink font-bold shadow-clay-xs">
                     <Tag className="w-3 h-3" />
                     {Math.round(currentDiscount * 100)}%
                   </span>
-                  <span className="text-emerald-600 font-bold">
+                  <span className="text-clay-green-ink font-bold">
                     已节省 {(originalAmount - amount).toFixed(2)} 元
                   </span>
                 </div>
@@ -904,15 +904,16 @@ export default function TopUp() {
               <span className="text-xs font-bold text-clay-faint">最近 {Math.min(topupOrders.length, topupTotal)} / {topupTotal}</span>
             )}
           </div>
-          <button
+          <ClayButton
             type="button"
+            variant="ghost"
+            size="sm"
             onClick={refreshTopupOrders}
             disabled={ordersLoading}
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-clay-pill bg-clay-bg px-4 text-xs font-black text-clay-ink shadow-clay transition-all active:scale-95 disabled:opacity-60"
           >
             <RefreshCw className={`w-4 h-4 ${ordersLoading ? 'animate-spin' : ''}`} />
             刷新
-          </button>
+          </ClayButton>
         </div>
 
         {historyMsg && (
@@ -969,13 +970,14 @@ export default function TopUp() {
 
                   <div className="flex items-center justify-between gap-3 lg:block">
                     <span className="text-xs font-bold text-clay-faint lg:block">实付金额</span>
-                    <div className="font-black text-rose-500 text-sm">
+                    <div className="font-black text-clay-pink-400 text-sm">
                       {(Number(order.money) || 0).toFixed(2)} 元
                     </div>
                   </div>
 
                   <div className="flex items-center justify-between gap-3 lg:justify-end">
-                    <span className={`inline-flex items-center justify-center min-w-[76px] h-8 rounded-clay-pill px-3 text-xs font-black shadow-clay-sm ${statusMeta.cls}`}>
+                    <span className="inline-flex items-center gap-1.5 text-xs font-extrabold text-clay-ink">
+                      <span className={`inline-block w-2 h-2 rounded-full shadow-clay-xs ${statusMeta.dot}`} aria-hidden="true" />
                       {statusMeta.label}
                     </span>
                     {canCheckTopupOrder(order) ? (
@@ -983,7 +985,7 @@ export default function TopUp() {
                         type="button"
                         onClick={() => checkTopupOrder(order)}
                         disabled={checking}
-                        className="inline-flex h-9 items-center justify-center gap-1.5 rounded-clay-pill bg-clay-blue-100 px-3 text-xs font-black text-[#43658b] shadow-clay transition-all active:scale-95 disabled:opacity-60"
+                        className="inline-flex h-9 items-center justify-center gap-1.5 rounded-clay-pill bg-clay-blue-100 px-3 text-xs font-black text-clay-blue-ink shadow-clay-sm transition-all duration-200 ease-clay hover:shadow-clay-hover active:scale-95 active:shadow-clay-active disabled:opacity-60"
                       >
                         <RefreshCw className={`w-3.5 h-3.5 ${checking ? 'animate-spin' : ''}`} />
                         {checking ? '检查中' : '检查到账'}
@@ -1020,7 +1022,7 @@ export default function TopUp() {
           </div>
           <div className="flex justify-between text-sm items-baseline">
             <span className="text-clay-faint">实付金额</span>
-            <span className="font-black text-rose-500">{(amount || 0).toFixed(2)} 元</span>
+            <span className="font-black text-clay-pink-400">{(amount || 0).toFixed(2)} 元</span>
           </div>
           {hasDiscount && (
             <>
@@ -1030,11 +1032,11 @@ export default function TopUp() {
               </div>
               <div className="flex justify-between text-xs">
                 <span className="text-clay-faint">折扣</span>
-                <span className="text-emerald-600">{Math.round(currentDiscount * 100)}%</span>
+                <span className="text-clay-green-ink font-bold">{Math.round(currentDiscount * 100)}%</span>
               </div>
               <div className="flex justify-between text-xs">
                 <span className="text-clay-faint">已节省</span>
-                <span className="text-emerald-600 font-bold">
+                <span className="text-clay-green-ink font-bold">
                   {(originalAmount - amount).toFixed(2)} 元
                 </span>
               </div>
@@ -1084,7 +1086,7 @@ export default function TopUp() {
             </div>
             <div className="flex justify-between">
               <span className="text-clay-faint">实付金额</span>
-              <span className="font-black text-rose-500">
+              <span className="font-black text-clay-pink-400">
                 {(Number(kpayOrder?.amount) || amount || 0).toFixed(2)} 元
               </span>
             </div>

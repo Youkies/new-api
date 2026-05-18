@@ -34,9 +34,9 @@ const statusOptions = [
 ]
 
 const statusMeta = {
-  pending: { label: '待审核', cls: 'bg-clay-yellow-100 text-[#8a6a32]', icon: Clock },
-  approved: { label: '已通过', cls: 'bg-clay-green-100 text-[#3d6b4f]', icon: CheckCircle2 },
-  rejected: { label: '已驳回', cls: 'bg-clay-pink-100 text-[#8a4860]', icon: XCircle },
+  pending: { label: '待审核', cls: 'bg-clay-yellow-100 text-clay-yellow-ink', icon: Clock },
+  approved: { label: '已通过', cls: 'bg-clay-green-100 text-clay-green-ink', icon: CheckCircle2 },
+  rejected: { label: '已驳回', cls: 'bg-clay-pink-100 text-clay-pink-ink', icon: XCircle },
 }
 
 function formatTime(ts) {
@@ -228,7 +228,7 @@ export default function AdminRefundAppeals() {
         </ClayCard>
       ) : (
         <ClayCard className="!p-0 overflow-hidden">
-          <div className="hidden lg:grid grid-cols-[110px_1fr_150px_150px_160px_120px] gap-4 px-6 py-4 text-xs font-black text-clay-faint uppercase border-b border-black/5 bg-clay-bg/50">
+          <div className="hidden lg:grid grid-cols-[110px_1fr_150px_150px_160px_120px] gap-4 px-6 py-4 text-xs font-black text-clay-faint uppercase border-b border-clay-line/10 bg-clay-bg/50">
             <span>状态</span>
             <span>用户</span>
             <span>记录数</span>
@@ -286,9 +286,9 @@ export default function AdminRefundAppeals() {
 
 function Stat({ label, value, tone }) {
   const cls = {
-    blue: 'text-[#2c5582]',
-    yellow: 'text-[#8a6a32]',
-    green: 'text-[#3d6b4f]',
+    blue: 'text-clay-blue-ink',
+    yellow: 'text-clay-yellow-ink',
+    green: 'text-clay-green-ink',
   }[tone]
   return (
     <ClayCard className="!p-5">
@@ -302,7 +302,7 @@ function StatusBadge({ status }) {
   const meta = statusMeta[status] ?? statusMeta.pending
   const Icon = meta.icon
   return (
-    <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-clay-pill text-xs font-black ${meta.cls}`}>
+    <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-clay-pill text-xs font-black shadow-clay-sm ${meta.cls}`}>
       <Icon className="w-3.5 h-3.5" />
       {meta.label}
     </span>
@@ -322,14 +322,15 @@ function AppealRow({ item, onDetail }) {
         </div>
       </div>
       <div className="text-sm font-black tabular-nums">{item.total_items} 条</div>
-      <div className="text-sm font-black text-[#8a4860]">{quotaToDisplay(item.refund_quota || 0).text}</div>
+      <div className="text-sm font-black text-clay-pink-ink">{quotaToDisplay(item.refund_quota || 0).text}</div>
       <div className="text-xs font-bold text-clay-faint">{formatTime(item.created_at)}</div>
       <div className="flex justify-start lg:justify-end">
         <button
           type="button"
           onClick={() => onDetail(item)}
-          className="w-10 h-10 rounded-full bg-clay-bg shadow-clay flex items-center justify-center hover:shadow-clay-hover"
+          className="clay-icon-btn-lg"
           title="查看详情"
+          aria-label="查看详情"
         >
           <Eye className="w-4 h-4" />
         </button>
@@ -381,7 +382,7 @@ function AppealDetail({ appeal, items, reviewNote, setReviewNote }) {
             <div key={item.id} className="rounded-clay bg-white/45 shadow-clay-inset p-4">
               <div className="flex flex-wrap items-center justify-between gap-3 mb-2">
                 <div className="font-mono text-xs font-black break-all">{item.model_name || '-'}</div>
-                <div className="text-sm font-black text-[#8a4860]">{quotaToDisplay(item.quota || 0).text}</div>
+                <div className="text-sm font-black text-clay-pink-ink">{quotaToDisplay(item.quota || 0).text}</div>
               </div>
               <div className="grid sm:grid-cols-3 gap-2 text-xs font-semibold text-clay-faint">
                 <span>日志 #{item.log_id}</span>
@@ -404,7 +405,7 @@ function AppealDetail({ appeal, items, reviewNote, setReviewNote }) {
 }
 
 function InfoCell({ label, value, tone }) {
-  const cls = tone === 'pink' ? 'text-[#8a4860]' : 'text-clay-ink'
+  const cls = tone === 'pink' ? 'text-clay-pink-ink' : 'text-clay-ink'
   return (
     <div className="rounded-clay bg-white/45 shadow-clay-inset p-4">
       <div className="text-[11px] font-black text-clay-faint mb-1">{label}</div>

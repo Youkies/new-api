@@ -40,16 +40,16 @@ function statusDotCls(status) {
 }
 
 function statusTextColor(status) {
-  if (status === 'green') return 'text-[#3d6b4f]'
-  if (status === 'yellow') return 'text-[#8a6a32]'
-  if (status === 'red') return 'text-[#8a4860]'
+  if (status === 'green') return 'text-clay-green-ink'
+  if (status === 'yellow') return 'text-clay-yellow-ink'
+  if (status === 'red') return 'text-clay-pink-ink'
   return 'text-clay-faint'
 }
 
 function rateBadgeCls(status) {
-  if (status === 'green') return 'bg-clay-green-50 text-[#3d6b4f]'
-  if (status === 'yellow') return 'bg-clay-yellow-50 text-[#8a6a32]'
-  if (status === 'red') return 'bg-clay-pink-50 text-[#8a4860]'
+  if (status === 'green') return 'bg-clay-green-50 text-clay-green-ink'
+  if (status === 'yellow') return 'bg-clay-yellow-50 text-clay-yellow-ink'
+  if (status === 'red') return 'bg-clay-pink-50 text-clay-pink-ink'
   return 'bg-clay-bg text-clay-faint'
 }
 
@@ -212,7 +212,7 @@ export default function ModelStatus() {
                 onClick={() => setWindow(w)}
                 className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-clay-pill text-sm font-extrabold transition-all duration-200 ease-clay ${
                   active
-                    ? 'bg-clay-blue-100 text-[#2c5582] shadow-clay'
+                    ? 'bg-clay-blue-100 text-clay-blue-ink shadow-clay'
                     : 'bg-clay-bg text-clay-faint shadow-clay-inset hover:text-clay-ink'
                 }`}
               >
@@ -280,7 +280,7 @@ const OVERALL_META = {
     bg: 'from-clay-green-50 to-clay-green-100',
     ring: 'bg-clay-green-200',
     icon: CheckCircle2,
-    iconColor: 'text-[#3d6b4f]',
+    iconColor: 'text-clay-green-ink',
     title: '所有系统运行正常',
     sub: '全部模型可用',
   },
@@ -288,7 +288,7 @@ const OVERALL_META = {
     bg: 'from-clay-yellow-50 to-clay-yellow-100',
     ring: 'bg-clay-yellow-200',
     icon: AlertTriangle,
-    iconColor: 'text-[#8a6a32]',
+    iconColor: 'text-clay-yellow-ink',
     title: '部分模型降级',
     sub: '主要功能可用',
   },
@@ -296,7 +296,7 @@ const OVERALL_META = {
     bg: 'from-clay-pink-50 to-clay-pink-100',
     ring: 'bg-clay-pink-300',
     icon: XCircle,
-    iconColor: 'text-[#8a4860]',
+    iconColor: 'text-clay-pink-ink',
     title: '服务存在异常',
     sub: '部分模型不可用',
   },
@@ -352,7 +352,7 @@ function OverviewBanner({ overall, sla, summary, updatedAt, countdown, onRefresh
         {/* Refresh */}
         <button
           onClick={onRefresh}
-          className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-clay-pill bg-white/70 shadow-clay hover:shadow-clay-hover active:shadow-clay-active text-sm font-extrabold text-clay-ink transition-all shrink-0"
+          className="clay-btn-ghost !px-4 !py-2 !text-sm !gap-2 shrink-0"
         >
           <RefreshCw className="w-4 h-4" strokeWidth={2.5} />
           立即刷新
@@ -364,9 +364,9 @@ function OverviewBanner({ overall, sla, summary, updatedAt, countdown, onRefresh
 
 function SLACell({ icon: Icon, label, value, tone }) {
   const color = {
-    green: 'text-[#3d6b4f]',
-    yellow: 'text-[#8a6a32]',
-    red: 'text-[#8a4860]',
+    green: 'text-clay-green-ink',
+    yellow: 'text-clay-yellow-ink',
+    red: 'text-clay-pink-ink',
     empty: 'text-clay-faint',
   }[tone] ?? 'text-clay-ink'
   return (
@@ -383,9 +383,9 @@ function SLACell({ icon: Icon, label, value, tone }) {
 }
 
 const COUNTER_TONE = {
-  green: { bg: 'bg-clay-green-50/80', text: 'text-[#3d6b4f]', dot: 'bg-clay-green-200' },
-  yellow: { bg: 'bg-clay-yellow-50/80', text: 'text-[#8a6a32]', dot: 'bg-clay-yellow-200' },
-  red: { bg: 'bg-clay-pink-50/80', text: 'text-[#8a4860]', dot: 'bg-clay-pink-300' },
+  green: { bg: 'bg-clay-green-50/80', text: 'text-clay-green-ink', dot: 'bg-clay-green-200' },
+  yellow: { bg: 'bg-clay-yellow-50/80', text: 'text-clay-yellow-ink', dot: 'bg-clay-yellow-200' },
+  red: { bg: 'bg-clay-pink-50/80', text: 'text-clay-pink-ink', dot: 'bg-clay-pink-300' },
 }
 
 function CounterCell({ label, value, tone }) {
@@ -513,7 +513,7 @@ function ModelCard({ model, window: win }) {
       )}
 
       {/* Footer */}
-      <div className="flex items-center justify-between gap-2 pt-1 border-t border-black/5">
+      <div className="flex items-center justify-between gap-2 pt-1 border-t border-clay-line/10">
         <div className="flex items-center gap-1.5 text-[11px]">
           <Zap className="w-3 h-3 text-clay-faint" strokeWidth={2.5} />
           <span className="font-bold text-clay-faint tabular-nums">

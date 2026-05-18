@@ -46,9 +46,9 @@ const statusOptions = [
 ]
 
 const statusMeta = {
-  pending: { label: '待审核', cls: 'bg-clay-yellow-100 text-[#8a6a32]' },
-  approved: { label: '已入池', cls: 'bg-clay-green-100 text-[#3d6b4f]' },
-  rejected: { label: '已驳回', cls: 'bg-clay-pink-100 text-[#8a4860]' },
+  pending: { label: '待审核', cls: 'bg-clay-yellow-100 text-clay-yellow-ink' },
+  approved: { label: '已入池', cls: 'bg-clay-green-100 text-clay-green-ink' },
+  rejected: { label: '已驳回', cls: 'bg-clay-pink-100 text-clay-pink-ink' },
 }
 
 function formatTime(ts) {
@@ -375,8 +375,8 @@ export default function AdminPlaygroundFoods() {
 function Stat({ label, value, tone }) {
   const toneCls = {
     blue: 'from-clay-blue-50 to-clay-bg text-clay-blue-300',
-    yellow: 'from-clay-yellow-100 to-clay-bg text-[#8a6a32]',
-    green: 'from-clay-green-100 to-clay-bg text-[#3d6b4f]',
+    yellow: 'from-clay-yellow-100 to-clay-bg text-clay-yellow-ink',
+    green: 'from-clay-green-100 to-clay-bg text-clay-green-ink',
   }[tone] || 'from-clay-bg to-clay-bg text-clay-ink'
 
   return (
@@ -414,17 +414,17 @@ function FoodCard({ item, onEdit, onReject, onDelete }) {
         </div>
       </div>
       <div className="mt-4 flex flex-wrap justify-end gap-2">
-        <ClayButton type="button" variant="ghost" onClick={() => onDelete(item)} className="!px-4">
+        <ClayButton type="button" variant="danger" size="sm" onClick={() => onDelete(item)}>
           <Trash2 className="h-4 w-4" />
           删除
         </ClayButton>
         {item.status === 'pending' && (
-          <ClayButton type="button" variant="ghost" onClick={() => onReject(item)} className="!px-4">
+          <ClayButton type="button" variant="warning" size="sm" onClick={() => onReject(item)}>
             <XCircle className="h-4 w-4" />
             驳回
           </ClayButton>
         )}
-        <ClayButton type="button" variant="secondary" onClick={() => onEdit(item)} className="!px-4">
+        <ClayButton type="button" variant="secondary" size="sm" onClick={() => onEdit(item)}>
           {item.status === 'pending' ? <Send className="h-4 w-4" /> : <Pencil className="h-4 w-4" />}
           {item.status === 'pending' ? '审核' : '编辑'}
         </ClayButton>

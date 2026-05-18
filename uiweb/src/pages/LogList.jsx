@@ -4,7 +4,7 @@ import {
   Clock, CalendarDays,
   Activity, AlertCircle, RefreshCw, CreditCard, Settings, Terminal,
   RotateCcw, FileText, TrendingUp, ShieldCheck, History, CheckCircle2, XCircle, X,
-  Cpu, Tag, ArrowDown, ArrowUp, Zap, Timer,
+  Cpu, Tag, ArrowDown, ArrowUp, Zap, Timer, Rows, LayoutGrid,
 } from 'lucide-react'
 import ClayCard from '../components/clay/ClayCard.jsx'
 import ClayButton from '../components/clay/ClayButton.jsx'
@@ -712,7 +712,7 @@ function LogCard({ log, onClick }) {
                   )
                 )}
                 <span
-                  className={`${showModelHeader ? 'font-mono text-[15px]' : 'text-sm'} font-black text-clay-ink break-all leading-snug`}
+                  className={`${showModelHeader ? 'text-[15px]' : 'text-sm'} font-black text-clay-ink break-all leading-snug tracking-tight`}
                   title={titleText}
                 >
                   {titleText}
@@ -721,25 +721,32 @@ function LogCard({ log, onClick }) {
 
               {/* Subtitle: actual routing target — group / real_model (slash separator) */}
               {showModelHeader && (
-                <div className="text-xs font-bold mt-1 leading-snug flex items-baseline gap-1.5 min-w-0">
+                <div className="text-xs font-bold mt-1 leading-snug break-all">
                   {hasAlias ? (
                     <>
                       {log.group && log.group !== log.requested_model_name && (
                         <>
-                          <span className="text-[#6b4d83] shrink-0">{log.group}</span>
-                          <span className="text-clay-faint/60 font-black shrink-0">/</span>
+                          <span className="text-[#6b4d83]">{log.group}</span>
+                          <span className="text-clay-faint/60 font-black mx-1.5">/</span>
                         </>
                       )}
-                      <span className="text-[#8a6a32] font-mono truncate min-w-0" title={log.model_name}>{log.model_name}</span>
+                      <span className="text-[#8a6a32]" title={log.model_name}>{log.model_name}</span>
                     </>
                   ) : log.group ? (
                     <>
-                      <span className="text-[#6b4d83] shrink-0">{log.group}</span>
-                      <span className="text-clay-faint/60 shrink-0">· 透传</span>
+                      <span className="text-[#6b4d83]">{log.group}</span>
+                      <span className="text-clay-faint/60 ml-1.5">· 透传</span>
                     </>
                   ) : (
                     <span className="text-clay-faint/60">透传</span>
                   )}
+                </div>
+              )}
+
+              {/* Error content banner — only for error logs */}
+              {isError && log.content && (
+                <div className="mt-2 px-3 py-2 rounded-clay-sm bg-red-50/80 shadow-clay-inset text-[11px] text-red-700 font-bold leading-relaxed break-all max-h-20 overflow-y-auto">
+                  {log.content}
                 </div>
               )}
             </div>
@@ -834,6 +841,12 @@ export default function LogList() {
   const [loading, setLoading] = useState(false)
   const [showFilter, setShowFilter] = useState(false)
   const [detailLog, setDetailLog] = useState(null)
+  const [viewMode, setViewMode] = useState(() => {
+    try { return localStorage.getItem('logs_view_mode') || 'card' } catch { return 'card' }
+  })
+  useEffect(() => {
+    try { localStorage.setItem('logs_view_mode', viewMode) } catch (_) {}
+  }, [viewMode])
   const requestSeq = useRef(0)
 
   const [filter, setFilter] = useState(() => defaultLogFilter())
@@ -990,6 +1003,34 @@ export default function LogList() {
       subtitle="查看 API 调用记录与消费明细"
       actions={
         <div className="flex items-center gap-2">
+          {!isMobile && (
+            <div className="inline-flex gap-1 p-1 rounded-clay-pill bg-clay-bg shadow-clay-inset" role="tablist" aria-label="视图切换">
+              <button
+                type="button"
+                onClick={() => setViewMode('list')}
+                className={`px-3 h-8 rounded-clay-pill text-xs font-extrabold inline-flex items-center gap-1 transition-all ${
+                  viewMode === 'list' ? 'bg-clay-bg text-clay-ink shadow-clay' : 'text-clay-faint'
+                }`}
+                aria-pressed={viewMode === 'list'}
+                title="单行列表"
+              >
+                <Rows className="w-3.5 h-3.5" />
+                列表
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode('card')}
+                className={`px-3 h-8 rounded-clay-pill text-xs font-extrabold inline-flex items-center gap-1 transition-all ${
+                  viewMode === 'card' ? 'bg-clay-bg text-clay-ink shadow-clay' : 'text-clay-faint'
+                }`}
+                aria-pressed={viewMode === 'card'}
+                title="卡片网格"
+              >
+                <LayoutGrid className="w-3.5 h-3.5" />
+                卡片
+              </button>
+            </div>
+          )}
           <ClayButton variant="ghost" onClick={refreshLatest} disabled={refreshing}>
             <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} /> 刷新
           </ClayButton>
@@ -1143,8 +1184,8 @@ export default function LogList() {
         </div>
       )}
 
-      {/* Unified card grid — same layout on all viewports */}
-      <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-3">
+      {/* Unified card grid — column count depends on view mode (list = 1 col wide rows, card = 2-col grid) */}
+      <div className={`grid ${isMobile || viewMode === 'list' ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-2'} gap-3`}>
         {loading && (
           <ClayCard className="!py-12 text-center col-span-full">
             <div className="flex flex-col items-center gap-3">

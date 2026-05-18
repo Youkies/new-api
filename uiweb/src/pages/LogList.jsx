@@ -114,13 +114,20 @@ function detectTopupSource(content) {
 function parseAmountsFromContent(content) {
   const s = String(content || '')
   const matches = []
-  const re = /¥\s*([\d,]+(?:\.\d+)?)/g
+  // Primary: currency symbol (¥/$/€/£/custom ¤) followed by a number. Symbol may be absent
+  //   for some backends (e.g. TOKENS mode), in which case we still capture the bare number
+  //   when it sits in a clearly numeric position.
+  const re = /([¥$€£¤])\s*([\d,]+(?:\.\d+)?)/g
   let m
-  while ((m = re.exec(s)) !== null) matches.push(m[1])
-  // Fallback：no ¥, try "支付金额: 1.00" / "充值金额: 1.000000"
+  while ((m = re.exec(s)) !== null) {
+    matches.push({ symbol: m[1] || '', value: m[2] })
+  }
+  // Fallback: explicit Chinese labels without symbol (TOKENS mode, etc.)
   if (matches.length === 0) {
-    const re2 = /(?:充值额度|充值金额|获得额度|支付金额|金额)[：:]\s*([\d,]+(?:\.\d+)?)/g
-    while ((m = re2.exec(s)) !== null) matches.push(m[1])
+    const re2 = /(?:充值额度|充值金额|获得额度|支付金额|金额|赠送)[：:]?\s*([\d,]+(?:\.\d+)?)/g
+    while ((m = re2.exec(s)) !== null) {
+      matches.push({ symbol: '', value: m[1] })
+    }
   }
   return matches
 }
@@ -758,14 +765,22 @@ function LogCard({ log, onClick }) {
 
   const showModelHeader = isConsume || isError
 
-  // Parse credit amount for topup / system reward (content carries ¥X.XXXX)
+  // Parse credit amount for topup / system reward (content carries currency symbol from backend logger)
   let creditAmount = null
+  let creditSymbol = ''
   let topupSource = null
   let payAmount = null
+  let paySymbol = ''
   if (isTopup || isSystem || isRefund) {
     const amounts = parseAmountsFromContent(log.content)
-    creditAmount = amounts[0] ? formatAmount(amounts[0]) : null
-    payAmount = amounts[1] ? formatAmount(amounts[1]) : null
+    if (amounts[0]) {
+      creditAmount = formatAmount(amounts[0].value)
+      creditSymbol = amounts[0].symbol
+    }
+    if (amounts[1]) {
+      payAmount = formatAmount(amounts[1].value)
+      paySymbol = amounts[1].symbol
+    }
     if (isTopup) topupSource = detectTopupSource(log.content)
   }
 
@@ -839,12 +854,12 @@ function LogCard({ log, onClick }) {
                 <div className="text-xs font-bold mt-1 leading-snug text-clay-faint">
                   {creditAmount ? (
                     <>
-                      <span className="text-clay-green-ink font-extrabold">+¥{creditAmount}</span>
+                      <span className="text-clay-green-ink font-extrabold">{creditSymbol}{creditAmount}</span>
                       <span className="mx-1.5 text-clay-faint/60">额度</span>
                       {payAmount && (
                         <>
                           <span className="text-clay-faint/60 font-black">·</span>
-                          <span className="ml-1.5">实付 ¥{payAmount}</span>
+                          <span className="ml-1.5">实付 {paySymbol}{payAmount}</span>
                         </>
                       )}
                     </>
@@ -856,7 +871,7 @@ function LogCard({ log, onClick }) {
 
               {isSystem && creditAmount && (
                 <div className="text-xs font-bold mt-1 leading-snug">
-                  <span className="text-clay-green-ink font-extrabold">+¥{creditAmount}</span>
+                  <span className="text-clay-green-ink font-extrabold">{creditSymbol}{creditAmount}</span>
                   <span className="ml-1.5 text-clay-faint/60">额度</span>
                 </div>
               )}
@@ -892,7 +907,7 @@ function LogCard({ log, onClick }) {
               {/* Topup / system amount from parsed content */}
               {(isTopup || isSystem) && creditAmount && (
                 <span className="text-base font-black tabular-nums whitespace-nowrap text-clay-green-ink">
-                  +¥{creditAmount}
+                  {creditSymbol}{creditAmount}
                 </span>
               )}
             </div>

@@ -13,7 +13,7 @@ import ClaySelect from '../components/clay/ClaySelect.jsx'
 import ClayModal from '../components/clay/ClayModal.jsx'
 import ClayConsoleShell from '../components/layout/ClayConsoleShell.jsx'
 import { useToast } from '../context/ToastContext.jsx'
-import { quotaToDisplay } from '../utils/quota.js'
+import { quotaToDisplay, getCurrencyConfig } from '../utils/quota.js'
 import { copyTextToClipboard } from '../utils/clipboard.js'
 import { getUserLogs, getUserLogsStat } from '../services/logs.js'
 import { createRefundAppeal, getRefundCandidates, listMyRefundAppeals } from '../services/refundAppeals.js'
@@ -765,7 +765,9 @@ function LogCard({ log, onClick }) {
 
   const showModelHeader = isConsume || isError
 
-  // Parse credit amount for topup / system reward (content carries currency symbol from backend logger)
+  // Parse credit amount for topup / system reward (content carries currency symbol from backend logger
+  // where the historical writes are inconsistent — fall back to global currency for missing symbol).
+  const globalCurrency = (isTopup || isSystem || isRefund) ? getCurrencyConfig() : null
   let creditAmount = null
   let creditSymbol = ''
   let topupSource = null
@@ -773,13 +775,14 @@ function LogCard({ log, onClick }) {
   let paySymbol = ''
   if (isTopup || isSystem || isRefund) {
     const amounts = parseAmountsFromContent(log.content)
+    const fallbackSymbol = globalCurrency?.symbol || ''
     if (amounts[0]) {
       creditAmount = formatAmount(amounts[0].value)
-      creditSymbol = amounts[0].symbol
+      creditSymbol = amounts[0].symbol || fallbackSymbol
     }
     if (amounts[1]) {
       payAmount = formatAmount(amounts[1].value)
-      paySymbol = amounts[1].symbol
+      paySymbol = amounts[1].symbol || fallbackSymbol
     }
     if (isTopup) topupSource = detectTopupSource(log.content)
   }

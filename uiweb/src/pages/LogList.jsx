@@ -743,9 +743,9 @@ function LogCard({ log, onClick }) {
                 </div>
               )}
 
-              {/* Error content banner — only for error logs */}
+              {/* Error content — plain red text, no pill styling */}
               {isError && log.content && (
-                <div className="mt-2 px-3 py-2 rounded-clay-sm bg-red-50/80 shadow-clay-inset text-[11px] text-red-700 font-bold leading-relaxed break-all max-h-20 overflow-y-auto">
+                <div className="mt-1.5 text-[11px] text-red-600 font-bold leading-relaxed break-all line-clamp-3">
                   {log.content}
                 </div>
               )}

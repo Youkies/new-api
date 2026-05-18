@@ -693,8 +693,7 @@ function LogCard({ log, onClick }) {
       <div className="flex items-start gap-3.5">
         {/* Unified big icon per category (no thinking/stream variation) */}
         <div
-          className={`w-11 h-11 rounded-full ${meta.bg} flex items-center justify-center shrink-0 mt-0.5
-            shadow-[2px_2px_4px_rgba(0,0,0,0.08),-1px_-1px_3px_rgba(255,255,255,0.6),inset_1px_1px_2px_rgba(255,255,255,0.4)]`}
+          className={`w-11 h-11 rounded-full ${meta.bg} flex items-center justify-center shrink-0 mt-0.5 shadow-clay-sm`}
         >
           <TypeIcon className={`w-5 h-5 ${meta.text}`} strokeWidth={2.5} />
         </div>
@@ -757,14 +756,14 @@ function LogCard({ log, onClick }) {
                 <span
                   className={`text-[10px] font-extrabold px-2 py-0.5 rounded-clay-pill ${
                     log.is_stream
-                      ? 'bg-clay-blue-100 text-[#43658b] shadow-clay'
+                      ? 'bg-clay-blue-100 text-[#43658b] shadow-clay-sm'
                       : 'bg-clay-bg shadow-clay-inset text-clay-faint'
                   }`}
                 >
                   {log.is_stream ? '流式' : '非流'}
                 </span>
               ) : (
-                <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-clay-pill ${meta.bg} ${meta.text}`}>
+                <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-clay-pill shadow-clay-sm ${meta.bg} ${meta.text}`}>
                   {meta.label}
                 </span>
               )}

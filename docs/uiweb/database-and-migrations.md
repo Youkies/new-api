@@ -428,4 +428,126 @@ CREATE INDEX idx_top_ups_provider_order_no ON top_ups (provider_order_no);
 - `tokens.debug_enabled`
 - `tokens.debug_connectivity_enabled`
 
+## 用户模型别名存档（feature 分支，**尚未 merge main**）
+
+> 来源分支：`feature/user-model-aliases-and-clay-logs`。完整功能与 Clay UI 设计沉淀见 `docs/feature-archive-and-clay-logs.md`。
+> **当前仅用 feature 镜像在测试机验证**，main 分支生产暂不需要执行下面的迁移。merge main 时同步本节并入"手动迁移检查清单"。
+
+#### 新表：`user_model_archives`
+
+用户级模型别名存档，每用户可建多个。
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| `id` | int unsigned PK | |
+| `user_id` | int unsigned | |
+| `name` | varchar | 用户可见名称 |
+| `slug` | varchar | `slugify(name)`，冲突自动加 `-2/-3/...` |
+| `description` | text | 可空 |
+| `share_code` | varchar | 10 位短码，全局唯一（nullable） |
+| `share_enabled` | bool | |
+| `created_time` / `updated_time` | bigint | 秒级时间戳 |
+| `deleted_at` | datetime | GORM soft-delete |
+
+约束：
+- `(user_id, slug)` 复合唯一索引。
+- `share_code` 全局唯一（nullable）。
+
+#### 新表：`user_model_aliases`
+
+存档内的别名 → 真实 (group, model) 映射。
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| `id` | int unsigned PK | |
+| `archive_id` | int unsigned | 外键 → `user_model_archives.id` |
+| `alias_name` | varchar | 别名（支持中文，禁用 `@` 与空白） |
+| `source_group` | varchar | relay 实际使用的分组 |
+| `source_model` | varchar | relay 实际使用的真实模型名 |
+| `disabled_reason` | text | 分享导入后无权限时打标 |
+| `created_time` / `updated_time` | bigint | 秒级时间戳（无 soft-delete） |
+
+约束：
+- `(archive_id, alias_name)` 复合唯一索引（仅存档内唯一，跨存档可重名）。
+
+#### 新列：`tokens.archive_id`
+
+Token 绑定的默认存档（nullable int unsigned）。relay 在请求未带显式 `slug@alias` 前缀时使用该存档解析别名。
+
+#### 新列：`logs.requested_model_name`
+
+落库用户实际输入的模型名（在 relay 改写为真实模型之前捕获）。展示在日志卡片主标题位置，与实际命中的 `model_name` 分别展示。
+
+#### `NODE_TYPE=slave` 手动 SQL
+
+MySQL 示例（PostgreSQL / SQLite 同等替换列类型即可，AutoMigrate 在 master 上跑就会生成对应建表语句，slave 只需对照执行）：
+
+```sql
+CREATE TABLE IF NOT EXISTS `user_model_archives` (
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
+  `user_id` int unsigned NOT NULL,
+  `name` varchar(191) NOT NULL,
+  `slug` varchar(191) NOT NULL,
+  `description` text,
+  `share_code` varchar(32) DEFAULT NULL,
+  `share_enabled` tinyint(1) NOT NULL DEFAULT 0,
+  `created_time` bigint DEFAULT NULL,
+  `updated_time` bigint DEFAULT NULL,
+  `deleted_at` datetime(3) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uniq_user_slug` (`user_id`, `slug`),
+  UNIQUE KEY `uniq_share_code` (`share_code`),
+  KEY `idx_user` (`user_id`),
+  KEY `idx_deleted_at` (`deleted_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `user_model_aliases` (
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
+  `archive_id` int unsigned NOT NULL,
+  `alias_name` varchar(191) NOT NULL,
+  `source_group` varchar(191) NOT NULL,
+  `source_model` varchar(191) NOT NULL,
+  `disabled_reason` text,
+  `created_time` bigint DEFAULT NULL,
+  `updated_time` bigint DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uniq_archive_alias` (`archive_id`, `alias_name`),
+  KEY `idx_archive` (`archive_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+ALTER TABLE `tokens` ADD COLUMN `archive_id` int unsigned DEFAULT NULL;
+ALTER TABLE `logs` ADD COLUMN `requested_model_name` varchar(191) DEFAULT '';
+```
+
+> ⚠️ 关键：archive/alias 表的时间列名是 `created_time` / `updated_time`（bigint 秒级时间戳），不是 `created_at` / `updated_at`（datetime）。`user_model_archives` 走 GORM soft-delete 保留 `deleted_at`；`user_model_aliases` 没有 soft-delete，**不要建 `deleted_at` 列**。
+>
+> 如果之前已经按错误列名建表，修复 SQL：
+>
+> ```sql
+> ALTER TABLE `user_model_archives`
+>   DROP COLUMN `created_at`, DROP COLUMN `updated_at`,
+>   ADD COLUMN `created_time` bigint DEFAULT NULL,
+>   ADD COLUMN `updated_time` bigint DEFAULT NULL;
+>
+> ALTER TABLE `user_model_aliases`
+>   DROP COLUMN `created_at`, DROP COLUMN `updated_at`, DROP COLUMN `deleted_at`,
+>   ADD COLUMN `created_time` bigint DEFAULT NULL,
+>   ADD COLUMN `updated_time` bigint DEFAULT NULL;
+> ```
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uniq_archive_alias` (`archive_id`, `alias_name`),
+  KEY `idx_archive` (`archive_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+ALTER TABLE `tokens` ADD COLUMN `archive_id` int unsigned DEFAULT NULL;
+ALTER TABLE `logs` ADD COLUMN `requested_model_name` varchar(191) DEFAULT '';
+```
+
+slave 节点上线顺序：
+
+1. 在 master（或日志库的写入侧）执行上述 SQL（或让 master 启动一次 AutoMigrate 自动生成）。
+2. 再 pull 新镜像启动 slave；slave 自身不会建表 / 加列。
+3. Token Redis 缓存：旧条目反序列化新 `archive_id` 字段会得到 nil → 自动降级为"未绑定"，安全；缓存自然 TTL 过期后即更新。
+
+
 如果数据库面板报多语句 SQL 错误，应拆成单条 `CREATE TABLE` 或单条 `ALTER TABLE` 执行。

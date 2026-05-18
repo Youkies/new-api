@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link2, Copy, Check, Globe2, Zap, AlertTriangle, Loader2 } from 'lucide-react'
+import { Link2, Copy, Check, Globe2, Zap, Loader2 } from 'lucide-react'
 import ClayAlert from '../components/clay/ClayAlert.jsx'
 import ClayCard from '../components/clay/ClayCard.jsx'
 import ClayButton from '../components/clay/ClayButton.jsx'
@@ -131,48 +131,49 @@ export default function ApiUrls() {
   return (
     <ClayConsoleShell title="API 地址" subtitle="选择一个地址作为请求 BaseURL，点击即可复制">
       {error && (
-        <ClayAlert tone="warning" className="max-w-4xl mb-5">
+        <ClayAlert tone="warning" className="max-w-6xl mb-5">
           {error}
         </ClayAlert>
       )}
 
       {loading ? (
-        <ClayCard className="max-w-4xl !py-14 text-center">
+        <ClayCard className="max-w-6xl !py-14 text-center">
           <div className="flex flex-col items-center gap-3 text-clay-faint">
             <Loader2 className="w-8 h-8 animate-spin" />
             <span className="font-bold">加载地址配置中…</span>
           </div>
         </ClayCard>
       ) : (
-        <div className="grid gap-5 md:grid-cols-2 max-w-4xl">
+        <div className="grid gap-4 sm:gap-5 sm:grid-cols-2 lg:grid-cols-3 max-w-6xl">
           {urls.map((item) => {
             const Icon = ICON_MAP[item.icon] || Link2
             const copied = copiedUrl === item.url
             return (
               <ClayCard
                 key={item.url}
-                className={`!p-7 ${TONE_CARD[item.tone] || TONE_CARD.blue}`}
+                className={`!p-5 sm:!p-6 flex flex-col ${TONE_CARD[item.tone] || TONE_CARD.blue}`}
               >
-                <div className="flex items-start gap-4 mb-5">
+                <div className="flex items-start gap-3 mb-4">
                   <div
-                    className={`w-12 h-12 rounded-full flex items-center justify-center shadow-clay-sm shrink-0 ${TONE_ICON[item.tone] || TONE_ICON.blue}`}
+                    className={`w-11 h-11 rounded-full flex items-center justify-center shadow-clay-sm shrink-0 ${TONE_ICON[item.tone] || TONE_ICON.blue}`}
                   >
                     <Icon className="w-5 h-5" strokeWidth={2.5} />
                   </div>
-                  <div className="min-w-0">
-                    <h3 className="text-xl font-black tracking-tight break-words">{item.label}</h3>
+                  <div className="min-w-0 flex-1">
+                    <h3 className="text-lg font-black tracking-tight break-words leading-tight">{item.label}</h3>
                     {item.desc && (
-                      <p className="text-sm text-clay-faint font-semibold mt-0.5 break-words">{item.desc}</p>
+                      <p className="text-xs text-clay-faint font-bold mt-1 leading-relaxed break-words">{item.desc}</p>
                     )}
                   </div>
                 </div>
 
-                <div className="rounded-clay px-4 py-3.5 mb-4 bg-clay-bg shadow-clay-inset font-mono text-sm md:text-base font-bold text-clay-ink break-all select-all">
+                <div className="rounded-clay px-3.5 py-3 mb-3 bg-clay-bg shadow-clay-inset font-mono text-[13px] font-bold text-clay-ink break-all select-all flex-1 flex items-center">
                   {item.url}
                 </div>
 
                 <ClayButton
                   variant="primary"
+                  size="sm"
                   className="w-full"
                   onClick={() => onCopy(item.url)}
                 >
@@ -194,19 +195,9 @@ export default function ApiUrls() {
         </div>
       )}
 
-      <ClayCard className="mt-8 max-w-4xl !p-6 bg-gradient-to-br from-clay-yellow-50 to-clay-yellow-100">
-        <div className="flex items-start gap-3">
-          <div className="w-10 h-10 rounded-full bg-white/60 shadow-clay-sm flex items-center justify-center shrink-0">
-            <AlertTriangle className="w-5 h-5 text-clay-pink-400" strokeWidth={2.5} />
-          </div>
-          <div className="text-sm leading-relaxed">
-            <div className="font-extrabold text-base mb-1">使用提示</div>
-            <p className="text-clay-ink/80">
-              上方地址会原样复制。部分 OpenAI 兼容客户端需要使用以 <code className="px-1.5 py-0.5 rounded-clay-sm bg-clay-surface/80 font-mono font-extrabold text-clay-blue-ink shadow-clay-xs">/v1</code> 结尾的 BaseURL，请按客户端要求填写。
-            </p>
-          </div>
-        </div>
-      </ClayCard>
+      <ClayAlert tone="warning" className="mt-6 max-w-6xl">
+        上方地址会原样复制。部分 OpenAI 兼容客户端需要使用以 <code className="px-1.5 py-0.5 rounded-clay-sm bg-clay-surface/80 font-mono font-extrabold text-clay-blue-ink shadow-clay-xs">/v1</code> 结尾的 BaseURL，请按客户端要求填写。
+      </ClayAlert>
 
       <ClayModal
         open={modalOpen}

@@ -817,16 +817,16 @@ export default function TopUp() {
               </div>
             </div>
 
-            <div className="mb-4 px-4 py-3 rounded-2xl shadow-clay-inset bg-clay-bg">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                <div className="text-sm text-clay-faint">实付金额</div>
+            <div className="mb-4 pt-4 px-1 border-t border-clay-line/10">
+              <div className="flex items-center justify-between gap-2">
+                <div className="text-sm font-extrabold text-clay-faint uppercase tracking-wider">实付金额</div>
                 <div className="flex items-baseline gap-2">
                   {hasDiscount && (
-                    <span className="text-sm text-clay-faint line-through">
+                    <span className="text-sm text-clay-faint line-through tabular-nums">
                       {originalAmount.toFixed(2)} 元
                     </span>
                   )}
-                  <span className="text-2xl font-black text-clay-pink-400">
+                  <span className="text-3xl font-black text-clay-pink-400 tabular-nums tracking-tight">
                     {amountLoading ? '…' : `${(amount || 0).toFixed(2)} 元`}
                   </span>
                 </div>
@@ -1079,34 +1079,34 @@ export default function TopUp() {
           </>
         }
       >
-        <div className="space-y-3 px-4 py-3 rounded-2xl shadow-clay-inset bg-clay-bg">
-          <div className="flex justify-between text-sm">
-            <span className="text-clay-faint">充值数量</span>
+        <div className="divide-y divide-clay-line/10">
+          <div className="flex justify-between text-sm py-2.5">
+            <span className="text-clay-faint font-bold">充值数量</span>
             <span className="font-bold">{topUpCount} 额度</span>
           </div>
-          <div className="flex justify-between text-sm items-baseline">
-            <span className="text-clay-faint">实付金额</span>
-            <span className="font-black text-clay-pink-400">{(amount || 0).toFixed(2)} 元</span>
+          <div className="flex justify-between text-sm items-baseline py-2.5">
+            <span className="text-clay-faint font-bold">实付金额</span>
+            <span className="font-black text-clay-pink-400 text-lg tabular-nums">{(amount || 0).toFixed(2)} 元</span>
           </div>
           {hasDiscount && (
             <>
-              <div className="flex justify-between text-xs">
-                <span className="text-clay-faint">原价</span>
-                <span className="line-through text-clay-faint">{originalAmount.toFixed(2)} 元</span>
+              <div className="flex justify-between text-xs py-2">
+                <span className="text-clay-faint font-bold">原价</span>
+                <span className="line-through text-clay-faint tabular-nums">{originalAmount.toFixed(2)} 元</span>
               </div>
-              <div className="flex justify-between text-xs">
-                <span className="text-clay-faint">折扣</span>
+              <div className="flex justify-between text-xs py-2">
+                <span className="text-clay-faint font-bold">折扣</span>
                 <span className="text-clay-green-ink font-bold">{Math.round(currentDiscount * 100)}%</span>
               </div>
-              <div className="flex justify-between text-xs">
-                <span className="text-clay-faint">已节省</span>
-                <span className="text-clay-green-ink font-bold">
+              <div className="flex justify-between text-xs py-2">
+                <span className="text-clay-faint font-bold">已节省</span>
+                <span className="text-clay-green-ink font-bold tabular-nums">
                   {(originalAmount - amount).toFixed(2)} 元
                 </span>
               </div>
             </>
           )}
-          <div className="flex justify-between text-sm items-center">
+          <div className="flex justify-between text-sm items-center py-2.5">
             <span className="text-clay-faint">支付方式</span>
             <span className="inline-flex items-center gap-2 font-bold">
               <PayMethodIcon type={payWay} className="w-4 h-4" />
@@ -1143,19 +1143,19 @@ export default function TopUp() {
               <QrCode className="w-20 h-20 text-clay-faint" />
             )}
           </div>
-          <div className="space-y-2 px-4 py-3 rounded-2xl shadow-clay-inset bg-clay-bg text-sm">
-            <div className="flex justify-between">
-              <span className="text-clay-faint">订单号</span>
+          <div className="divide-y divide-clay-line/10 text-sm">
+            <div className="flex justify-between py-2.5">
+              <span className="text-clay-faint font-bold">订单号</span>
               <span className="font-mono text-xs break-all text-right">{kpayOrder?.trade_no}</span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-clay-faint">实付金额</span>
-              <span className="font-black text-clay-pink-400">
+            <div className="flex justify-between py-2.5 items-baseline">
+              <span className="text-clay-faint font-bold">实付金额</span>
+              <span className="font-black text-clay-pink-400 text-lg tabular-nums">
                 {(Number(kpayOrder?.amount) || amount || 0).toFixed(2)} 元
               </span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-clay-faint">状态</span>
+            <div className="flex justify-between py-2.5">
+              <span className="text-clay-faint font-bold">状态</span>
               <span className="font-bold">{kpayStatusMeta.label}</span>
             </div>
           </div>

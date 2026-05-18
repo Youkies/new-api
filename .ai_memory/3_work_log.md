@@ -1,114 +1,59 @@
 # 工作日志
 
-> 2026-05-01 已压缩：2026-04-20~2026-04-29 的详细流水已折叠进 `0_archive_context.md` 与 `1_project_context.md`。这里之后只记录高信号节点。
+> 一行一节点。详细见 git log、`docs/`、`0_archive_context.md`。
+> 2026-05-01 已压缩 2026-04-20~2026-04-29；2026-05-18 二次压缩 2026-04-30 起的全部条目。
 
-- [2026-04-20] 初始化记忆库，确认项目是 Go AI API 网关/代理，前端美化采用独立 `uiweb`。
+- [2026-04-20] 初始化记忆库，确认 Go AI API 网关 / 代理，前端美化用独立 `uiweb`。
 - [2026-04-24] 完成 `uiweb` 基础骨架、访客页、登录后页面、Go embed 与 SPA fallback。
-- [2026-04-25] 重做 Pricing 与日志/令牌/仪表盘移动端体验，引入供应商图标和 Clay 卡片体系。
-- [2026-04-26] 完成根路由新 UI、`/legacy` 经典前端挂载、Zeabur Git 部署、头像功能、国内中转与 `system_prompt_to_user_prompt`。
-- [2026-04-27] 完成 API URL 页面、签到时区修复、今日消耗卡片、模型状态页与定价页视觉优化。
-- [2026-04-28] 完成公告系统、空回补偿申诉、Moon Clay 深色模式、新 UI 调试模式与 AI 助手第一版。
-- [2026-04-29] 完成 AI 助手历史对话、余额续聊分组/模型双选择、会员身份展示、Claude thinking 参数清洗、签到页精简、退款说明与常见报错 Q&A。
-- [2026-04-30 18:34] 新增渠道级“非流请求转上游流式”开关，服务端聚合上游 SSE 为非流 OpenAI JSON；`go test ./relay/channel/openai ./relay -count=1` 通过。
-- [2026-04-30 22:38] 使用提交 `20ce0426` 构建 Docker 生产镜像，并推送 `ghcr.io/youkies/new-api:latest` 与 `ghcr.io/youkies/new-api:20ce0426` 到 GHCR。
-- [2026-05-01 12:44] 压缩整理 `.ai_memory`：活动任务改为当前状态，项目上下文改为稳定知识，归档和工作日志改为主题索引。
-- [2026-05-01 21:00] 扩展 `non_stream_to_stream_enabled` 到 OpenAI 转 Gemini/Gemini-on-Vertex 上游，新增 Gemini SSE 聚合为 OpenAI 非流 JSON；`go test ./relay ./relay/channel/gemini ./relay/channel/openai ./relay/channel/vertex -count=1` 通过。
-- [2026-05-18 03:10] 新增用户级"模型别名存档"feature：每个用户可建多个存档（slug 自动生成），存档内别名仅自身唯一，Token 可绑定默认存档，请求支持 `slug/alias` 前缀显式覆盖；relay hook 在 `middleware/distributor.go` getModelRequest 之后改写 `modelRequest.Model` 与 `ContextKeyUsingGroup`，二次校验源分组权限；分享走服务端短码 + 可吊销，导入按权限自动给无源分组的别名打 `disabled_reason`。Clay UI 三个新页：`/archives`、`/archives/:id`、`/archives/share/:code`；TokenManage 加默认存档下拉框。`go test ./model ./service -count=1` 通过，`uiweb npm run build` 通过。
-- [2026-05-01 22:25] 新增 `empty_stream_diagnostic` 空流诊断日志，用户正常访问即可抓取首包前空关闭的渠道/模型/流状态/上游响应元信息；`go test ./relay ./relay/channel/openai ./relay/channel/gemini -count=1` 通过。
-- [2026-05-03 21:03] 完成新 UI 页面配置页、API 地址自定义、令牌复制兼容 fallback、移动端模型名换行与 Vite `/api-urls` 代理冲突修复；`go test ./model ./controller ./router` 和 `uiweb npm run build` 通过。
-- [2026-05-03 21:10] 复核并纳入 relay/error 客户端断开归一化改动，修复 channel affinity 测试唯一键碰撞；排除 `.tmp_mysql_migration/` 临时目录；`git diff --check`、相关 Go 测试和 `uiweb npm run build` 通过。
-- [2026-05-04 00:45] 修复 `ui_page_configs` 生产缺表读取回退，提交并推送 `dc5a8db6`；构建并推送 GHCR 镜像 `latest` / `dc5a8db6`，digest `sha256:70cb97ac09d3a38a8e23a9fccabdb637cef02179e8986fac5c235278eb8b1cfc`。
-- [2026-05-04 01:15] 完成通知中心体系、头像红点、公告/充值/申诉通知接入、通知管理后台和空回申诉一键通过所有；Go 相关测试、`uiweb npm run build` 与 `git diff --check` 通过。
-- [2026-05-04 11:58] 按产品语义将 `/admin/notifications` 从手工通知列表调整为自动通知策略设置页，新增 `ui_notification_settings`，支持充值和空回申诉各事件独立启停与确认要求；`go test ./model ./controller ./router` 与 `uiweb npm run build` 通过。
-- [2026-05-04 13:11] 压缩通知中心移动端 UI：短页头、横滑筛选、小统计条、紧凑通知卡，并在该页隐藏会员徽章与 AI 助手悬浮按钮；`uiweb npm run build` 与 `git diff --check` 通过。
-- [2026-05-04 14:29] 明确移动端优化边界：管理端主要电脑使用，不做移动端效率优化；后续排查和改动聚焦用户端新 UI。
-- [2026-05-04 14:35] 优化用户端移动端按钮与弹窗：日志页补空回/申诉记录按钮改短文案和固定高度，通用弹窗 footer 手机纵向铺满，令牌弹窗底部操作同步适配；`uiweb npm run build` 与 `git diff --check` 通过。
-- [2026-05-04 18:36] 修复日志页移动端页头挤压：普通用户端页头移动端标题区独占一行，操作按钮下移；会员徽章不换行且图标不压缩；`uiweb npm run build` 与 `git diff --check` 通过，本次按用户要求暂不推送。
-- [2026-05-04 18:37] 修复个人设置移动端选项卡：`ClayTabs` 支持横向滑动且单项不换行，避免账号/安全/通知/偏好被拆成竖排；`uiweb npm run build` 与 `git diff --check` 通过，暂不推送。
-- [2026-05-04 18:42] 调整通知卡片移动端阅读流程：正文默认折叠，需展开正文后才显示已读/知晓按钮，避免长公告撑爆列表；`uiweb npm run build` 与 `git diff --check` 通过，暂不推送。
-- [2026-05-04 19:02] 收紧令牌管理搜索区：搜索按钮改固定小尺寸图标按钮，输入框去掉默认底部空隙并垂直居中；`uiweb npm run build` 与 `git diff --check` 通过。
-- [2026-05-04 21:23] 完成签到系统分组额度改造：新增 `checkin_setting.group_quotas`，签到按用户分组选择奖励范围，经典后台可编辑 JSON；Go 相关测试、`uiweb npm run build`、经典后台 JSX Prettier check 与 `git diff --check` 通过。
-- [2026-05-04 21:34] 补齐新 UI `Standard 优` 会员标志：新增独立 membership tier、薄荷绿色徽章和 `BadgeCheck` 图标映射；`uiweb npm run build` 与 `git diff --check` 通过。
-- [2026-05-04 21:48] 修复分组签到配置中文后缀 key 兼容：配置写 `standard优`、`pro优` 等也会归一化命中；Go 相关测试与 `git diff --check` 通过。
-- [2026-05-04 22:01] 扩展新 UI 页面配置：`/admin/page-config` 支持编辑会员铭牌名称、短名和描述，保存到 `ui_page_config.membership_badges` option；用户侧会员展示从 `/api/ui/page-config` 加载覆盖；Go 相关测试、`uiweb npm run build` 与 `git diff --check` 通过。
-- [2026-05-04 22:18] 排查流式请求 600s 精确断开：本地代码未发现 600s relay 硬编码，重点锁定入口层/客户端总时长；记录 Zeabur 600s ingress 案例、Cloudflare 灰云 DNS-only 影响和下一步分层 A/B 测试。
-- [2026-05-04 22:36] 构建并推送 Docker 镜像到 GHCR：`ghcr.io/youkies/new-api:05e71fe0` 与 `latest`，digest `sha256:93d21924f76789c9dff8482c36512587469326467dd3d0c62ff0655e334760fb`。
-- [2026-05-04 22:40] 新增受环境变量和 token 保护的 `/api/debug/long-stream` SSE 诊断接口，用于在不调用上游模型的情况下验证 Zeabur/域名链路是否 600s 固定断开；`go test ./controller ./router` 与 `git diff --check` 通过。
-- [2026-05-04 23:02] 使用 `newapi-clay.youkies.space` 诊断接口进行 900s SSE 测试，连接在 `TOTAL=600.500145` 断开，最后事件 `elapsed=595`，确认 600s 问题不来自上游模型。
-- [2026-05-04 23:56] 整理会员体系 AI 小助手知识库文档，覆盖等级、升级门槛、分组识别、签到区间、折扣权益、Ultra 优 Claude 权益、常见问答和后台配置参考。
-- [2026-05-05 00:05] 补充用户常见报错文档：`Invalid URL (POST /v1)` 属于客户端地址路径不完整，区分 Base URL 与完整 chat completions endpoint，并提醒截图泄露 Key 后重置令牌。
-- [2026-05-05 00:12] 补充 Claude 工具调用常见报错：`tool_result` 必须对应上一条 assistant 的 `tool_use`，建议用户新建对话或关闭工具调用、插件、MCP、联网搜索后重试。
-- [2026-05-05 12:40] 复测 `newapi-clay.youkies.space` 长流诊断接口，SSE 完整持续 900s 并正常返回 `done`，curl `HTTP_CODE=200`、`TOTAL=901.044056`，600s 固定断开当前未复现。
-- [2026-05-06 23:33] 合并官方 `upstream/main` / `v1.0.0-rc.4`：保留 `uiweb` 为主 UI，官方 default 挂 `/default/`、classic 挂 `/legacy/`；修复 Claude file content 与 stream scanner 测试问题，生成 merge commit `1ebb0e1d`。
-- [2026-05-08 01:35] 整理三套 UI 长期策略：`uiweb` 继续主 UI，`/legacy/` 承担重管理，`/default/` 保留作备用参考；确认后续官方 default 更新优先借鉴逻辑而非替换主界面。
-- [2026-05-08 02:13] 复测生产无模型 SSE 诊断链路：`newapi-clay.youkies.space` 900s 长流完整返回 `done`，`TOTAL=901.670609`，未复现固定 600s 断开；国内 `newapi.youkies.cn` 诊断口当前为 404。
-- [2026-05-08 02:35] 从 git 历史取回归档前长记忆版本 `4f2a92bc`，结合当前记忆新增项目手册与 `docs/uiweb/` 专题文档，把细节从记忆库沉淀到可查阅文档。
-- [2026-05-08 02:42] 更新全局个性化设置 `C:/Users/Youkies/.codex/AGENTS.md`：明确记忆库只作索引，完整项目细节按需查 `docs/` 文档；仓库 `AGENTS.md` 不承载这条全局规则。
-- [2026-05-08 02:43] 完整复核复盘文档后再次规范化 `.ai_memory`：`1_project_context` 改为稳定索引，`2_active_task` 改为当前交接单，归档记录二次规范化原则。
-- [2026-05-08 02:50] 更正 Zeabur 部署事实：同项目内包含数据库和应用服务；正式网站使用本地 Docker 打包推 GHCR 的镜像，调试/验证部署使用 `NODE_TYPE=slave` 并随 GitHub push 自动构建。
-- [2026-05-08 02:58] 新增 `docs/memory-to-docs-migration-guide.md`，总结从旧长记忆库迁移到“轻量记忆 + 项目文档”模式的通用流程，便于复用到其他项目。
-- [2026-05-08 04:04] 记录本地验收偏好：功能修改后优先前台可见 debug 测试，完成后保留浏览器供用户手测；完整联调使用本地 gitignored `.env` 持久配置，不把具体凭据写入记忆。
-- [2026-05-08 04:15] 固化本地可见验收流程：`uiweb` 以 `0.0.0.0:5178` 启动，前台浏览器和局域网手机地址同步保留给用户手测。
-- [2026-05-08 04:38] 细化本地 UI 验收流程：`uiweb` dev server 已运行时优先依赖 Vite HMR，让用户直接看实时更新，非必要不重启。
-- [2026-05-08 05:11] 完成价格页移动端分组弹窗改造：新增 `group_details` 配置链路、经典控制台详细介绍输入、`uiweb` 查看分组弹窗，并通过 Go 测试、双前端构建和本地可见浏览器验收。
-- [2026-05-08 05:16] 按验收反馈压缩价格页顶部控件：缩小“查看分组”和当前分组状态条，移除供应商筛选，`uiweb npm run build` 通过。
-- [2026-05-08 05:20] 调整价格页分组控件顺序：当前分组在左、查看分组按钮在右，并压缩状态条以完整显示 `Claude-Antigravity` 长分组名。
-- [2026-05-08 05:29] 重排价格页分组区域：当前分组和详细介绍合并为信息框，搜索框与查看分组按钮并排，长分组名完整显示。
-- [2026-05-08 05:42] 调整价格页桌面端分组方案：保留分组胶囊墙，移除供应商筛选，分组 hover 显示简介与详细介绍。
-- [2026-05-08 05:57] 清理根目录临时诊断文件和 Playwright 产物，约定本地临时文件统一放入 git 忽略的 `.tmp/` 目录。
-- [2026-05-08 06:18] 优化日志页桌面筛选弹窗：去掉弹窗内部滚动，时间选择器浮层完整展开，保留前台浏览器给用户验收。
-- [2026-05-08 06:24] 隐藏日志筛选移动端弹窗、时间选择器和 ClaySelect 下拉列表的系统滚动条，保留滚动能力。
-- [2026-05-08 06:31] 价格页移动端分组弹窗顶部提示改为跟随当前 `user.group` 动态显示，并用前台 Chrome 验证普通用户不再固定显示 Pro/Ultra。
-- [2026-05-08 06:50] 调整首页移动端未登录布局：导航隐藏登录/注册，登录/注册放在 `Youkies API` 品牌与 `AI Gateway` 小标题之间且与品牌等高；登录态头像继续在右上角。
-- [2026-05-10 02:15] 完成渠道思维链输出拦截：新增 `strip_native_reasoning` 与 `strip_content_think_tags`，覆盖 OpenAI 流式/非流式/聚合输出，补齐 default 与 classic 设置入口、i18n 和文档。
-- [2026-05-10 19:18] 完成 Youkies 必吃榜第一版：新增模型评价、食评积分、积分兑换额度、后台奖励配置和审核/精选入口；`go test ./... -count=1`、`uiweb npm run build`、`git diff --check` 通过。
-- [2026-05-10 21:48] 部署东京 API-only 节点 `newapi-jp.youkies.space`：GHCR latest 镜像、`NODE_TYPE=slave`、Nginx 仅放行 `/v1` 和 `/api/status`，证书有效且容器 healthy；真实凭据记录在 git 忽略的 `.local/deployments/newapi-jp/`。
-- [2026-05-13 12:47] 按紧急更新安排搁置 Youkies 必吃榜：`main` 已通过 `7ac0b9a9` revert，代码保留在 `feature/youkies-must-eat-shelved`，当前生产库暂不执行必吃榜建表 SQL。
-- [2026-05-13 13:12] 完成 KPay 原生二维码充值接入：新增服务端下单/查单/回调入账、`uiweb` 站内扫码弹窗、classic KPay 设置入口和文档；Go 全量测试、两套前端构建、`git diff --check` 与本地 `5178` 预览通过。
-- [2026-05-13 14:38] 记录测试机约定：服务器迁移前的云悠美国机器 + 旧数据库作为 `newapi-test.youkies.space` 测试环境，push 后云悠自动构建，运行 `NODE_TYPE=master`。
-- [2026-05-13 15:11] 修复 classic 充值页未识别 KPay 的问题，并增强 KPay 创建平台订单失败日志，便于排查授权域名、商户通道和金额限制。
-- [2026-05-13 15:32] 根据 KPay `code=7` 下单失败日志定位到平台侧拒绝，记录优先排查 API Key IP 白名单、授权域名和手动指定商户；本地补了 `selected_merchant_id` 数值日志。
-- [2026-05-13 16:08] 读取 `kpay-epay-api` 本地文档，确认标准 API 会严格校验 IP、授权域名归属和 AI 巡查；当前测试环境日志显示 `selected_merchant_id=45`，建议先改为 `0` 自动选商户再测。
-- [2026-05-13 16:32] 调整 KPay 用户侧体验：去掉支付方式里的 KPay 前缀，KPay 与易支付同时配置时优先展示 KPay，扫码弹窗去掉底部按钮，并补移动端支付宝直跳、微信截图/保存二维码提示。
-- [2026-05-13 16:49] 从干净临时 worktree 构建并推送 GHCR 镜像 `ghcr.io/youkies/new-api:latest` 与 `:dec8db47`，digest 为 `sha256:b863a569fbcacc31b0387e3d363d1c500eeff485d5872ed4faf8221ee81ccfaf`。
-- [2026-05-13 18:28] 修复 KPay 移动端支付后不到账兜底：回跳地址改到 `/topup`，`uiweb` 兼容旧 `/console/topup` 并保存待支付订单，回跳/聚焦后自动查单补偿；新增 `top_ups.provider_order_no` 保存 KPay 平台单号。
-- [2026-05-13 18:37] 提交并推送 `99e845f1 修复 KPay 微信支付到账兜底`；从干净临时 worktree 构建并推送 GHCR 镜像 `latest` / `99e845f1`，digest `sha256:30b735b3c09420e04409dc05e281d14fe42b2b70919bb366d8eaba52f2b04a22`。
-- [2026-05-13 18:45] 按 KPay 回调协议调整 `/api/kpay/notify`：请求到达后统一 HTTP 200，body 用 `ok` / `fail` 表示业务结果，避免 400/403 被平台判定为接口不可用。
-- [2026-05-13 19:05] 提交并推送 `1927d4ae 兼容 KPay 回调 200 响应协议`；从干净临时 worktree 构建并推送 GHCR 镜像 `latest` / `1927d4ae`，digest `sha256:05f563517cbf7b0e5554207dc294c23db7d09b962a7032040cfcdb099bc6cd63`。
-- [2026-05-13 20:44] 为 `uiweb` 充值页新增最近订单历史和 KPay 待确认订单“检查到账”按钮，用户可自行触发查单补偿；`uiweb npm run build` 与 `git diff --check` 通过。
-- [2026-05-13 20:50] 优化 KPay 待支付订单恢复：用户关闭浏览器进程后再次进入充值页，会恢复扫码弹窗并立即查单一次，之后继续轮询。
-- [2026-05-13 20:57] 调整 KPay 订单状态语义：前端 `pending` 显示为“待支付/待到账”，后端查单明确失败、取消或过期时同步为 `failed` / `expired`；KPay 控制器测试和 `uiweb` 构建通过。
-- [2026-05-13 21:08] 对照 KPay 在线文档补齐查单通道状态：当顶层订单仍为 `pending` 但 `channels[].status` / `providerStatus` 为 `paid` 时，后端会按成功补偿入账。
-- [2026-05-13 21:13] 修正 KPay 过期订单展示：`uiweb` 最近订单列表加载后会静默查一次可见的 KPay 待支付订单，查到过期/失败/已支付后刷新列表状态。
-- [2026-05-13 21:18] 补 KPay 旧单兜底：无 `provider_order_no` 的 pending 单超过 15 分钟按过期返回，同时允许已支付回调覆盖本地 failed/expired 状态。
-- [2026-05-14 01:04] 修复 KPay 重复到账风险：`RechargeKPay` 改为订单状态原子切换后才加额度，并补充幂等/终态恢复测试。
-- [2026-05-14 01:09] 从临时干净 Docker context 构建并推送 GHCR 镜像 `latest` / `kpay-idempotent-20260514-0104`，digest `sha256:e15991833ca54c8ae59620dffb47dbad43120cf3e835841ad9386058396056ce`。
-- [2026-05-14 01:10] 记录 KPay 事故用户复现补充：支付后返回/刷新跳转页多次触发查单补偿，符合旧版非原子幂等导致重复到账的修复方向。
-- [2026-05-16 11:09] 补齐 classic `/legacy/` KPay 充值回调兜底：待支付订单本地保存/恢复、页面聚焦自动查单、账单列表静默查单和“检查到账”按钮；`web/classic npm run build` 与相关 `git diff --check` 通过。
-- [2026-05-16 19:33] 新增 `uiweb` 原生游乐场 `/playground`：头像下拉菜单入口接入“今天吃什么呀”随机工具，支持分类、自定义和今日记录；`uiweb npm run build`、`git diff --check` 与本地 Playwright 验收通过。
-- [2026-05-16 19:38] 将 `/playground` 调整为“小游戏列表 + 当前小游戏工作区”结构，当前显示“今天吃什么呀”已上线和 2 个待加入占位卡片；`uiweb npm run build` 与 Playwright 随机记录验收通过。
-- [2026-05-16 19:40] 为移动端进一步拆分游乐场：`/playground` 只保留小游戏列表，点击进入 `/playground/what-to-eat` 独立界面并提供返回；`uiweb npm run build` 与手机视口 Playwright 验收通过。
-- [2026-05-16 20:02] 扩展游乐场菜品体系：用户“我的菜单”保存到服务器，投稿菜品进入管理员审核池，审核编辑后加入公共菜品池；后端定向测试、`uiweb npm run build`、`git diff --check` 与 Playwright smoke test 通过。
-- [2026-05-16 20:14] 优化 `/playground/what-to-eat` 移动端：标题改紧凑模式、分类改横向滑动、抽奖卡只保留主按钮，清空/自定义/投稿入口移到侧栏卡片；`uiweb npm run build` 与 `git diff --check` 通过。
-- [2026-05-16 20:21] 修复手机内网调试入口：登录页在 dev 环境显示“进入调试模式”，受保护路由跳登录时保留 `?debug=1`；`uiweb npm run build`、`git diff --check` 与 Playwright 登录页跳回验证通过。
-- [2026-05-16 20:22] 收束“今天吃什么呀”操作入口：抽奖结果卡移除自定义/投稿按钮，统一放到“我的菜单”右上角；`uiweb npm run build` 与 `git diff --check` 通过。
-- [2026-05-16 20:35] 导入问卷菜谱：从 `000_快来丰富一下Youkies的菜谱_提交统计.xlsx` 去重整理出 200 个社区菜单候选，包含 `滨寿司`；`uiweb npm run build` 与 `git diff --check` 通过。
-- [2026-05-16 20:37] 将 `隔壁家的小孩` 作为“今天吃什么呀”整蛊彩蛋加入夜宵/小吃候选，并用描述明确这是问推荐的玩笑项；`uiweb npm run build` 与 `git diff --check` 通过。
-- [2026-05-16 20:44] 发布前复查并构建推送 Docker：定向 Go 测试、`uiweb` 构建、`web/classic` 构建通过；从干净 context 推送 `ghcr.io/youkies/new-api:latest` 与 `:release-20260516-2040`，digest `sha256:a10b71192f0f08bcfb74ea69b749ae5eed66e0e221cd111d0da19278241c559d`。
-- [2026-05-16 22:20] 新增管理员调试 Key 记录：管理员可在令牌管理开启调试 Key，后台 `/admin/debug-traces` 查看/删除/下载脱敏 `.log`；全量 Go 测试、`uiweb npm run build` 与 `git diff --check` 通过。
-- [2026-05-16 22:49] 验证 Claude assistant prefill 400 兼容思路，并新增 Anthropic 渠道级 `claude_assistant_prefill_compat` 开关。
-- [2026-05-16 23:06] 补齐 classic `/legacy/` Claude 渠道编辑页的预填充兼容开关，并修正新 UI 中文文案。
-- [2026-05-16 23:33] 从干净上下文构建并推送 GHCR 镜像 `latest` 与 `release-20260516-2331`，digest `sha256:17e6023c673b4e2c1ef7e9fc8c314c7aa28fb9766de52be324f74f13b2c97b96`。
-- [2026-05-16 23:35] 修复 uiweb 签到页自定义 emoji 货币符号导致金额换行，日历小格子改为只显示奖励数字。
-- [2026-05-16 23:49] 从干净上下文构建并推送 GHCR 镜像 `latest` 与 `release-20260516-2347`，digest `sha256:0cd9435202a46e9a9042b50a1493c3a9493f79a8480eacfb1dcb7182e4f5d63e`。
-- [2026-05-16 23:57] 修复 `debug_key_traces` MySQL 自动迁移将大字段降级为 `TEXT` 导致启动 fatal 的问题，改为 MySQL `LONGTEXT`。
-- [2026-05-17 00:01] 从干净上下文构建并推送 GHCR 镜像 `latest` 与 `release-20260516-2358`，digest `sha256:b898b97f1f23690dfefb4afb2e0cc9937604aa0e3606b11d8161b4c6b46c3818`。
-- [2026-05-17 17:45] 更新东京 API-only 节点 `newapi-jp.youkies.space`：远端拉取 GHCR `latest` digest `sha256:b898b97f1f23690dfefb4afb2e0cc9937604aa0e3606b11d8161b4c6b46c3818` 并重建容器；健康检查 200/404/401 通过，启动日志未见 fatal。
-- [2026-05-17 18:14] 为管理员调试 Key 新增 `/v1/debug/connectivity` 用户端连通性探测，后台调试记录页增加 cURL 复制卡片；定向 Go 测试、`uiweb npm run build` 与 `git diff --check` 通过。
-- [2026-05-17 18:24] 将连通性探测扩展为调试 Key 子开关 `debug_connectivity_enabled`：用户可直接替换原软件 Key 发起普通模型请求，服务端短路返回检测完成并写调试记录；定向 Go 测试、`uiweb npm run build` 与 `git diff --check` 通过。
-- [2026-05-17 18:27] 补齐连通性测试 Key 的流式客户端兼容：`stream=true` 时返回 OpenAI-compatible SSE 和 `[DONE]`；定向 Go 测试通过，全量 Go 测试仍卡在既有 `relay/helper` ticker panic。
-- [2026-05-17 18:50] 拉长连通性测试 Key 的流式探测：默认 60 秒、每 5 秒发送 SSE 进度，最后完成并 `[DONE]`；定向 router/controller/middleware/service 测试与 `git diff --check` 通过。
-- [2026-05-17 19:08] 在 `/admin/debug-traces` 增加连通性测试设置弹窗，支持保存流式时长、进度间隔和非流等待；定向 Go 测试、`git diff --check` 与 `uiweb npm run build` 通过。
-- [2026-05-18 01:24] 完成 KPay 管理员到账总览页 + 长期 pending 全局扫描：新增 `GET /api/ui/admin/topups/kpay` 与 `POST /api/ui/admin/topups/kpay/:trade_no/replay`，抽出 `reconcileKPayTopUp` 共用查单逻辑；`StartKPayPendingSweepTask` 每 5 分钟扫描 master 节点 `[now-7d, now-2min]` 窗口内的 pending 订单。从干净 worktree 推送 GHCR `ghcr.io/youkies/new-api:latest` / `:6feb0d81` / `:kpay-admin-topups-20260518`，digest `sha256:3a702820fdb689070e7f6f8db93ff42e02fc9fe82abc29b33e9943540a4df442`。
-- [2026-05-18 01:48] 新增 KPay 下单后短期高频跟踪：`SchedulePostCreateKPayWatch` 在 `RequestKPay` 保存平台单号后启动 master goroutine，按 25s/35s/45s/60s/90s/90s/2m/2m/2m 退避序列查单约 12 分钟，并发上限 200，订单脱离 pending 即提前退出，覆盖用户切后台 / 关浏览器 / webhook 延迟场景。从干净 worktree 推送 GHCR `latest` / `:3bd0f87f` / `:kpay-post-create-watch-20260518`，digest `sha256:d34a9cb76551f4e81cc1d412737a2f7278c6cb81db66c26122ce38c49b561228`。
-- [2026-05-18 02:05] 确认 slave 节点不跑 KPay watcher / 全局扫描（以及订阅 reset、Codex refresh、AutoTestChannels 等所有 `IsMasterNode` 后台任务）；用户在 slave 测试机上观察到 watcher 未生效是预期行为，正式生产侧验证良好。规则并入 `1_project_context.md` 部署约束。
+- [2026-04-25] 重做 Pricing 与日志 / 令牌 / 仪表盘移动端，引入供应商图标和 Clay 卡片体系。
+- [2026-04-26] 完成根路由新 UI、`/legacy` 经典前端挂载、Zeabur Git 部署、头像功能、国内中转。
+- [2026-04-27] 完成 API URL 页、签到时区修复、今日消耗卡、模型状态与定价页视觉优化。
+- [2026-04-28] 完成公告系统、空回补偿申诉、Moon Clay 深色模式、调试模式与 AI 助手第一版。
+- [2026-04-29] AI 助手历史对话 / 余额续聊 / 会员展示 / Claude thinking 参数清洗 / 签到精简 / 退款说明 / 报错 Q&A。
+- [2026-04-30] 渠道级"非流转上游流式"开关；推 GHCR `20ce0426` / `latest`。
+- [2026-05-01] 压缩记忆库；扩展 non_stream_to_stream 到 Gemini / Vertex；新增 `empty_stream_diagnostic` 空流诊断。
+- [2026-05-03] 页面配置页、API 地址自定义、令牌复制 fallback、移动端模型名换行、Vite 代理修复、relay 客户端断开归一化。
+- [2026-05-04 00:45] 修 `ui_page_configs` 生产缺表回退；推 GHCR `dc5a8db6`。
+- [2026-05-04] 通知中心体系（含红点、自动通知策略 `ui_notification_settings`、移动端压缩）；用户端按钮 / 弹窗 / 个人设置选项卡 / 通知卡折叠多项移动端优化；明确"管理端不做移动端优化"边界。
+- [2026-05-04] 签到分组额度（`checkin_setting.group_quotas`）+ Standard 优会员徽章 + 中文 key 兼容 + 页面配置编辑会员铭牌。
+- [2026-05-04 22:18] 排查流式 600s 断开：本地无 600s 硬编码，锁定入口层。
+- [2026-05-04 22:36] 推 GHCR `05e71fe0` / `latest`。
+- [2026-05-04 22:40] 新增 `/api/debug/long-stream` 诊断接口；900s SSE 测试在 600s 断开，确认非上游问题。
+- [2026-05-04~05] 整理会员体系 AI 助手知识库 + 用户常见报错文档（`Invalid URL`、Claude `tool_result` 顺序等）。
+- [2026-05-05 12:40] 复测 900s 长流完整返回 `done`，600s 当前未复现。
+- [2026-05-06] 合并官方 `v1.0.0-rc.4`：`uiweb` 主 UI、`/legacy/`、`/default/` 三套并存；merge commit `1ebb0e1d`。
+- [2026-05-08] 整理三套 UI 长期策略；从 `4f2a92bc` 取回长记忆并沉淀到 `docs/project-handbook.md` + `docs/uiweb/`；规范 `.ai_memory` 为轻量索引。
+- [2026-05-08] 复盘 + 二次规范化记忆库；更正 Zeabur 部署事实；新增 `docs/memory-to-docs-migration-guide.md`；固化本地可见验收流程（`0.0.0.0:5178` + HMR 优先）。
+- [2026-05-08] 价格页移动端"查看分组"弹窗 + `group_details` 配置链路；多轮压缩 / 重排（分组胶囊墙、当前分组在左、移除供应商筛选）。
+- [2026-05-08 06:18] 日志页桌面筛选弹窗去内部滚动 + 时间选择器浮层完整展开。
+- [2026-05-10] 渠道思维链拦截：`strip_native_reasoning` + `strip_content_think_tags` 覆盖 OpenAI 流 / 非流 / 聚合输出。
+- [2026-05-10 19:18] Youkies 必吃榜第一版完成（评价 / 积分 / 兑换 / 后台）。
+- [2026-05-10] 部署东京 API-only 节点 `newapi-jp.youkies.space`（slave / Nginx 仅放 `/v1` `/api/status`）。
+- [2026-05-13 12:47] 必吃榜从 main revert（`7ac0b9a9`），代码留在 `feature/youkies-must-eat-shelved`；**生产库不要执行必吃榜建表 SQL**。
+- [2026-05-13] KPay 原生二维码充值接入：下单 / 查单 / 回调 / `uiweb` 站内扫码 / classic KPay 设置。
+- [2026-05-13~14] KPay 多轮迭代：码=7 排查、用户体验调整（去 KPay 前缀、移动端支付宝直跳、微信截图提示）、回跳兜底、`top_ups.provider_order_no`、回调 200 协议、订单历史 + "检查到账"、`pending → failed/expired` 状态语义、`channels[].status` 映射、过期订单兜底、原子幂等修复重复到账。多次推 GHCR：`dec8db47` / `99e845f1` / `1927d4ae` / `kpay-idempotent-20260514-0104`。
+- [2026-05-16] classic `/legacy/` KPay 回跳兜底（本地保存 / 聚焦查单 / "检查到账"按钮）。
+- [2026-05-16] `/playground` 游乐场上线："今天吃什么呀"随机工具 + 我的菜单（服务端私有）+ 公共菜品池审核 + 移动端独立路由；问卷 200 条社区菜单导入。
+- [2026-05-16] 管理员调试 Key 记录上线（`/admin/debug-traces`，脱敏、下载 `.log`）；Claude assistant prefill 渠道级兼容开关；签到自定义 emoji 货币换行修复。多次推 GHCR `release-20260516-2040` / `-2331` / `-2347` / `-2358`。
+- [2026-05-16 23:57] 修 `debug_key_traces` MySQL 大字段（`LONGTEXT`）自动迁移崩溃。
+- [2026-05-17] 东京节点更新到 GHCR latest 最新 digest，健康检查通过。
+- [2026-05-17] 调试 Key 连通性探测：`/v1/debug/connectivity` + `tokens.debug_connectivity_enabled` 子开关 + SSE 兼容（60s / 5s 进度 / `[DONE]`）+ 管理端设置弹窗。
+- [2026-05-18 01:24] KPay 管理员到账总览页 + `StartKPayPendingSweepTask` 5 分钟全局扫描；推 GHCR `6feb0d81` / `:kpay-admin-topups-20260518`。
+- [2026-05-18 01:48] KPay `SchedulePostCreateKPayWatch` 下单后高频跟踪（25s/35s/...，12 分钟覆盖切后台 / webhook 延迟）；推 GHCR `3bd0f87f` / `:kpay-post-create-watch-20260518`。
+- [2026-05-18 02:05] 确认 slave 节点不跑所有 `IsMasterNode` 后台任务（KPay watcher / 全局扫描 / 订阅 reset / Codex refresh / AutoTestChannels），并入 `1_project_context.md`。
+- [2026-05-18] **feature 分支 `feature/user-model-aliases-and-clay-logs` 启动**：用户模型别名存档 + Clay 日志卡片化。v1→v3.5 共 7 个 commit，最终 `67e307ea` + 镜像 `:feature-aliases-and-clay-logs-67e307ea`，`:latest` 未动，仅测试机验证。
+- [2026-05-18] feature 分支 v4 `bab13de8`：日志卡片主副标题层级 + 统一类别图标 + 4 位金额；镜像 `:feature-aliases-and-clay-logs-bab13de8`。
+- [2026-05-18] feature 分支 v5 `c918c3ab`：全局 `--clay-shadow*` inset 翻转为 CONVEX（修正旧版外凸内凹冲突）+ LogList 单 chip + 副标题 alias=group 去冗余 + TokenManage archive 绑定 chip / 未绑定 CTA。
+- [2026-05-18] feature 分支 v5.1 `d3c50718`：去 `.clay-card` 2px 白边 + 高光降到哑光范围（消除塑料反光感）。
+- [2026-05-18] feature 分支 v5.2 `ad332abb`：移动副标题 break-all + 桌面 grid 固定 md:2 + 错误日志显示 + 桌面卡片/列表切换 + 去 `font-mono`。
+- [2026-05-18] feature 分支 v5.3 `e0ab495a`：错误信息去胶囊化，改纯红字 + 3 行 line-clamp。
+- [2026-05-18] feature 分支 v5.4 `aa428dbb`：所有小胶囊改 `shadow-clay-sm`（旧 shadow-clay 偏移过大反而扁）+ 内高光 0.38→0.55；TokenManage 全面重做（状态 dot+文字、4 位小数 hero 数字、密钥 clay-inset 胶囊、3 个圆形黏土操作按钮、表头 `创建` 前缀）。**最新镜像 `:feature-aliases-and-clay-logs-aa428dbb`，digest `sha256:1aac137a81cb394d7c893d147d698df4f9d7445ffe4dd78414be7a2a774f6275`**。
+- [2026-05-18 13:30] 整理记忆库：feature 完整实现 / 13 轮 commit 表 / Clay 设计模式 / 阴影修正原理沉淀到 `docs/feature-archive-and-clay-logs.md`；archive 表 / 列 + slave SQL 追加到 `docs/uiweb/database-and-migrations.md`；`2_active_task.md` 540→76 行，仅留当前分支 + slave 迁移清单 + **下一步：全 uiweb Clay 风格审查**；`3_work_log.md` 二次压缩。
+- [2026-05-18 18:00~20:00] feature 分支 v6 全 uiweb Clay 风格审查 + 适配：基础组件库重构（新增 ClayIconButton/ClayBadge/ClayInsetPanel/ClayEmptyState，增强 ClayButton size + danger/warning variant、ClayCard density、ClayInput leftIcon、ClayStat 标准化）+ 全局 ink 色 token 注册 + 26 个文件批量替换硬编码色 → 提交 `a19acca7`，镜像 `:feature-aliases-and-clay-logs-a19acca7`。
+- [2026-05-18 20:30] v6.1 充值订单去凹陷（桌面单卡 hairline 多行 / 移动卡片）+ 令牌桌面端列表/卡片切换器（localStorage 持久化） → `72c6c122`。
+- [2026-05-18 21:00] v6.2 TopUp 实付金额块去 inset 凹槽改 hairline + 大字 hero → `2b884752`。
+- [2026-05-18 21:30] v6.3 日志卡片金额展示（充值/签到从 content 正则提取 ¥X）+ 错误卡突出 + 详情 modal 错误信息点击复制 + 底部 pageSize 10/20/50/100 选择器 → `05cc7edc`。
+- [2026-05-18 22:00] v6.5 修白屏（LogDetailContent 漏 import Copy 图标）+ 去错误卡粉色凹槽框 + 去 meta 行重复模型名 → `8b5dec7f`。
+- [2026-05-18 22:30] v6.7 充值/签到/退款金额符号始终用全局 `getCurrencyConfig()` 渲染（历史 content 写入符号不再被沿用，切换货币时全局一致）→ `ad0d3e83`。
+- [2026-05-18 23:00] v6.10 PayMethodIcon 改 SVG 内嵌双层 clay 图标（外圈中性 clay 渐变 + 内圈品牌色 + 中心白色 SimpleIcons logo path），修复 v6.9 用 `p-[12%]` 百分比 padding 相对父容器导致内圈坍缩的 bug → `ff5372b0`。
+- [2026-05-18 23:30] feature 分支 v6 系列收口，准备合并 main。

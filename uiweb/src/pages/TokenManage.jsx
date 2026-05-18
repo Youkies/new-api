@@ -3,6 +3,7 @@ import {
   KeyRound, Plus, Search, Copy, Trash2, Eye, EyeOff,
   ToggleLeft, ToggleRight, Pencil, ChevronLeft, ChevronRight,
   Clock, Shield, Layers, Infinity, RefreshCw, Bug, Wifi, Tag,
+  Rows, LayoutGrid,
 } from 'lucide-react'
 import ClayCard from '../components/clay/ClayCard.jsx'
 import ClayButton from '../components/clay/ClayButton.jsx'
@@ -209,6 +210,14 @@ export default function TokenManage() {
 
   const [revealedKeys, setRevealedKeys] = useState({})
   const [expandedRow, setExpandedRow] = useState(null)
+  const [desktopView, setDesktopView] = useState(() => {
+    if (typeof window === 'undefined') return 'list'
+    try { return window.localStorage?.getItem('uiweb.tokens.desktopView') === 'card' ? 'card' : 'list' } catch (_) { return 'list' }
+  })
+  const setDesktopViewPersisted = useCallback((v) => {
+    setDesktopView(v)
+    try { window.localStorage?.setItem('uiweb.tokens.desktopView', v) } catch (_) {}
+  }, [])
 
   const pageSize = 20
 
@@ -417,11 +426,47 @@ export default function TokenManage() {
         </ClayButton>
       </form>
 
-      {/* Table (desktop) / Cards (mobile) */}
-      {isMobile ? (
-        <div className="space-y-3">
+      {/* Desktop view toggle (list / card) */}
+      {!isMobile && (
+        <div className="flex justify-end mb-4">
+          <div className="inline-flex items-center gap-1 p-1 rounded-clay-pill bg-clay-bg shadow-clay-inset-sm">
+            <button
+              type="button"
+              onClick={() => setDesktopViewPersisted('list')}
+              className={`inline-flex items-center gap-1.5 px-4 py-1.5 rounded-clay-pill text-xs font-black transition-all duration-200 ease-clay ${
+                desktopView === 'list'
+                  ? 'bg-clay-surface text-clay-ink shadow-clay-sm'
+                  : 'text-clay-faint hover:text-clay-ink'
+              }`}
+              aria-pressed={desktopView === 'list'}
+              title="单行列表"
+            >
+              <Rows className="w-3.5 h-3.5" strokeWidth={2.5} />
+              列表
+            </button>
+            <button
+              type="button"
+              onClick={() => setDesktopViewPersisted('card')}
+              className={`inline-flex items-center gap-1.5 px-4 py-1.5 rounded-clay-pill text-xs font-black transition-all duration-200 ease-clay ${
+                desktopView === 'card'
+                  ? 'bg-clay-surface text-clay-ink shadow-clay-sm'
+                  : 'text-clay-faint hover:text-clay-ink'
+              }`}
+              aria-pressed={desktopView === 'card'}
+              title="卡片网格"
+            >
+              <LayoutGrid className="w-3.5 h-3.5" strokeWidth={2.5} />
+              卡片
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Table (desktop list) / Cards (mobile or desktop card) */}
+      {isMobile || desktopView === 'card' ? (
+        <div className={isMobile ? 'space-y-3' : 'grid grid-cols-2 xl:grid-cols-3 gap-4'}>
           {loading && (
-            <ClayCard className="!py-12 text-center">
+            <ClayCard className="!py-12 text-center col-span-full">
               <div className="flex flex-col items-center gap-3">
                 <RefreshCw className="w-8 h-8 text-clay-faint animate-spin" />
                 <span className="text-clay-faint font-bold">加载中…</span>
@@ -429,7 +474,7 @@ export default function TokenManage() {
             </ClayCard>
           )}
           {!loading && tokens.length === 0 && (
-            <ClayCard className="!py-12 text-center">
+            <ClayCard className="!py-12 text-center col-span-full">
               <div className="flex flex-col items-center gap-3">
                 <KeyRound className="w-10 h-10 text-clay-faint/50" />
                 <span className="text-clay-faint font-bold">暂无令牌</span>

@@ -922,81 +922,145 @@ export default function TopUp() {
           </ClayAlert>
         )}
 
-        <div className="space-y-3">
-          {ordersLoading ? (
-            <div className="rounded-2xl shadow-clay-inset bg-clay-bg px-4 py-6 text-sm font-bold text-clay-faint text-center">
-              正在加载订单…
-            </div>
-          ) : topupOrders.length === 0 ? (
-            <div className="rounded-2xl shadow-clay-inset bg-clay-bg px-4 py-6 text-sm font-bold text-clay-faint text-center">
-              暂无充值订单
-            </div>
-          ) : (
-            topupOrders.map((order) => {
-              const statusMeta = getTopupStatusMeta(order.status)
-              const checking = checkingTradeNo === order.trade_no
-              return (
-                <div
-                  key={order.id || order.trade_no}
-                  className="rounded-2xl shadow-clay-inset bg-clay-bg px-4 py-3 grid gap-3 lg:grid-cols-[minmax(0,1.6fr)_minmax(120px,0.7fr)_minmax(110px,0.65fr)_minmax(90px,0.55fr)_auto] lg:items-center"
-                >
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2 text-xs font-bold text-clay-faint mb-1">
-                      <Clock3 className="w-3.5 h-3.5" />
-                      {formatTopupTime(order.create_time)}
-                    </div>
-                    <div className="font-mono text-xs font-black break-all text-clay-ink">
-                      {order.trade_no || '-'}
-                    </div>
-                    {order.provider_order_no ? (
-                      <div className="mt-1 font-mono text-[11px] text-clay-faint break-all">
-                        {order.provider_order_no}
+        {ordersLoading ? (
+          <div className="rounded-clay shadow-clay-inset-sm bg-clay-bg/60 px-4 py-6 text-sm font-bold text-clay-faint text-center">
+            正在加载订单…
+          </div>
+        ) : topupOrders.length === 0 ? (
+          <div className="rounded-clay shadow-clay-inset-sm bg-clay-bg/60 px-4 py-6 text-sm font-bold text-clay-faint text-center">
+            暂无充值订单
+          </div>
+        ) : (
+          <>
+            {/* Desktop: single-row inside one elevated card with hairline rows */}
+            <div className="hidden lg:block rounded-clay-lg bg-clay-surface shadow-clay overflow-hidden">
+              <div className="px-6 py-3 grid grid-cols-[minmax(0,1.6fr)_minmax(140px,0.9fr)_minmax(110px,0.65fr)_minmax(110px,0.65fr)_minmax(180px,auto)] gap-4 items-center text-[11px] font-black uppercase tracking-wider text-clay-faint border-b border-clay-line/10">
+                <span>订单 / 时间</span>
+                <span>支付方式</span>
+                <span>充值数量</span>
+                <span>实付金额</span>
+                <span className="text-right">状态</span>
+              </div>
+              {topupOrders.map((order) => {
+                const statusMeta = getTopupStatusMeta(order.status)
+                const checking = checkingTradeNo === order.trade_no
+                return (
+                  <div
+                    key={order.id || order.trade_no}
+                    className="px-6 py-4 grid grid-cols-[minmax(0,1.6fr)_minmax(140px,0.9fr)_minmax(110px,0.65fr)_minmax(110px,0.65fr)_minmax(180px,auto)] gap-4 items-center border-b border-clay-line/10 last:border-0 transition-colors hover:bg-clay-bg/40"
+                  >
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5 text-xs font-bold text-clay-faint mb-1">
+                        <Clock3 className="w-3.5 h-3.5" />
+                        {formatTopupTime(order.create_time)}
                       </div>
-                    ) : null}
-                  </div>
-
-                  <div className="flex items-center justify-between gap-3 lg:block">
-                    <span className="text-xs font-bold text-clay-faint lg:block">支付方式</span>
-                    <div className="inline-flex items-center gap-2 font-black text-sm">
-                      <PayMethodIcon type={order.payment_method} className="w-5 h-5" />
-                      <span>{getTopupProviderName(order)} · {getPayMethodName(order.payment_method)}</span>
+                      <div className="font-mono text-xs font-black break-all text-clay-ink">
+                        {order.trade_no || '-'}
+                      </div>
+                      {order.provider_order_no ? (
+                        <div className="mt-1 font-mono text-[11px] text-clay-faint break-all">
+                          {order.provider_order_no}
+                        </div>
+                      ) : null}
                     </div>
-                  </div>
-
-                  <div className="flex items-center justify-between gap-3 lg:block">
-                    <span className="text-xs font-bold text-clay-faint lg:block">充值数量</span>
+                    <div className="inline-flex items-center gap-2 font-black text-sm min-w-0">
+                      <PayMethodIcon type={order.payment_method} className="w-5 h-5 shrink-0" />
+                      <span className="truncate">{getTopupProviderName(order)} · {getPayMethodName(order.payment_method)}</span>
+                    </div>
                     <div className="font-black text-sm">{Number(order.amount || 0)} 额度</div>
-                  </div>
-
-                  <div className="flex items-center justify-between gap-3 lg:block">
-                    <span className="text-xs font-bold text-clay-faint lg:block">实付金额</span>
                     <div className="font-black text-clay-pink-400 text-sm">
                       {(Number(order.money) || 0).toFixed(2)} 元
                     </div>
+                    <div className="flex items-center justify-end gap-3">
+                      <span className="inline-flex items-center gap-1.5 text-xs font-extrabold text-clay-ink whitespace-nowrap">
+                        <span className={`inline-block w-2 h-2 rounded-full shadow-clay-xs ${statusMeta.dot}`} aria-hidden="true" />
+                        {statusMeta.label}
+                      </span>
+                      {canCheckTopupOrder(order) ? (
+                        <button
+                          type="button"
+                          onClick={() => checkTopupOrder(order)}
+                          disabled={checking}
+                          className="inline-flex h-8 items-center justify-center gap-1.5 rounded-clay-pill bg-clay-blue-100 px-3 text-xs font-black text-clay-blue-ink shadow-clay-sm transition-all duration-200 ease-clay hover:shadow-clay-hover active:scale-95 active:shadow-clay-active disabled:opacity-60"
+                        >
+                          <RefreshCw className={`w-3.5 h-3.5 ${checking ? 'animate-spin' : ''}`} />
+                          {checking ? '检查中' : '检查到账'}
+                        </button>
+                      ) : null}
+                    </div>
                   </div>
+                )
+              })}
+            </div>
 
-                  <div className="flex items-center justify-between gap-3 lg:justify-end">
-                    <span className="inline-flex items-center gap-1.5 text-xs font-extrabold text-clay-ink">
-                      <span className={`inline-block w-2 h-2 rounded-full shadow-clay-xs ${statusMeta.dot}`} aria-hidden="true" />
-                      {statusMeta.label}
-                    </span>
-                    {canCheckTopupOrder(order) ? (
-                      <button
-                        type="button"
-                        onClick={() => checkTopupOrder(order)}
-                        disabled={checking}
-                        className="inline-flex h-9 items-center justify-center gap-1.5 rounded-clay-pill bg-clay-blue-100 px-3 text-xs font-black text-clay-blue-ink shadow-clay-sm transition-all duration-200 ease-clay hover:shadow-clay-hover active:scale-95 active:shadow-clay-active disabled:opacity-60"
-                      >
-                        <RefreshCw className={`w-3.5 h-3.5 ${checking ? 'animate-spin' : ''}`} />
-                        {checking ? '检查中' : '检查到账'}
-                      </button>
-                    ) : null}
+            {/* Mobile: each order is its own elevated clay card */}
+            <div className="space-y-3 lg:hidden">
+              {topupOrders.map((order) => {
+                const statusMeta = getTopupStatusMeta(order.status)
+                const checking = checkingTradeNo === order.trade_no
+                return (
+                  <div
+                    key={order.id || order.trade_no}
+                    className="rounded-clay bg-clay-surface shadow-clay-sm px-4 py-3.5 space-y-3"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5 text-xs font-bold text-clay-faint mb-1">
+                          <Clock3 className="w-3.5 h-3.5" />
+                          {formatTopupTime(order.create_time)}
+                        </div>
+                        <div className="font-mono text-xs font-black break-all text-clay-ink">
+                          {order.trade_no || '-'}
+                        </div>
+                        {order.provider_order_no ? (
+                          <div className="mt-1 font-mono text-[11px] text-clay-faint break-all">
+                            {order.provider_order_no}
+                          </div>
+                        ) : null}
+                      </div>
+                      <span className="inline-flex items-center gap-1.5 text-xs font-extrabold text-clay-ink whitespace-nowrap shrink-0">
+                        <span className={`inline-block w-2 h-2 rounded-full shadow-clay-xs ${statusMeta.dot}`} aria-hidden="true" />
+                        {statusMeta.label}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3 text-sm pt-3 border-t border-clay-line/10">
+                      <div>
+                        <div className="text-[11px] font-bold text-clay-faint mb-1">支付方式</div>
+                        <div className="inline-flex items-center gap-2 font-black">
+                          <PayMethodIcon type={order.payment_method} className="w-4 h-4 shrink-0" />
+                          <span className="truncate">{getPayMethodName(order.payment_method)}</span>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-[11px] font-bold text-clay-faint mb-1">充值数量</div>
+                        <div className="font-black">{Number(order.amount || 0)} 额度</div>
+                      </div>
+                      <div>
+                        <div className="text-[11px] font-bold text-clay-faint mb-1">实付金额</div>
+                        <div className="font-black text-clay-pink-400">
+                          {(Number(order.money) || 0).toFixed(2)} 元
+                        </div>
+                      </div>
+                      {canCheckTopupOrder(order) ? (
+                        <div className="text-right self-end">
+                          <button
+                            type="button"
+                            onClick={() => checkTopupOrder(order)}
+                            disabled={checking}
+                            className="inline-flex h-8 items-center justify-center gap-1.5 rounded-clay-pill bg-clay-blue-100 px-3 text-xs font-black text-clay-blue-ink shadow-clay-sm transition-all duration-200 ease-clay active:scale-95 disabled:opacity-60"
+                          >
+                            <RefreshCw className={`w-3.5 h-3.5 ${checking ? 'animate-spin' : ''}`} />
+                            {checking ? '检查中' : '检查到账'}
+                          </button>
+                        </div>
+                      ) : null}
+                    </div>
                   </div>
-                </div>
-              )
-            })
-          )}
-        </div>
+                )
+              })}
+            </div>
+          </>
+        )}
       </ClayCard>
 
       <ClayModal

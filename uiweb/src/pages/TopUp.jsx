@@ -40,24 +40,34 @@ function PayMethodIcon({ type, className = 'w-7 h-7' }) {
   if (type === 'alipay' || type === 'kpay_alipay') {
     return (
       <span
-        className={`${className} inline-flex items-center justify-center rounded-full bg-white shadow-clay-sm`}
+        className={`${className} inline-flex items-center justify-center rounded-full shadow-clay-sm p-[12%] bg-gradient-to-br from-[#f3f6fb] to-[#d9e2ed]`}
         aria-label="支付宝"
       >
-        <svg viewBox="0 0 24 24" className="w-[68%] h-[68%]" fill="#1677FF" aria-hidden="true">
-          <path d={ALIPAY_PATH} />
-        </svg>
+        <span
+          className="w-full h-full rounded-full flex items-center justify-center bg-[#1677FF]"
+          style={{ boxShadow: 'inset 2px 2px 4px rgba(255,255,255,0.35), inset -2px -2px 4px rgba(0,0,0,0.2)' }}
+        >
+          <svg viewBox="0 0 24 24" className="w-[55%] h-[55%]" fill="#ffffff" aria-hidden="true">
+            <path d={ALIPAY_PATH} />
+          </svg>
+        </span>
       </span>
     )
   }
   if (type === 'wxpay' || type === 'wechat' || type === 'kpay_wechat') {
     return (
       <span
-        className={`${className} inline-flex items-center justify-center rounded-full bg-white shadow-clay-sm`}
+        className={`${className} inline-flex items-center justify-center rounded-full shadow-clay-sm p-[12%] bg-gradient-to-br from-[#f3f6fb] to-[#d9e2ed]`}
         aria-label="微信支付"
       >
-        <svg viewBox="0 0 24 24" className="w-[64%] h-[64%]" fill="#07C160" aria-hidden="true">
-          <path d={WECHAT_PATH} />
-        </svg>
+        <span
+          className="w-full h-full rounded-full flex items-center justify-center bg-[#07C160]"
+          style={{ boxShadow: 'inset 2px 2px 4px rgba(255,255,255,0.35), inset -2px -2px 4px rgba(0,0,0,0.2)' }}
+        >
+          <svg viewBox="0 0 24 24" className="w-[55%] h-[55%]" fill="#ffffff" aria-hidden="true">
+            <path d={WECHAT_PATH} />
+          </svg>
+        </span>
       </span>
     )
   }

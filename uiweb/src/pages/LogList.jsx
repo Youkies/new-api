@@ -765,8 +765,9 @@ function LogCard({ log, onClick }) {
 
   const showModelHeader = isConsume || isError
 
-  // Parse credit amount for topup / system reward (content carries currency symbol from backend logger
-  // where the historical writes are inconsistent — fall back to global currency for missing symbol).
+  // Parse credit amount for topup / system reward.
+  // Content may have been written long ago with a different quota_display_type — always render
+  // with the *current* global currency symbol so the page stays consistent with the user's settings.
   const globalCurrency = (isTopup || isSystem || isRefund) ? getCurrencyConfig() : null
   let creditAmount = null
   let creditSymbol = ''
@@ -775,14 +776,14 @@ function LogCard({ log, onClick }) {
   let paySymbol = ''
   if (isTopup || isSystem || isRefund) {
     const amounts = parseAmountsFromContent(log.content)
-    const fallbackSymbol = globalCurrency?.symbol || ''
+    const globalSymbol = globalCurrency?.symbol || ''
     if (amounts[0]) {
       creditAmount = formatAmount(amounts[0].value)
-      creditSymbol = amounts[0].symbol || fallbackSymbol
+      creditSymbol = globalSymbol
     }
     if (amounts[1]) {
       payAmount = formatAmount(amounts[1].value)
-      paySymbol = amounts[1].symbol || fallbackSymbol
+      paySymbol = globalSymbol
     }
     if (isTopup) topupSource = detectTopupSource(log.content)
   }

@@ -24,10 +24,10 @@ import { getLobeHubIcon } from '../utils/vendorIcon.jsx'
 function PriceCell({ icon: Icon, label, value, tone = 'ink', muted }) {
   const toneCls = {
     ink: 'text-clay-ink',
-    blue: 'text-[#3a6ea5]',
-    pink: 'text-[#a04668]',
-    emerald: 'text-emerald-700',
-    amber: 'text-amber-700',
+    blue: 'text-clay-blue-ink',
+    pink: 'text-clay-pink-ink',
+    emerald: 'text-clay-green-ink',
+    amber: 'text-clay-yellow-ink',
   }[tone] ?? 'text-clay-ink'
   return (
     <div className="flex-1 min-w-0">
@@ -329,14 +329,14 @@ export default function Pricing() {
                     onClick={() => setSelectedGroup(option.key)}
                     className={`inline-flex items-center justify-center gap-2 px-4 py-2 rounded-clay-pill text-sm font-extrabold transition-all ${
                       active
-                        ? 'bg-clay-pink-100 text-[#8a4860] shadow-clay'
+                        ? 'bg-clay-pink-100 text-clay-pink-ink shadow-clay'
                         : 'bg-clay-bg text-clay-faint shadow-clay-inset hover:text-clay-ink hover:shadow-clay'
                     }`}
                   >
                     <span className="whitespace-nowrap">{option.name}</span>
                     {option.ratio != null && (
                       <span className={`text-[11px] font-black px-2 py-0.5 rounded-full ${
-                        active ? 'bg-white/40' : 'bg-black/[0.04]'
+                        active ? 'bg-white/40' : 'bg-clay-line/[0.05]'
                       }`}>
                         {formatRatioValue(option.ratio)}
                       </span>
@@ -351,7 +351,7 @@ export default function Pricing() {
                         </div>
                       </div>
                       <div className="shrink-0 flex flex-col items-end gap-1">
-                        <span className="rounded-clay-pill bg-clay-blue-100/70 px-2.5 py-1 text-[11px] font-black text-[#43658b]">
+                        <span className="rounded-clay-pill bg-clay-blue-100/70 px-2.5 py-1 text-[11px] font-black text-clay-blue-ink shadow-clay-xs">
                           {option.count} 个模型
                         </span>
                         {option.ratio != null && (
@@ -361,7 +361,7 @@ export default function Pricing() {
                         )}
                       </div>
                     </div>
-                    <div className="mt-3 border-t border-black/[0.04] pt-3">
+                    <div className="mt-3 border-t border-clay-line/10 pt-3">
                       <div className="mb-1 text-[11px] font-extrabold uppercase tracking-wider text-clay-faint/70">
                         详细介绍
                       </div>
@@ -390,7 +390,7 @@ export default function Pricing() {
                   </div>
                 </div>
                 <div className="shrink-0 flex items-center gap-1.5">
-                  <span className="rounded-clay-pill bg-clay-blue-100/70 px-2.5 py-1 text-[11px] font-black text-[#43658b]">
+                  <span className="rounded-clay-pill bg-clay-blue-100/70 px-2.5 py-1 text-[11px] font-black text-clay-blue-ink">
                     {selectedGroupOption.count} 个模型
                   </span>
                   {selectedGroupOption.ratio != null && (
@@ -401,7 +401,7 @@ export default function Pricing() {
                 </div>
               </div>
               {selectedGroupOption.detail && (
-                <div className="mt-3 border-t border-black/[0.04] pt-3 text-sm font-semibold leading-relaxed">
+                <div className="mt-3 border-t border-clay-line/10 pt-3 text-sm font-semibold leading-relaxed">
                   <div className="mb-1 text-[11px] font-extrabold uppercase tracking-wider text-clay-faint/70">
                     详细介绍
                   </div>
@@ -428,7 +428,7 @@ export default function Pricing() {
               <button
                 type="button"
                 onClick={() => setGroupDialogOpen(true)}
-                className="md:hidden inline-flex h-[52px] shrink-0 items-center justify-center gap-1.5 rounded-clay-pill bg-clay-pink-100 px-4 text-sm font-extrabold text-[#8a4860] shadow-clay transition-all active:scale-95 active:shadow-clay-active"
+                className="md:hidden inline-flex h-[52px] shrink-0 items-center justify-center gap-1.5 rounded-clay-pill bg-clay-pink-100 px-4 text-sm font-extrabold text-clay-pink-ink shadow-clay-sm transition-all active:scale-95 active:shadow-clay-active"
               >
                 <Filter className="w-3.5 h-3.5" strokeWidth={2.5} />
                 查看分组
@@ -446,10 +446,10 @@ export default function Pricing() {
               onClick={() => setGroupDialogOpen(false)}
             />
             <div className="relative w-full max-w-2xl max-h-[86vh] overflow-hidden rounded-[32px] bg-clay-surface shadow-clay-hover border border-white/30">
-              <div className="px-5 sm:px-6 pt-5 pb-4 border-b border-black/[0.04]">
+              <div className="px-5 sm:px-6 pt-5 pb-4 border-b border-clay-line/10">
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className="clay-icon-box !w-12 !h-12 text-[#43658b] shrink-0">
+                    <div className="clay-icon-box !w-12 !h-12 text-clay-blue-ink shrink-0">
                       <Filter className="w-5 h-5" strokeWidth={2.5} />
                     </div>
                     <div className="min-w-0">
@@ -476,8 +476,8 @@ export default function Pricing() {
                     {groupHighlights.map(({ option, exact, tone }) => {
                       const HighlightIcon = tone === 'amber' ? Gem : Sparkles
                       const toneClass = tone === 'amber'
-                        ? 'bg-clay-yellow-100/70 text-[#8a6a32]'
-                        : 'bg-clay-blue-100/65 text-[#43658b]'
+                        ? 'bg-clay-yellow-100/70 text-clay-yellow-ink'
+                        : 'bg-clay-blue-100/65 text-clay-blue-ink'
                       return (
                         <div
                           key={option.key}
@@ -514,7 +514,7 @@ export default function Pricing() {
                       }}
                       className={`w-full rounded-clay px-4 py-3 text-left transition-all ${
                         active
-                          ? 'bg-clay-pink-100/85 text-[#8a4860] shadow-clay'
+                          ? 'bg-clay-pink-100/85 text-clay-pink-ink shadow-clay'
                           : 'bg-clay-bg text-clay-ink shadow-clay-inset hover:shadow-clay'
                       }`}
                     >
@@ -525,20 +525,20 @@ export default function Pricing() {
                             {active && <CheckCircle2 className="w-4 h-4 shrink-0" strokeWidth={2.5} />}
                           </div>
                           <p className={`mt-1 text-xs sm:text-sm font-semibold leading-relaxed ${
-                            active ? 'text-[#8a4860]/75' : 'text-clay-faint'
+                            active ? 'text-clay-pink-ink/75' : 'text-clay-faint'
                           }`}>
                             {option.description}
                           </p>
                         </div>
                         <div className="shrink-0 flex flex-col items-end gap-1">
                           <span className={`rounded-clay-pill px-2.5 py-1 text-xs font-black shadow-clay-sm ${
-                            active ? 'bg-white/40 text-[#8a4860]' : 'bg-white/45 text-[#43658b]'
+                            active ? 'bg-white/40 text-clay-pink-ink' : 'bg-white/45 text-clay-blue-ink'
                           }`}>
                             {option.count} 个模型
                           </span>
                           {option.ratio != null && (
                             <span className={`rounded-clay-pill px-2.5 py-1 text-xs font-black ${
-                              active ? 'bg-white/30 text-[#8a4860]/85' : 'bg-black/[0.04] text-clay-faint'
+                              active ? 'bg-white/30 text-clay-pink-ink/85' : 'bg-clay-line/[0.06] text-clay-faint'
                             }`}>
                               {formatRatioValue(option.ratio)}
                             </span>
@@ -606,7 +606,7 @@ export default function Pricing() {
                 >
                   {/* Header with vendor tint */}
                   <div
-                    className={`px-4 pt-4 pb-3 flex items-start gap-3 border-b border-black/[0.04] ${
+                    className={`px-4 pt-4 pb-3 flex items-start gap-3 border-b border-clay-line/10 ${
                       isFixed
                         ? 'bg-gradient-to-br from-clay-yellow-50/70 to-clay-yellow-100/40'
                         : 'bg-gradient-to-br from-clay-blue-50/50 to-clay-pink-50/30'
@@ -626,10 +626,10 @@ export default function Pricing() {
                       )}
                     </div>
                     <span
-                      className={`text-[10px] font-black px-2 py-0.5 rounded-clay-pill whitespace-nowrap shrink-0 ${
+                      className={`text-[10px] font-black px-2 py-0.5 rounded-clay-pill whitespace-nowrap shrink-0 shadow-clay-xs ${
                         isFixed
-                          ? 'bg-clay-yellow-200/80 text-amber-900'
-                          : 'bg-clay-blue-200/80 text-[#2c5582]'
+                          ? 'bg-clay-yellow-200/80 text-clay-yellow-ink'
+                          : 'bg-clay-blue-200/80 text-clay-blue-ink'
                       }`}
                     >
                       {isFixed ? '按次' : '按量'}
@@ -644,7 +644,7 @@ export default function Pricing() {
                           <Sparkles className="w-3.5 h-3.5" strokeWidth={2.5} />
                           单次价格
                         </div>
-                        <span className="font-mono font-black text-[16px] text-amber-700 tabular-nums">
+                        <span className="font-mono font-black text-[16px] text-clay-yellow-ink tabular-nums">
                           {inputDisplay}
                         </span>
                       </div>
@@ -652,14 +652,14 @@ export default function Pricing() {
                       <>
                         <div className="bg-clay-bg/60 shadow-clay-inset rounded-clay-sm px-3.5 py-3 flex items-stretch gap-3">
                           <PriceCell icon={ArrowDownToLine} label="输入" value={inputDisplay} tone="blue" />
-                          <div className="w-px bg-black/5 my-0.5" />
+                          <div className="w-px bg-clay-line/10 my-0.5" />
                           <PriceCell icon={ArrowUpFromLine} label="输出" value={outputDisplay} tone="pink" />
                         </div>
                         <div
                           className={`mt-2 px-3.5 py-2 rounded-clay-sm flex items-center justify-between gap-2 ${
                             cacheDisplay
-                              ? 'bg-emerald-50/60 shadow-clay-inset'
-                              : 'bg-transparent border border-dashed border-black/[0.06]'
+                              ? 'bg-clay-green-50/60 shadow-clay-inset'
+                              : 'bg-clay-bg/30 shadow-clay-inset-sm'
                           }`}
                         >
                           <div className="flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-wider text-clay-faint">
@@ -668,7 +668,7 @@ export default function Pricing() {
                           </div>
                           <span
                             className={`font-mono font-black text-[13px] tabular-nums ${
-                              cacheDisplay ? 'text-emerald-700' : 'text-clay-faint/40'
+                              cacheDisplay ? 'text-clay-green-ink' : 'text-clay-faint/40'
                             }`}
                           >
                             {cacheDisplay ?? '不支持'}

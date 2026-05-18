@@ -200,7 +200,7 @@ function AssistantClaySelect({ label, value, onChange, options, disabled, placeh
               }}
               className={`w-full rounded-[16px] px-3 py-2 text-left text-xs font-black leading-5 transition-colors disabled:opacity-45 disabled:cursor-not-allowed ${
                 option.value === value
-                  ? 'bg-clay-pink-100 text-[#8a4860] shadow-clay-sm'
+                  ? 'bg-clay-pink-100 text-clay-pink-ink shadow-clay-sm'
                   : 'text-clay-ink hover:bg-white/50'
               }`}
             >
@@ -221,7 +221,7 @@ function ChatBubble({ message, onUseBalance, onToggleReasoning, disabled }) {
       <div
         className={`max-w-[84%] md:max-w-[720px] lg:max-w-[760px] rounded-[22px] md:rounded-clay-lg px-4 py-3 md:px-5 md:py-4 ${
           isUser
-            ? 'bg-clay-pink-100 text-[#8a4860] shadow-clay'
+            ? 'bg-clay-pink-100 text-clay-pink-ink shadow-clay'
             : 'bg-white/70 md:bg-white/45 text-clay-ink shadow-clay-sm md:shadow-clay'
         }`}
       >
@@ -269,7 +269,7 @@ function ChatBubble({ message, onUseBalance, onToggleReasoning, disabled }) {
               type="button"
               onClick={() => onUseBalance?.(message)}
               disabled={disabled}
-              className="rounded-clay-pill bg-clay-blue-100 px-4 py-2 text-xs font-black text-[#43658b] shadow-clay disabled:opacity-60 disabled:cursor-not-allowed"
+              className="rounded-clay-pill bg-clay-blue-100 px-4 py-2 text-xs font-black text-clay-blue-ink shadow-clay disabled:opacity-60 disabled:cursor-not-allowed"
             >
               使用余额继续
             </button>
@@ -819,7 +819,7 @@ export default function AssistantWidget() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="assistant-widget-toggle fixed right-5 bottom-[calc(env(safe-area-inset-bottom)+1.25rem)] z-[9990] w-16 h-16 rounded-full bg-clay-pink-100 shadow-clay hover:shadow-clay-hover active:shadow-clay-active transition-all duration-200 ease-clay flex items-center justify-center text-[#8a4860]"
+        className="assistant-widget-toggle fixed right-5 bottom-[calc(env(safe-area-inset-bottom)+1.25rem)] z-[9990] w-16 h-16 rounded-full bg-clay-pink-100 shadow-clay hover:shadow-clay-hover active:shadow-clay-active transition-all duration-200 ease-clay flex items-center justify-center text-clay-pink-ink"
         aria-label={assistantName}
         title={assistantName}
       >
@@ -868,7 +868,7 @@ export default function AssistantWidget() {
               </div>
             </div>
 
-            <div className="mx-4 md:mx-auto md:w-[min(920px,calc(100vw-3rem))] mb-2 md:mb-0 shrink-0 rounded-clay-pill md:rounded-clay-lg bg-clay-yellow-100 text-[#8a6a32] shadow-clay px-3.5 py-2 md:px-5 md:py-3 flex items-start gap-2.5">
+            <div className="mx-4 md:mx-auto md:w-[min(920px,calc(100vw-3rem))] mb-2 md:mb-0 shrink-0 rounded-clay-pill md:rounded-clay-lg bg-clay-yellow-100 text-clay-yellow-ink shadow-clay px-3.5 py-2 md:px-5 md:py-3 flex items-start gap-2.5">
               <ShieldAlert className="w-4 h-4 md:w-5 md:h-5 mt-0.5 shrink-0" strokeWidth={2.5} />
               <span className="text-[11px] md:text-sm leading-5 md:leading-6 font-bold">
                 AI 仅做预诊断，不承诺退款或替代审核；截图含密钥、订单号请先打码。
@@ -885,7 +885,7 @@ export default function AssistantWidget() {
                   <button
                     type="button"
                     onClick={startNewConversation}
-                    className="h-8 px-3 rounded-full bg-clay-pink-100 text-[#8a4860] shadow-clay text-xs font-black"
+                    className="h-8 px-3 rounded-full bg-clay-pink-100 text-clay-pink-ink shadow-clay text-xs font-black"
                   >
                     新建
                   </button>
@@ -895,7 +895,7 @@ export default function AssistantWidget() {
                     <div className="text-xs font-bold text-clay-faint px-2 py-4">正在读取...</div>
                   )}
                   {!historyLoading && historyError && (
-                    <div className="rounded-[18px] bg-clay-pink-100/80 px-3 py-3 text-xs font-bold leading-5 text-[#8a4860] shadow-clay-sm">
+                    <div className="rounded-[18px] bg-clay-pink-100/80 px-3 py-3 text-xs font-bold leading-5 text-clay-pink-ink shadow-clay-sm">
                       {historyError}
                     </div>
                   )}
@@ -908,7 +908,7 @@ export default function AssistantWidget() {
                       type="button"
                       onClick={() => openConversation(item)}
                       className={`w-full text-left rounded-[18px] px-3 py-3 shadow-clay-sm ${
-                        Number(conversationId) === Number(item.id) ? 'bg-clay-pink-100 text-[#8a4860]' : 'bg-white/45 text-clay-ink'
+                        Number(conversationId) === Number(item.id) ? 'bg-clay-pink-100 text-clay-pink-ink' : 'bg-white/45 text-clay-ink'
                       }`}
                     >
                       <div className="flex items-start justify-between gap-2">
@@ -989,7 +989,7 @@ export default function AssistantWidget() {
               )}
 
               {error && (
-                <div className="mb-2 rounded-clay bg-clay-pink-100 text-[#8a4860] px-4 py-2 text-xs font-bold shadow-clay">
+                <div className="mb-2 rounded-clay bg-clay-pink-100 text-clay-pink-ink px-4 py-2 text-xs font-bold shadow-clay">
                   {error}
                 </div>
               )}
@@ -1022,7 +1022,7 @@ export default function AssistantWidget() {
                   />
                 </div>
                 {balanceMode && (
-                  <div className="mb-2 rounded-clay-pill bg-clay-blue-100/70 px-3 py-1.5 text-[11px] font-black text-[#43658b] shadow-clay-sm">
+                  <div className="mb-2 rounded-clay-pill bg-clay-blue-100/70 px-3 py-1.5 text-[11px] font-black text-clay-blue-ink shadow-clay-sm">
                     已确认使用余额续聊，本次打开后不再重复提醒。
                   </div>
                 )}
@@ -1060,7 +1060,7 @@ export default function AssistantWidget() {
                     type="button"
                     onClick={() => submit()}
                     disabled={loading}
-                    className="h-12 md:h-10 min-w-[112px] md:min-w-0 shrink-0 px-5 md:px-6 rounded-full bg-clay-blue-100 text-[#43658b] shadow-clay flex items-center justify-center gap-2 font-black whitespace-nowrap leading-none disabled:opacity-60 disabled:cursor-not-allowed"
+                    className="h-12 md:h-10 min-w-[112px] md:min-w-0 shrink-0 px-5 md:px-6 rounded-full bg-clay-blue-100 text-clay-blue-ink shadow-clay flex items-center justify-center gap-2 font-black whitespace-nowrap leading-none disabled:opacity-60 disabled:cursor-not-allowed"
                   >
                     {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                     <span>{loading ? '回复中' : '发送'}</span>

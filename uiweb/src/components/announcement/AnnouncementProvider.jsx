@@ -113,7 +113,7 @@ export default function AnnouncementProvider({ children }) {
                 <div className="flex flex-wrap items-center gap-2 mb-1">
                   <span className="clay-badge !bg-clay-pink-100">公告</span>
                   {current.force_popup && (
-                    <span className="text-[11px] font-black px-3 py-1 rounded-clay-pill bg-clay-yellow-100 text-[#8a6a32] shadow-clay-sm">
+                    <span className="text-[11px] font-black px-3 py-1 rounded-clay-pill bg-clay-yellow-100 text-clay-yellow-ink shadow-clay-sm">
                       需要确认
                     </span>
                   )}

@@ -353,6 +353,24 @@ func SetApiRouter(router *gin.Engine) {
 			tokenRoute.POST("/batch/keys", middleware.CriticalRateLimit(), middleware.DisableCache(), controller.GetTokenKeysBatch)
 		}
 
+		archiveRoute := apiRouter.Group("/archive")
+		archiveRoute.Use(middleware.UserAuth())
+		{
+			archiveRoute.GET("/", controller.ListUserArchives)
+			archiveRoute.POST("/", controller.CreateUserArchive)
+			archiveRoute.GET("/options", controller.GetArchiveOptions)
+			archiveRoute.GET("/share/:code", controller.GetSharedArchivePreview)
+			archiveRoute.POST("/share/:code/import", controller.ImportSharedArchive)
+			archiveRoute.GET("/:id", controller.GetUserArchive)
+			archiveRoute.PUT("/:id", controller.UpdateUserArchive)
+			archiveRoute.DELETE("/:id", controller.DeleteUserArchive)
+			archiveRoute.POST("/:id/share", controller.EnableArchiveShare)
+			archiveRoute.DELETE("/:id/share", controller.DisableArchiveShare)
+			archiveRoute.POST("/:id/aliases", controller.CreateArchiveAlias)
+			archiveRoute.PUT("/:id/aliases/:aliasId", controller.UpdateArchiveAlias)
+			archiveRoute.DELETE("/:id/aliases/:aliasId", controller.DeleteArchiveAlias)
+		}
+
 		usageRoute := apiRouter.Group("/usage")
 		usageRoute.Use(middleware.CORS(), middleware.CriticalRateLimit())
 		{

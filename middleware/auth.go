@@ -429,6 +429,9 @@ func SetupContextForToken(c *gin.Context, token *model.Token, parts ...string) e
 	common.SetContextKey(c, constant.ContextKeyTokenCrossGroupRetry, token.CrossGroupRetry)
 	common.SetContextKey(c, constant.ContextKeyTokenDebugEnabled, token.DebugEnabled && isAdminToken)
 	common.SetContextKey(c, constant.ContextKeyTokenDebugConnectivity, token.DebugEnabled && token.DebugConnectivity && isAdminToken)
+	if token.ArchiveId != nil && *token.ArchiveId > 0 {
+		common.SetContextKey(c, constant.ContextKeyTokenArchiveId, *token.ArchiveId)
+	}
 	if len(parts) > 1 {
 		if isAdminToken {
 			c.Set("specific_channel_id", parts[1])

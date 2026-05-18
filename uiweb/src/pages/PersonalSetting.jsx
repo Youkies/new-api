@@ -263,7 +263,7 @@ function AccountTab({ user, setUser, toast, logout }) {
             <ClayButton
               variant="secondary"
               onClick={() => setConfirmDelete(true)}
-              className="!bg-clay-pink-100 !text-[#8a4860]"
+              className="!bg-clay-pink-100 !text-clay-pink-ink"
             >
               <Trash2 className="w-4 h-4" /> 注销账号
             </ClayButton>

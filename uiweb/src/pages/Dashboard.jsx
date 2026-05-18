@@ -68,7 +68,7 @@ function UsageChart({ data, range }) {
                   {/* tooltip */}
                   {isActive && item.value > 0 && (
                     <div className="absolute -top-9 left-1/2 -translate-x-1/2 z-10 whitespace-nowrap">
-                      <div className="bg-clay-pink-100 text-[#8a4860] text-[11px] font-extrabold px-3 py-1.5 rounded-clay-sm shadow-clay">
+                      <div className="bg-clay-pink-100 text-clay-pink-ink text-[11px] font-extrabold px-3 py-1.5 rounded-clay-sm shadow-clay">
                         {item.fullLabel} · {item.value} 次
                       </div>
                       <div className="w-2 h-2 bg-clay-pink-100 rotate-45 mx-auto -mt-1" />
@@ -315,7 +315,7 @@ export default function Dashboard() {
                   : 0
                 return (
                   <div key={name} className="flex items-center gap-3">
-                    <div className="w-6 h-6 rounded-full bg-clay-bg shadow-clay flex items-center justify-center text-[10px] font-black text-clay-faint">
+                    <div className="w-6 h-6 rounded-full bg-clay-bg shadow-clay-sm flex items-center justify-center text-[10px] font-black text-clay-faint">
                       {i + 1}
                     </div>
                     <div className="flex-1 min-w-0">
@@ -339,7 +339,7 @@ export default function Dashboard() {
           )}
         </ClayCard>
 
-        <ClayCard className="!bg-clay-pink-100 !border-0 !text-[#8a4860]">
+        <ClayCard className="!bg-clay-pink-100 !border-0 !text-clay-pink-ink">
           <div className="clay-icon-box !w-14 !h-14 !bg-white/40 mb-4">
             <KeyRound className="w-6 h-6" strokeWidth={2.5} />
           </div>
@@ -348,7 +348,7 @@ export default function Dashboard() {
             创建、启用或吊销 Token,是控制用量的第一步。
           </p>
           <a href="/tokens">
-            <ClayButton variant="ghost" className="!bg-white/50 !text-[#8a4860]">
+            <ClayButton variant="ghost" className="!bg-white/50 !text-clay-pink-ink">
               去管理
             </ClayButton>
           </a>

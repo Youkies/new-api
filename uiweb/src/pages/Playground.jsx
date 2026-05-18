@@ -469,15 +469,16 @@ function FoodVisual({ food, size = 'lg', className = '' }) {
   const sizeClass = size === 'sm'
     ? 'h-10 w-10 text-xl'
     : 'h-28 w-28 text-5xl sm:h-44 sm:w-44 sm:text-7xl'
+  const shadowClass = size === 'sm' ? 'shadow-clay-sm' : 'shadow-clay'
   if (food?.imageUrl) {
     return (
-      <div className={`overflow-hidden rounded-full bg-clay-pink-100 shadow-clay ${sizeClass} ${className}`}>
+      <div className={`overflow-hidden rounded-full bg-clay-pink-100 ${shadowClass} ${sizeClass} ${className}`}>
         <img src={food.imageUrl} alt={food.name || 'food'} className="h-full w-full object-cover" />
       </div>
     )
   }
   return (
-    <div className={`flex items-center justify-center rounded-full bg-clay-pink-100 shadow-clay ${sizeClass} ${className}`}>
+    <div className={`flex items-center justify-center rounded-full bg-clay-pink-100 ${shadowClass} ${sizeClass} ${className}`}>
       <span aria-hidden="true">{food?.icon || '🍽️'}</span>
     </div>
   )
@@ -695,7 +696,7 @@ function WhatToEatGame() {
         <ClayCard className="relative !p-4 sm:!p-8">
           <div className="mb-4 flex flex-col gap-3 md:mb-6 md:flex-row md:items-start md:justify-between">
             <div className="min-w-0">
-              <div className="mb-2 inline-flex items-center gap-2 rounded-clay-pill bg-clay-pink-100 px-3 py-1.5 text-xs font-black text-[#8a4860] shadow-clay-sm sm:mb-3 sm:px-4 sm:py-2 sm:text-sm">
+              <div className="mb-2 inline-flex items-center gap-2 rounded-clay-pill bg-clay-pink-100 px-3 py-1.5 text-xs font-black text-clay-pink-ink shadow-clay-sm sm:mb-3 sm:px-4 sm:py-2 sm:text-sm">
                 <UtensilsCrossed className="h-4 w-4" strokeWidth={2.6} />
                 今天吃什么呀
               </div>
@@ -721,10 +722,10 @@ function WhatToEatGame() {
                   key={item.value}
                   type="button"
                   onClick={() => setCategory(item.value)}
-                  className={`min-h-10 shrink-0 rounded-clay-pill px-4 text-sm font-black shadow-none transition-all active:scale-95 sm:min-h-11 sm:shadow-clay ${
+                  className={`min-h-10 shrink-0 rounded-clay-pill px-4 text-sm font-black transition-all duration-200 ease-clay active:scale-95 sm:min-h-11 ${
                     active
-                      ? 'bg-clay-pink-100 text-[#8a4860]'
-                      : 'bg-white/45 text-clay-ink sm:bg-clay-bg sm:hover:shadow-clay-hover'
+                      ? 'bg-clay-pink-100 text-clay-pink-ink shadow-clay-sm'
+                      : 'bg-clay-bg text-clay-ink shadow-clay-inset-sm hover:text-clay-pink-ink'
                   }`}
                 >
                   <span className="mr-1.5">{item.icon}</span>
@@ -782,7 +783,7 @@ function WhatToEatGame() {
                   <button
                     type="button"
                     onClick={clearHistory}
-                    className="rounded-full bg-clay-bg p-2 text-clay-faint shadow-clay transition-all hover:text-clay-pink-400 hover:shadow-clay-hover sm:hidden"
+                    className="clay-icon-btn text-clay-faint hover:text-clay-pink-400 sm:hidden"
                     aria-label="清空记录"
                   >
                     <Trash2 className="h-4 w-4" strokeWidth={2.8} />
@@ -822,7 +823,7 @@ function WhatToEatGame() {
                 <button
                   type="button"
                   onClick={() => setSubmitOpen(true)}
-                  className="rounded-full bg-clay-bg p-2 text-clay-faint shadow-clay transition-all hover:text-clay-pink-400 hover:shadow-clay-hover"
+                  className="clay-icon-btn text-clay-faint hover:text-clay-pink-400"
                   aria-label="投稿到公共菜品池"
                   title="投稿到公共菜品池"
                 >
@@ -831,7 +832,7 @@ function WhatToEatGame() {
                 <button
                   type="button"
                   onClick={() => setCustomOpen(true)}
-                  className="rounded-full bg-clay-bg p-2 shadow-clay transition-shadow hover:shadow-clay-hover"
+                  className="clay-icon-btn"
                   aria-label="添加到我的菜单"
                   title="添加到我的菜单"
                 >
@@ -853,7 +854,7 @@ function WhatToEatGame() {
                     <button
                       type="button"
                       onClick={() => removeCustomFood(item)}
-                      className="rounded-full bg-clay-bg p-2 text-clay-faint shadow-clay transition-all hover:text-clay-pink-400 hover:shadow-clay-hover"
+                      className="clay-icon-btn text-clay-faint hover:text-clay-pink-400"
                       aria-label={`删除 ${item.name}`}
                     >
                       <X className="h-4 w-4" strokeWidth={2.8} />

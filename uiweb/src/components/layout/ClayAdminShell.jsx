@@ -53,7 +53,7 @@ export default function ClayAdminShell({ title, subtitle, actions, children }) {
   const linkCls = ({ isActive }) =>
     `px-5 py-2.5 rounded-clay-pill font-bold text-sm transition-all flex items-center gap-2 ${
       isActive
-        ? 'bg-clay-blue-100 text-[#2c5582] shadow-clay'
+        ? 'bg-clay-blue-100 text-clay-blue-ink shadow-clay'
         : 'text-clay-faint hover:text-clay-ink'
     }`
 
@@ -135,7 +135,7 @@ export default function ClayAdminShell({ title, subtitle, actions, children }) {
                       通知中心
                     </span>
                     {unreadCount > 0 && (
-                      <span className="min-w-6 h-6 px-2 rounded-clay-pill bg-clay-pink-100 text-[#8a4860] text-xs font-black flex items-center justify-center">
+                      <span className="min-w-6 h-6 px-2 rounded-clay-pill bg-clay-pink-100 text-clay-pink-ink text-xs font-black flex items-center justify-center">
                         {unreadCount > 99 ? '99+' : unreadCount}
                       </span>
                     )}

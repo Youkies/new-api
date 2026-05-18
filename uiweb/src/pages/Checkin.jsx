@@ -254,12 +254,21 @@ export default function Checkin() {
         <ClayCard>
           {/* Month header */}
           <div className="flex items-center justify-between mb-4">
-            <button onClick={prevMonth} className="p-1.5 rounded-clay-sm hover:bg-white/40">
-              <ChevronLeft className="w-5 h-5" />
+            <button
+              onClick={prevMonth}
+              className="clay-icon-btn"
+              aria-label="上个月"
+            >
+              <ChevronLeft className="w-4 h-4" />
             </button>
             <h2 className="text-lg font-black">{year} 年 {month + 1} 月</h2>
-            <button onClick={nextMonth} disabled={isCurrentMonth} className="p-1.5 rounded-clay-sm hover:bg-white/40 disabled:opacity-30">
-              <ChevronRight className="w-5 h-5" />
+            <button
+              onClick={nextMonth}
+              disabled={isCurrentMonth}
+              className="clay-icon-btn disabled:opacity-30 disabled:pointer-events-none"
+              aria-label="下个月"
+            >
+              <ChevronRight className="w-4 h-4" />
             </button>
           </div>
 
@@ -282,16 +291,16 @@ export default function Checkin() {
                   className={`
                     aspect-square min-w-0 px-0.5 py-1 flex flex-col items-center justify-center rounded-[18px] sm:rounded-clay-sm text-sm sm:text-base font-bold transition-all
                     ${checked
-                      ? 'bg-clay-pink-100 text-[#8a4860] shadow-clay-sm'
+                      ? 'bg-clay-pink-100 text-clay-pink-ink shadow-clay-sm'
                       : isToday
-                        ? 'ring-2 ring-clay-pink-300 ring-inset'
+                        ? 'bg-clay-pink-50/60 text-clay-pink-ink shadow-clay-inset-sm'
                         : 'text-clay-faint'
                     }
                   `}
                 >
                   <span className="leading-none">{day}</span>
                   {checked ? (
-                    <span className="mt-1 block max-w-full truncate text-[9px] sm:text-[10px] font-black leading-none text-[#8a4860]/80 tabular-nums">
+                    <span className="mt-1 block max-w-full truncate text-[9px] sm:text-[10px] font-black leading-none text-clay-pink-ink/80 tabular-nums">
                       {rewardText}
                     </span>
                   ) : (

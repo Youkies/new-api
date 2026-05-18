@@ -68,7 +68,7 @@ export default function DebugModePanel() {
                     to={item.to}
                     className={`px-3 py-2 rounded-clay-sm text-xs font-black transition-all ${
                       active
-                        ? 'bg-clay-pink-100 text-[#8a4860] shadow-clay-sm'
+                        ? 'bg-clay-pink-100 text-clay-pink-ink shadow-clay-sm'
                         : 'bg-white/35 hover:bg-white/55 text-clay-faint'
                     }`}
                   >

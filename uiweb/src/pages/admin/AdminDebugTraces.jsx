@@ -26,9 +26,9 @@ const statusOptions = [
 ]
 
 const statusMeta = {
-  success: { label: '成功', cls: 'bg-clay-green-100 text-[#3d6b4f]' },
-  error: { label: '错误', cls: 'bg-clay-pink-100 text-[#8a4860]' },
-  client_canceled: { label: '客户端取消', cls: 'bg-clay-yellow-100 text-[#8a6a32]' },
+  success: { label: '成功', cls: 'bg-clay-green-100 text-clay-green-ink' },
+  error: { label: '错误', cls: 'bg-clay-pink-100 text-clay-pink-ink' },
+  client_canceled: { label: '客户端取消', cls: 'bg-clay-yellow-100 text-clay-yellow-ink' },
 }
 
 const defaultConnectivitySettings = {
@@ -296,9 +296,9 @@ export default function AdminDebugTraces() {
           <span className="rounded-clay-sm bg-clay-bg px-3 py-2 shadow-clay-inset">进度间隔 {connectivitySettings.stream_probe_interval_seconds}s</span>
           <span className="rounded-clay-sm bg-clay-bg px-3 py-2 shadow-clay-inset">非流等待 {connectivitySettings.non_stream_probe_seconds}s</span>
         </div>
-        <div className="mt-4 flex items-start gap-3 rounded-clay bg-[#16202d] p-4 text-[#e8f1ff] shadow-clay-inset">
-          <Terminal className="mt-0.5 h-4 w-4 shrink-0 text-clay-blue-100" />
-          <pre className="min-w-0 flex-1 overflow-auto whitespace-pre-wrap break-words text-xs leading-relaxed">{connectivityCommand}</pre>
+        <div className="mt-4 flex items-start gap-3 rounded-clay bg-clay-bg p-4 shadow-clay-inset-sm">
+          <Terminal className="mt-0.5 h-4 w-4 shrink-0 text-clay-blue-ink" />
+          <pre className="min-w-0 flex-1 overflow-auto whitespace-pre-wrap break-words text-xs leading-relaxed font-mono text-clay-ink">{connectivityCommand}</pre>
         </div>
       </ClayCard>
 
@@ -352,7 +352,7 @@ export default function AdminDebugTraces() {
         <ClayCard className="!p-0 overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-black/5 text-left text-clay-faint">
+              <tr className="border-b border-clay-line/10 text-left text-clay-faint">
                 <th className="px-5 py-3 font-bold">状态</th>
                 <th className="px-5 py-3 font-bold">请求</th>
                 <th className="px-5 py-3 font-bold">模型 / Key</th>
@@ -478,8 +478,8 @@ function SettingNumber({ label, suffix, value, min, max, onChange }) {
 function Stat({ label, value, tone }) {
   const toneCls = {
     blue: 'from-clay-blue-50 to-clay-bg text-clay-blue-300',
-    green: 'from-clay-green-100 to-clay-bg text-[#3d6b4f]',
-    pink: 'from-clay-pink-100 to-clay-bg text-[#8a4860]',
+    green: 'from-clay-green-100 to-clay-bg text-clay-green-ink',
+    pink: 'from-clay-pink-100 to-clay-bg text-clay-pink-ink',
   }[tone] || 'from-clay-bg to-clay-bg text-clay-ink'
 
   return (
@@ -493,9 +493,9 @@ function Stat({ label, value, tone }) {
 function TraceRow({ item, onOpen, onDelete, onDownload, onCopyRequestId }) {
   const meta = statusMeta[item.status] || statusMeta.error
   return (
-    <tr className="border-b border-black/5 last:border-0 hover:bg-white/30 transition-colors">
+    <tr className="border-b border-clay-line/10 last:border-0 hover:bg-clay-surface/40 transition-colors">
       <td className="px-5 py-3">
-        <span className={`rounded-clay-pill px-3 py-1 text-xs font-black ${meta.cls}`}>{meta.label}</span>
+        <span className={`rounded-clay-pill px-3 py-1 text-xs font-black shadow-clay-sm ${meta.cls}`}>{meta.label}</span>
         <div className="mt-1 text-xs font-bold text-clay-faint">HTTP {item.http_status || '-'}</div>
       </td>
       <td className="px-5 py-3">
@@ -503,7 +503,7 @@ function TraceRow({ item, onOpen, onDelete, onDownload, onCopyRequestId }) {
         <button
           type="button"
           onClick={() => onCopyRequestId(item.request_id)}
-          className="mt-1 max-w-[260px] truncate text-left text-xs font-bold text-clay-faint hover:text-clay-pink-400"
+          className="mt-1 max-w-[260px] truncate text-left text-xs font-bold text-clay-faint hover:text-clay-pink-400 font-mono"
           title="复制 Request ID"
         >
           {item.request_id || '无 Request ID'}
@@ -523,14 +523,14 @@ function TraceRow({ item, onOpen, onDelete, onDownload, onCopyRequestId }) {
       </td>
       <td className="px-5 py-3">
         <div className="flex justify-end gap-2">
-          <button type="button" onClick={() => onOpen(item)} className="p-2 rounded-clay-sm hover:bg-white/40" title="查看详情">
-            <Eye className="h-4 w-4 text-clay-blue-300" />
+          <button type="button" onClick={() => onOpen(item)} className="clay-icon-btn" title="查看详情" aria-label="查看详情">
+            <Eye className="h-4 w-4 text-clay-blue-ink" />
           </button>
-          <button type="button" onClick={() => onDownload(item)} className="p-2 rounded-clay-sm hover:bg-white/40" title="下载日志">
-            <Download className="h-4 w-4 text-clay-faint" />
+          <button type="button" onClick={() => onDownload(item)} className="clay-icon-btn" title="下载日志" aria-label="下载日志">
+            <Download className="h-4 w-4" />
           </button>
-          <button type="button" onClick={() => onDelete(item)} className="p-2 rounded-clay-sm hover:bg-clay-pink-100/40" title="删除">
-            <Trash2 className="h-4 w-4 text-clay-pink-400" />
+          <button type="button" onClick={() => onDelete(item)} className="clay-icon-btn-danger" title="删除" aria-label="删除">
+            <Trash2 className="h-4 w-4" />
           </button>
         </div>
       </td>
@@ -580,7 +580,7 @@ function TraceDetailModal({ trace, loading, onClose, onDownload, onCopyRequestId
                 onClick={() => setTab(item.key)}
                 className={`rounded-clay-pill px-4 py-2 text-sm font-black transition ${
                   tab === item.key
-                    ? 'bg-clay-pink-100 text-[#8a4860] shadow-clay'
+                    ? 'bg-clay-pink-100 text-clay-pink-ink shadow-clay'
                     : 'bg-clay-bg text-clay-faint shadow-clay-inset hover:text-clay-ink'
                 }`}
               >
@@ -648,7 +648,7 @@ function CodeBlocks({ blocks }) {
             <Activity className="h-4 w-4 text-clay-pink-400" />
             {label}
           </div>
-          <pre className="max-h-[360px] overflow-auto rounded-clay bg-[#16202d] p-4 text-xs leading-relaxed text-[#e8f1ff] shadow-clay-inset">
+          <pre className="max-h-[360px] overflow-auto rounded-clay bg-clay-bg p-4 text-xs leading-relaxed text-clay-ink shadow-clay-inset-sm font-mono">
             {pretty(value) || '无'}
           </pre>
         </div>

@@ -34,10 +34,10 @@ const statusOptions = [
 ]
 
 const statusMeta = {
-  pending: { label: '待到账', cls: 'bg-clay-yellow-100 text-[#8a6a32]', icon: Clock },
-  success: { label: '已到账', cls: 'bg-clay-green-100 text-[#3d6b4f]', icon: CheckCircle2 },
-  failed: { label: '失败', cls: 'bg-clay-pink-100 text-[#8a4860]', icon: XCircle },
-  expired: { label: '已过期', cls: 'bg-clay-pink-100 text-[#8a4860]', icon: TimerOff },
+  pending: { label: '待到账', cls: 'bg-clay-yellow-100 text-clay-yellow-ink', icon: Clock },
+  success: { label: '已到账', cls: 'bg-clay-green-100 text-clay-green-ink', icon: CheckCircle2 },
+  failed: { label: '失败', cls: 'bg-clay-pink-100 text-clay-pink-ink', icon: XCircle },
+  expired: { label: '已过期', cls: 'bg-clay-pink-100 text-clay-pink-ink', icon: TimerOff },
 }
 
 const methodLabel = {
@@ -234,7 +234,7 @@ export default function AdminKPayTopUps() {
       ) : (
         <>
           <ClayCard className="!p-0 overflow-hidden">
-            <div className="hidden lg:grid grid-cols-[110px_1fr_110px_120px_120px_170px_140px] gap-3 px-6 py-4 text-xs font-black text-clay-faint uppercase border-b border-black/5 bg-clay-bg/50">
+            <div className="hidden lg:grid grid-cols-[110px_1fr_110px_120px_120px_170px_140px] gap-3 px-6 py-4 text-xs font-black text-clay-faint uppercase border-b border-clay-line/10 bg-clay-bg/50">
               <span>状态</span>
               <span>本平台订单号</span>
               <span>用户</span>
@@ -286,10 +286,10 @@ export default function AdminKPayTopUps() {
 
 function Stat({ label, value, tone }) {
   const cls = {
-    blue: 'text-[#2c5582]',
-    yellow: 'text-[#8a6a32]',
-    green: 'text-[#3d6b4f]',
-    pink: 'text-[#8a4860]',
+    blue: 'text-clay-blue-ink',
+    yellow: 'text-clay-yellow-ink',
+    green: 'text-clay-green-ink',
+    pink: 'text-clay-pink-ink',
   }[tone]
   return (
     <ClayCard className="!p-5">
@@ -308,7 +308,7 @@ function StatusBadge({ status }) {
   const Icon = meta.icon
   return (
     <span
-      className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-clay-pill text-xs font-black ${meta.cls}`}
+      className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-clay-pill text-xs font-black shadow-clay-sm ${meta.cls}`}
     >
       <Icon className="w-3.5 h-3.5" />
       {meta.label}

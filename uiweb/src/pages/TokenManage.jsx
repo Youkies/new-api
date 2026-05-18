@@ -1,8 +1,9 @@
-import { useEffect, useState, useCallback, useSyncExternalStore } from 'react'
+import { useEffect, useState, useCallback, useMemo, useSyncExternalStore } from 'react'
 import {
   KeyRound, Plus, Search, Copy, Trash2, Eye, EyeOff,
   ToggleLeft, ToggleRight, Pencil, ChevronLeft, ChevronRight,
-  Clock, Shield, Layers, Infinity, RefreshCw, Bug, Wifi,
+  Clock, Shield, Layers, Infinity, RefreshCw, Bug, Wifi, Tag,
+  Rows, LayoutGrid,
 } from 'lucide-react'
 import ClayCard from '../components/clay/ClayCard.jsx'
 import ClayButton from '../components/clay/ClayButton.jsx'
@@ -17,6 +18,7 @@ import {
   listTokens, addToken, updateToken, updateTokenStatus,
   deleteToken, getTokenKey, getUserGroups,
 } from '../services/tokens.js'
+import { listArchives } from '../services/archives.js'
 import { copyTextToClipboard } from '../utils/clipboard.js'
 import { useUser } from '../context/UserContext.jsx'
 
@@ -29,10 +31,10 @@ function useIsMobile() {
 }
 
 const STATUS_MAP = {
-  1: { label: '已启用', cls: 'bg-emerald-100 text-emerald-700' },
-  2: { label: '已禁用', cls: 'bg-gray-200 text-gray-600' },
-  3: { label: '已过期', cls: 'bg-amber-100 text-amber-700' },
-  4: { label: '已耗尽', cls: 'bg-red-100 text-red-600' },
+  1: { label: '已启用', tone: 'green', dot: 'bg-clay-green-300' },
+  2: { label: '已禁用', tone: 'faint', dot: 'bg-clay-faint/60' },
+  3: { label: '已过期', tone: 'yellow', dot: 'bg-clay-yellow-300' },
+  4: { label: '已耗尽', tone: 'pink', dot: 'bg-clay-pink-300' },
 }
 
 function fmtTime(ts) {
@@ -61,91 +63,126 @@ function parseModels(str) {
   }
 }
 
-function TokenCard({ t, revealedKeys, onRevealKey, onCopyKey, onToggleStatus, openEdit, onDelete }) {
+function TokenCard({ t, revealedKeys, onRevealKey, onCopyKey, onToggleStatus, openEdit, onDelete, archiveName }) {
   const st = STATUS_MAP[t.status] ?? STATUS_MAP[2]
   const revealed = revealedKeys[t.id]
   const group = t.group || '-'
   const models = parseModels(t.model_limits)
+  const isEnabled = t.status === 1
 
   return (
     <div className="clay-card-interactive !p-5 !rounded-clay">
-      {/* Row 1: icon + name + status */}
+      {/* Row 1: icon + name + status dot */}
       <div className="flex items-center justify-between gap-2 mb-3">
         <div className="flex items-center gap-2.5 min-w-0">
-          <div className="w-9 h-9 rounded-full shadow-clay bg-clay-blue-100 flex items-center justify-center shrink-0">
+          <div className="w-9 h-9 rounded-full shadow-clay-sm bg-clay-blue-100 flex items-center justify-center shrink-0">
             <KeyRound className="w-4 h-4 text-clay-blue-300" />
           </div>
           <div className="min-w-0">
-            <div className="flex items-center gap-1.5">
-              <div className="font-bold text-sm truncate max-w-[160px]">{t.name}</div>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <div className="font-black text-sm truncate max-w-[160px]">{t.name}</div>
               {t.debug_enabled && <Bug className="w-3.5 h-3.5 text-clay-pink-400 shrink-0" title="调试 Key" />}
               {t.debug_connectivity_enabled && <Wifi className="w-3.5 h-3.5 text-clay-blue-300 shrink-0" title="连通性测试 Key" />}
             </div>
-            {t.model_limits_enabled && models.length > 0 && (
-              <div className="text-[11px] text-clay-faint mt-0.5">
-                <Shield className="w-3 h-3 inline mr-0.5 -mt-0.5" />
-                限 {models.length} 个模型
-              </div>
-            )}
+            <div className="flex items-center gap-1.5 flex-wrap mt-1">
+              {archiveName ? (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-clay-pill bg-clay-purple-100 text-clay-purple-ink shadow-clay-sm">
+                  <Tag className="w-3 h-3" strokeWidth={2.6} />
+                  <span className="text-[11px] font-extrabold truncate max-w-[140px]" title={`绑定存档: ${archiveName}`}>绑定·{archiveName}</span>
+                </span>
+              ) : (
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); openEdit(t) }}
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-clay-pill bg-clay-bg shadow-clay-inset-sm text-clay-faint hover:text-clay-purple-ink transition-colors"
+                  title="点击绑定存档"
+                >
+                  <Plus className="w-3 h-3" strokeWidth={2.6} />
+                  <span className="text-[11px] font-extrabold">绑定存档</span>
+                </button>
+              )}
+              {t.model_limits_enabled && models.length > 0 && (
+                <span className="text-[11px] text-clay-faint inline-flex items-center gap-0.5">
+                  <Shield className="w-3 h-3" />
+                  限 {models.length} 个模型
+                </span>
+              )}
+            </div>
           </div>
         </div>
-        <span className={`text-[11px] font-extrabold px-2.5 py-0.5 rounded-clay-pill shrink-0 ${st.cls}`}>{st.label}</span>
+        <span className={`inline-flex items-center gap-1.5 font-extrabold text-xs shrink-0 ${isEnabled ? 'text-clay-green-ink' : 'text-clay-faint'}`}>
+          <span className={`inline-block w-2 h-2 rounded-full shadow-clay-xs ${st.dot}`} aria-hidden="true" />
+          {st.label}
+        </span>
       </div>
 
-      {/* Row 2: key */}
-      <div className="bg-clay-bg shadow-clay-inset rounded-clay-sm px-3 py-2.5 mb-3 flex items-center gap-2">
-        <code className="text-xs flex-1 truncate">
+      {/* Row 2: key (clay-inset pill with icons inside) */}
+      <div className="bg-clay-bg shadow-clay-inset rounded-clay-pill px-3.5 py-2 mb-3 flex items-center gap-2">
+        <code className="text-xs flex-1 truncate font-mono font-bold text-clay-blue-ink">
           {revealed || (t.key ? `sk-${t.key}` : '***')}
         </code>
-        <button onClick={() => onRevealKey(t)} className="p-1 rounded-clay-sm hover:bg-white/40 transition-colors shrink-0" title={revealed ? '隐藏' : '显示'}>
-          {revealed ? <EyeOff className="w-3.5 h-3.5 text-clay-faint" /> : <Eye className="w-3.5 h-3.5 text-clay-faint" />}
+        <button onClick={() => onRevealKey(t)} className="p-1 rounded-full hover:bg-white/40 transition-colors shrink-0 text-clay-faint" title={revealed ? '隐藏' : '显示'}>
+          {revealed ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
         </button>
-        <button onClick={() => onCopyKey(t)} className="p-1 rounded-clay-sm hover:bg-white/40 transition-colors shrink-0" title="复制">
-          <Copy className="w-3.5 h-3.5 text-clay-faint" />
+        <button onClick={() => onCopyKey(t)} className="p-1 rounded-full hover:bg-white/40 transition-colors shrink-0 text-clay-faint" title="复制">
+          <Copy className="w-3.5 h-3.5" />
         </button>
       </div>
 
-      {/* Row 3: quota */}
-      <div className="flex items-center justify-between gap-3 mb-3 text-xs">
-        <span className="text-clay-faint font-bold">额度</span>
-        <div className="font-mono">
-          <span className="font-bold">{quotaToDisplay(t.used_quota ?? 0).text}</span>
-          <span className="text-clay-faint mx-1">/</span>
+      {/* Row 3: quota (hero number) */}
+      <div className="flex items-baseline justify-between gap-3 mb-3">
+        <div className="text-[10px] font-black text-clay-faint uppercase tracking-widest">已用</div>
+        <div className="flex items-baseline gap-1.5 font-mono">
+          <span className="font-black text-lg text-clay-ink tabular-nums">{quotaToDisplay(t.used_quota ?? 0, 4).text}</span>
+          <span className="text-xs text-clay-faint">/</span>
           {t.unlimited_quota
-            ? <span className="inline-flex items-center gap-0.5 text-emerald-600"><Infinity className="w-3.5 h-3.5" /></span>
-            : <span className="text-clay-faint">{quotaToDisplay(t.remain_quota ?? 0).text}</span>
+            ? <Infinity className="w-3.5 h-3.5 text-clay-faint self-center" />
+            : <span className="text-xs text-clay-faint">{quotaToDisplay(t.remain_quota ?? 0, 4).text}</span>
           }
         </div>
       </div>
 
-      {/* Row 4: group + time + actions */}
+      {/* Row 4: group + time + actions (circular clay icon buttons) */}
       <div className="flex items-center justify-between gap-3 text-xs">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 min-w-0 flex-1">
           {group !== '-' ? (
-            <span className="px-2 py-0.5 rounded-clay-sm text-[11px] font-bold bg-clay-bg shadow-clay-inset text-clay-faint">
-              {group}
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-clay-pill bg-clay-purple-100 text-clay-purple-ink shadow-clay-sm">
+              <Layers className="w-3 h-3" strokeWidth={2.5} />
+              <span className="text-[11px] font-black truncate max-w-[100px]">{group}</span>
             </span>
           ) : (
-            <span className="text-clay-faint">默认</span>
+            <span className="text-clay-faint font-bold">默认</span>
           )}
-          <span className="text-clay-faint flex items-center gap-1">
-            <Clock className="w-3 h-3" />
-            <span className={t.expired_time > 0 && t.expired_time * 1000 < Date.now() ? 'text-red-500' : ''}>
+          <span className="text-clay-faint flex items-center gap-1 font-bold truncate">
+            <Clock className="w-3 h-3 shrink-0" />
+            <span className={`truncate ${t.expired_time > 0 && t.expired_time * 1000 < Date.now() ? 'text-clay-pink-400' : ''}`}>
               {fmtTime(t.expired_time)}
             </span>
           </span>
         </div>
-        <div className="flex items-center gap-1">
-          <button onClick={() => onToggleStatus(t)} className="p-1.5 rounded-clay-sm hover:bg-white/40 transition-colors" title={t.status === 1 ? '禁用' : '启用'}>
-            {t.status === 1
-              ? <ToggleRight className="w-4 h-4 text-emerald-500" />
-              : <ToggleLeft className="w-4 h-4 text-gray-400" />}
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            onClick={() => onToggleStatus(t)}
+            className={`w-8 h-8 rounded-full shadow-clay-sm flex items-center justify-center transition-all hover:-translate-y-0.5 ${
+              isEnabled ? 'bg-clay-green-100 text-clay-green-ink' : 'bg-clay-bg text-clay-faint'
+            }`}
+            title={isEnabled ? '禁用' : '启用'}
+          >
+            {isEnabled ? <ToggleRight className="w-4 h-4" /> : <ToggleLeft className="w-4 h-4" />}
           </button>
-          <button onClick={() => openEdit(t)} className="p-1.5 rounded-clay-sm hover:bg-white/40 transition-colors" title="编辑">
-            <Pencil className="w-4 h-4 text-clay-faint" />
+          <button
+            onClick={() => openEdit(t)}
+            className="w-8 h-8 rounded-full bg-clay-bg shadow-clay-sm flex items-center justify-center text-clay-faint hover:text-clay-ink transition-all hover:-translate-y-0.5"
+            title="编辑"
+          >
+            <Pencil className="w-3.5 h-3.5" />
           </button>
-          <button onClick={() => onDelete(t)} className="p-1.5 rounded-clay-sm hover:bg-clay-pink-100/40 transition-colors" title="删除">
-            <Trash2 className="w-4 h-4 text-clay-pink-400" />
+          <button
+            onClick={() => onDelete(t)}
+            className="w-8 h-8 rounded-full bg-clay-pink-100 shadow-clay-sm flex items-center justify-center text-clay-pink-ink hover:-translate-y-0.5 transition-all"
+            title="删除"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
           </button>
         </div>
       </div>
@@ -166,12 +203,21 @@ export default function TokenManage() {
 
   const [showModal, setShowModal] = useState(false)
   const [editing, setEditing] = useState(null)
-  const [form, setForm] = useState({ name: '', remain_quota: 0, expired_time: -1, unlimited_quota: true, group: '', display_amount: '', debug_enabled: false, debug_connectivity_enabled: false })
+  const [form, setForm] = useState({ name: '', remain_quota: 0, expired_time: -1, unlimited_quota: true, group: '', display_amount: '', debug_enabled: false, debug_connectivity_enabled: false, archive_id: null })
   const [saving, setSaving] = useState(false)
   const [groupOptions, setGroupOptions] = useState([])
+  const [archiveOptions, setArchiveOptions] = useState([])
 
   const [revealedKeys, setRevealedKeys] = useState({})
   const [expandedRow, setExpandedRow] = useState(null)
+  const [desktopView, setDesktopView] = useState(() => {
+    if (typeof window === 'undefined') return 'list'
+    try { return window.localStorage?.getItem('uiweb.tokens.desktopView') === 'card' ? 'card' : 'list' } catch (_) { return 'list' }
+  })
+  const setDesktopViewPersisted = useCallback((v) => {
+    setDesktopView(v)
+    try { window.localStorage?.setItem('uiweb.tokens.desktopView', v) } catch (_) {}
+  }, [])
 
   const pageSize = 20
 
@@ -191,6 +237,17 @@ export default function TokenManage() {
 
   useEffect(() => { load(page, keyword) }, [page]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // archive id -> archive name lookup for rendering bound-archive chips on token rows
+  const archiveNameById = useMemo(() => {
+    const map = new Map()
+    archiveOptions.forEach((o) => { map.set(o.value, o.label) })
+    return map
+  }, [archiveOptions])
+  const getArchiveName = useCallback((id) => {
+    if (id == null) return null
+    return archiveNameById.get(String(id)) ?? null
+  }, [archiveNameById])
+
   useEffect(() => {
     getUserGroups().then((res) => {
       const data = res?.data
@@ -203,6 +260,15 @@ export default function TokenManage() {
         }))
         setGroupOptions(opts)
       }
+    }).catch(() => {})
+    listArchives().then((res) => {
+      const items = res?.data ?? []
+      const opts = items.map((a) => ({
+        value: String(a.id),
+        label: a.name,
+        subtitle: `${a.slug} · ${a.alias_count} 个别名`,
+      }))
+      setArchiveOptions(opts)
     }).catch(() => {})
   }, [])
 
@@ -217,7 +283,7 @@ export default function TokenManage() {
   const openCreate = () => {
     setEditing(null)
     const defaultGroup = groupOptions.find((o) => o.value === 'default') ? 'default' : (groupOptions[0]?.value || '')
-    setForm({ name: '', remain_quota: 0, expired_time: -1, unlimited_quota: true, group: defaultGroup, display_amount: '', debug_enabled: false, debug_connectivity_enabled: false })
+    setForm({ name: '', remain_quota: 0, expired_time: -1, unlimited_quota: true, group: defaultGroup, display_amount: '', debug_enabled: false, debug_connectivity_enabled: false, archive_id: null })
     setShowModal(true)
   }
 
@@ -233,6 +299,7 @@ export default function TokenManage() {
       display_amount: da,
       debug_enabled: Boolean(t.debug_enabled),
       debug_connectivity_enabled: Boolean(t.debug_connectivity_enabled),
+      archive_id: t.archive_id ?? null,
     })
     setShowModal(true)
   }
@@ -246,6 +313,7 @@ export default function TokenManage() {
       unlimited_quota: form.unlimited_quota,
       remain_quota: form.unlimited_quota ? 0 : displayToQuota(parseFloat(form.display_amount) || 0),
       group: form.group,
+      archive_id: form.archive_id,
     }
     if (isAdmin) {
       payload.debug_enabled = Boolean(form.debug_enabled)
@@ -358,11 +426,47 @@ export default function TokenManage() {
         </ClayButton>
       </form>
 
-      {/* Table (desktop) / Cards (mobile) */}
-      {isMobile ? (
-        <div className="space-y-3">
+      {/* Desktop view toggle (list / card) */}
+      {!isMobile && (
+        <div className="flex justify-end mb-4">
+          <div className="inline-flex items-center gap-1 p-1 rounded-clay-pill bg-clay-bg shadow-clay-inset-sm">
+            <button
+              type="button"
+              onClick={() => setDesktopViewPersisted('list')}
+              className={`inline-flex items-center gap-1.5 px-4 py-1.5 rounded-clay-pill text-xs font-black transition-all duration-200 ease-clay ${
+                desktopView === 'list'
+                  ? 'bg-clay-surface text-clay-ink shadow-clay-sm'
+                  : 'text-clay-faint hover:text-clay-ink'
+              }`}
+              aria-pressed={desktopView === 'list'}
+              title="单行列表"
+            >
+              <Rows className="w-3.5 h-3.5" strokeWidth={2.5} />
+              列表
+            </button>
+            <button
+              type="button"
+              onClick={() => setDesktopViewPersisted('card')}
+              className={`inline-flex items-center gap-1.5 px-4 py-1.5 rounded-clay-pill text-xs font-black transition-all duration-200 ease-clay ${
+                desktopView === 'card'
+                  ? 'bg-clay-surface text-clay-ink shadow-clay-sm'
+                  : 'text-clay-faint hover:text-clay-ink'
+              }`}
+              aria-pressed={desktopView === 'card'}
+              title="卡片网格"
+            >
+              <LayoutGrid className="w-3.5 h-3.5" strokeWidth={2.5} />
+              卡片
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Table (desktop list) / Cards (mobile or desktop card) */}
+      {isMobile || desktopView === 'card' ? (
+        <div className={isMobile ? 'space-y-3' : 'grid grid-cols-2 xl:grid-cols-3 gap-4'}>
           {loading && (
-            <ClayCard className="!py-12 text-center">
+            <ClayCard className="!py-12 text-center col-span-full">
               <div className="flex flex-col items-center gap-3">
                 <RefreshCw className="w-8 h-8 text-clay-faint animate-spin" />
                 <span className="text-clay-faint font-bold">加载中…</span>
@@ -370,7 +474,7 @@ export default function TokenManage() {
             </ClayCard>
           )}
           {!loading && tokens.length === 0 && (
-            <ClayCard className="!py-12 text-center">
+            <ClayCard className="!py-12 text-center col-span-full">
               <div className="flex flex-col items-center gap-3">
                 <KeyRound className="w-10 h-10 text-clay-faint/50" />
                 <span className="text-clay-faint font-bold">暂无令牌</span>
@@ -381,6 +485,7 @@ export default function TokenManage() {
             <TokenCard
               key={t.id}
               t={t}
+              archiveName={getArchiveName(t.archive_id)}
               revealedKeys={revealedKeys}
               onRevealKey={onRevealKey}
               onCopyKey={onCopyKey}
@@ -394,11 +499,11 @@ export default function TokenManage() {
       <ClayCard className="!p-0 overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-black/5 text-left text-clay-faint">
-              <th className="px-5 py-3 font-bold">名称</th>
+            <tr className="border-b border-clay-line/10 text-left text-clay-faint">
+              <th className="px-5 py-3 font-bold">名称 / 绑定存档</th>
               <th className="px-5 py-3 font-bold">密钥</th>
               <th className="px-5 py-3 font-bold">状态</th>
-              <th className="px-5 py-3 font-bold text-right">已用 / 剩余额度</th>
+              <th className="px-5 py-3 font-bold text-right">已用额度</th>
               <th className="px-5 py-3 font-bold">分组</th>
               <th className="px-5 py-3 font-bold">创建 / 过期</th>
               <th className="px-5 py-3 font-bold text-right">操作</th>
@@ -417,101 +522,137 @@ export default function TokenManage() {
               const group = t.group || '-'
               const models = parseModels(t.model_limits)
               const isExpanded = expandedRow === t.id
+              const archiveName = getArchiveName(t.archive_id)
+              const isEnabled = t.status === 1
 
               return (
                 <tr
                   key={t.id}
-                  className="border-b border-black/5 last:border-0 hover:bg-white/30 transition-colors group/row cursor-pointer"
+                  className="border-b border-clay-line/10 last:border-0 hover:bg-white/30 transition-colors group/row cursor-pointer"
                   onClick={() => setExpandedRow(isExpanded ? null : t.id)}
                 >
-                  <td className="px-5 py-3">
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-8 h-8 rounded-full shadow-clay bg-clay-blue-100 flex items-center justify-center shrink-0">
+                  <td className="px-5 py-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-full shadow-clay-sm bg-clay-blue-100 flex items-center justify-center shrink-0">
                         <KeyRound className="w-4 h-4 text-clay-blue-300" />
                       </div>
                       <div className="min-w-0">
-                        <div className="flex items-center gap-1.5">
-                          <div className="font-bold text-sm truncate max-w-[160px]">{t.name}</div>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <div className="font-black text-sm truncate max-w-[160px]">{t.name}</div>
                           {t.debug_enabled && (
-                            <span className="inline-flex items-center gap-1 rounded-clay-pill bg-clay-pink-100 px-2 py-0.5 text-[10px] font-black text-[#8a4860]">
+                            <span className="inline-flex items-center gap-1 rounded-clay-pill bg-clay-pink-100 shadow-clay-sm px-2 py-0.5 text-[10px] font-black text-clay-pink-ink">
                               <Bug className="w-3 h-3" />
                               调试
                             </span>
                           )}
                           {t.debug_connectivity_enabled && (
-                            <span className="inline-flex items-center gap-1 rounded-clay-pill bg-clay-blue-100 px-2 py-0.5 text-[10px] font-black text-clay-blue-300">
+                            <span className="inline-flex items-center gap-1 rounded-clay-pill bg-clay-blue-100 shadow-clay-sm px-2 py-0.5 text-[10px] font-black text-clay-blue-300">
                               <Wifi className="w-3 h-3" />
                               连通性
                             </span>
                           )}
                         </div>
-                        {t.model_limits_enabled && models.length > 0 && (
-                          <div className="text-[11px] text-clay-faint mt-0.5">
-                            <Shield className="w-3 h-3 inline mr-0.5 -mt-0.5" />
-                            限 {models.length} 个模型
-                          </div>
-                        )}
+                        <div className="flex items-center gap-1.5 flex-wrap mt-1.5" onClick={(e) => e.stopPropagation()}>
+                          {archiveName ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-clay-pill bg-clay-purple-100 text-clay-purple-ink shadow-clay-sm">
+                              <Tag className="w-3 h-3" strokeWidth={2.6} />
+                              <span className="text-[11px] font-extrabold truncate max-w-[160px]" title={`绑定存档: ${archiveName}`}>绑定·{archiveName}</span>
+                            </span>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => openEdit(t)}
+                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-clay-pill bg-clay-bg shadow-clay-inset text-clay-faint hover:text-clay-purple-ink transition-colors"
+                              title="点击绑定存档"
+                            >
+                              <Plus className="w-3 h-3" strokeWidth={2.6} />
+                              <span className="text-[11px] font-extrabold">绑定存档</span>
+                            </button>
+                          )}
+                          {t.model_limits_enabled && models.length > 0 && (
+                            <span className="text-[11px] text-clay-faint inline-flex items-center gap-0.5">
+                              <Shield className="w-3 h-3" />
+                              限 {models.length} 个模型
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </td>
-                  <td className="px-5 py-3" onClick={(e) => e.stopPropagation()}>
-                    <div className="flex items-center gap-1.5">
-                      <code className="text-xs bg-clay-bg px-2 py-1 rounded-clay-sm max-w-[180px] truncate shadow-clay-inset">
+                  <td className="px-5 py-4" onClick={(e) => e.stopPropagation()}>
+                    <div className="inline-flex items-center gap-1 bg-clay-bg shadow-clay-inset rounded-clay-pill px-3 py-1.5 max-w-[230px]">
+                      <code className="text-xs font-mono font-bold text-clay-blue-ink truncate flex-1 min-w-0">
                         {revealed || (t.key ? `sk-${t.key}` : '***')}
                       </code>
-                      <button onClick={() => onRevealKey(t)} className="p-1 rounded-clay-sm hover:bg-white/40 transition-colors" title={revealed ? '隐藏' : '显示'}>
-                        {revealed ? <EyeOff className="w-3.5 h-3.5 text-clay-faint" /> : <Eye className="w-3.5 h-3.5 text-clay-faint" />}
+                      <button onClick={() => onRevealKey(t)} className="p-0.5 rounded-full hover:bg-white/40 transition-colors shrink-0 text-clay-faint" title={revealed ? '隐藏' : '显示'}>
+                        {revealed ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                       </button>
-                      <button onClick={() => onCopyKey(t)} className="p-1 rounded-clay-sm hover:bg-white/40 transition-colors" title="复制">
-                        <Copy className="w-3.5 h-3.5 text-clay-faint" />
+                      <button onClick={() => onCopyKey(t)} className="p-0.5 rounded-full hover:bg-white/40 transition-colors shrink-0 text-clay-faint" title="复制">
+                        <Copy className="w-3.5 h-3.5" />
                       </button>
                     </div>
                   </td>
-                  <td className="px-5 py-3">
-                    <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${st.cls}`}>{st.label}</span>
+                  <td className="px-5 py-4">
+                    <span className={`inline-flex items-center gap-2 font-extrabold text-xs ${isEnabled ? 'text-clay-green-ink' : 'text-clay-faint'}`}>
+                      <span className={`inline-block w-2 h-2 rounded-full shadow-clay-xs ${isEnabled ? 'bg-clay-green-300' : 'bg-clay-faint/60'}`} aria-hidden="true" />
+                      {st.label}
+                    </span>
                   </td>
-                  <td className="px-5 py-3 text-right">
-                    <div className="font-mono text-xs">
-                      <span className="font-bold">{quotaToDisplay(t.used_quota ?? 0).text}</span>
-                      <span className="text-clay-faint mx-1">/</span>
+                  <td className="px-5 py-4 text-right">
+                    <div className="inline-flex items-baseline gap-1.5 font-mono">
+                      <span className="font-black text-base text-clay-ink tabular-nums">{quotaToDisplay(t.used_quota ?? 0, 4).text}</span>
+                      <span className="text-xs text-clay-faint">/</span>
                       {t.unlimited_quota
-                        ? <span className="inline-flex items-center gap-0.5 text-emerald-600"><Infinity className="w-3.5 h-3.5" /></span>
-                        : <span className="text-clay-faint">{quotaToDisplay(t.remain_quota ?? 0).text}</span>
+                        ? <Infinity className="w-3.5 h-3.5 text-clay-faint self-center" />
+                        : <span className="text-xs text-clay-faint">{quotaToDisplay(t.remain_quota ?? 0, 4).text}</span>
                       }
                     </div>
                   </td>
-                  <td className="px-5 py-3">
+                  <td className="px-5 py-4">
                     {group !== '-' ? (
-                      <span className="px-2 py-0.5 rounded-clay-sm text-[11px] font-bold bg-clay-bg shadow-clay-inset text-clay-faint">
-                        {group}
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-clay-pill bg-clay-purple-100 text-clay-purple-ink shadow-clay-sm">
+                        <Layers className="w-3 h-3" strokeWidth={2.5} />
+                        <span className="text-xs font-black">{group}</span>
                       </span>
                     ) : (
-                      <span className="text-clay-faint text-xs">默认</span>
+                      <span className="text-clay-faint text-xs font-bold">默认</span>
                     )}
                   </td>
-                  <td className="px-5 py-3">
-                    <div className="text-xs space-y-0.5">
-                      <div className="text-clay-faint">{fmtCreated(t.created_time)}</div>
-                      <div className="flex items-center gap-1">
-                        <Clock className="w-3 h-3 text-clay-faint" />
-                        <span className={t.expired_time > 0 && t.expired_time * 1000 < Date.now() ? 'text-red-500' : 'text-clay-faint'}>
-                          {fmtTime(t.expired_time)}
-                        </span>
+                  <td className="px-5 py-4">
+                    <div className="text-xs leading-relaxed">
+                      <div className="text-clay-faint font-bold">
+                        创建 <span className="text-clay-ink/80 font-extrabold tabular-nums">{fmtCreated(t.created_time)}</span>
+                      </div>
+                      <div className={`flex items-center gap-1 font-bold ${t.expired_time > 0 && t.expired_time * 1000 < Date.now() ? 'text-clay-pink-400' : 'text-clay-faint'}`}>
+                        <Clock className="w-3 h-3" />
+                        {fmtTime(t.expired_time)}
                       </div>
                     </div>
                   </td>
-                  <td className="px-5 py-3" onClick={(e) => e.stopPropagation()}>
-                    <div className="flex items-center justify-end gap-1">
-                      <button onClick={() => onToggleStatus(t)} className="p-1.5 rounded-clay-sm hover:bg-white/40 transition-colors" title={t.status === 1 ? '禁用' : '启用'}>
-                        {t.status === 1
-                          ? <ToggleRight className="w-4 h-4 text-emerald-500" />
-                          : <ToggleLeft className="w-4 h-4 text-gray-400" />}
+                  <td className="px-5 py-4" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex items-center justify-end gap-2">
+                      <button
+                        onClick={() => onToggleStatus(t)}
+                        className={`w-8 h-8 rounded-full shadow-clay-sm flex items-center justify-center transition-all hover:-translate-y-0.5 ${
+                          isEnabled ? 'bg-clay-green-100 text-clay-green-ink' : 'bg-clay-bg text-clay-faint'
+                        }`}
+                        title={isEnabled ? '禁用' : '启用'}
+                      >
+                        {isEnabled ? <ToggleRight className="w-4 h-4" /> : <ToggleLeft className="w-4 h-4" />}
                       </button>
-                      <button onClick={() => openEdit(t)} className="p-1.5 rounded-clay-sm hover:bg-white/40 transition-colors" title="编辑">
-                        <Pencil className="w-4 h-4 text-clay-faint" />
+                      <button
+                        onClick={() => openEdit(t)}
+                        className="w-8 h-8 rounded-full bg-clay-bg shadow-clay-sm flex items-center justify-center text-clay-faint hover:text-clay-ink transition-all hover:-translate-y-0.5"
+                        title="编辑"
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
                       </button>
-                      <button onClick={() => onDelete(t)} className="p-1.5 rounded-clay-sm hover:bg-clay-pink-100/40 transition-colors" title="删除">
-                        <Trash2 className="w-4 h-4 text-clay-pink-400" />
+                      <button
+                        onClick={() => onDelete(t)}
+                        className="w-8 h-8 rounded-full bg-clay-pink-100 shadow-clay-sm flex items-center justify-center text-clay-pink-ink hover:-translate-y-0.5 transition-all"
+                        title="删除"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     </div>
                   </td>
@@ -554,12 +695,24 @@ export default function TokenManage() {
               />
             </div>
           )}
+          <div>
+            <label className="block ml-4 mb-2 font-bold text-sm text-clay-ink">默认存档（可选）</label>
+            <ClaySelect
+              value={form.archive_id != null ? String(form.archive_id) : ''}
+              onChange={(v) => setForm({ ...form, archive_id: v ? parseInt(v, 10) : null })}
+              options={[{ value: '', label: '不绑定', subtitle: '走原模型路由' }, ...archiveOptions]}
+              placeholder="不绑定"
+            />
+            <p className="ml-4 mt-1 text-[11px] text-clay-faint">
+              绑定后用这把 Key 调用别名会自动解析到该存档的源模型/分组。
+            </p>
+          </div>
           <div className="flex items-center gap-3">
             <label className="text-sm font-bold">无限额度</label>
             <button type="button" onClick={() => setForm({ ...form, unlimited_quota: !form.unlimited_quota })} className="p-0.5">
               {form.unlimited_quota
-                ? <ToggleRight className="w-6 h-6 text-emerald-500" />
-                : <ToggleLeft className="w-6 h-6 text-gray-400" />}
+                ? <ToggleRight className="w-6 h-6 text-clay-green-300" />
+                : <ToggleLeft className="w-6 h-6 text-clay-faint/60" />}
             </button>
           </div>
           {!form.unlimited_quota && (
@@ -609,7 +762,7 @@ export default function TokenManage() {
                 >
                   {form.debug_enabled
                     ? <ToggleRight className="w-7 h-7 text-clay-pink-400" />
-                    : <ToggleLeft className="w-7 h-7 text-gray-400" />}
+                    : <ToggleLeft className="w-7 h-7 text-clay-faint/60" />}
                 </button>
               </div>
               {form.debug_enabled && (
@@ -626,7 +779,7 @@ export default function TokenManage() {
                   <button type="button" onClick={() => setForm({ ...form, debug_connectivity_enabled: !form.debug_connectivity_enabled })} className="p-0.5 shrink-0">
                     {form.debug_connectivity_enabled
                       ? <ToggleRight className="w-7 h-7 text-clay-blue-300" />
-                      : <ToggleLeft className="w-7 h-7 text-gray-400" />}
+                      : <ToggleLeft className="w-7 h-7 text-clay-faint/60" />}
                   </button>
                 </div>
               )}

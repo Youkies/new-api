@@ -81,13 +81,13 @@ export default function Announcements() {
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2 mb-2">
                       {item.pinned && (
-                        <span className="inline-flex items-center gap-1 text-[11px] font-black px-3 py-1 rounded-clay-pill bg-clay-yellow-100 text-[#8a6a32] shadow-clay-sm">
+                        <span className="inline-flex items-center gap-1 text-[11px] font-black px-3 py-1 rounded-clay-pill bg-clay-yellow-100 text-clay-yellow-ink shadow-clay-sm">
                           <Pin className="w-3 h-3" />
                           置顶
                         </span>
                       )}
                       {item.force_popup && (
-                        <span className="inline-flex items-center gap-1 text-[11px] font-black px-3 py-1 rounded-clay-pill bg-clay-pink-100 text-[#8a4860] shadow-clay-sm">
+                        <span className="inline-flex items-center gap-1 text-[11px] font-black px-3 py-1 rounded-clay-pill bg-clay-pink-100 text-clay-pink-ink shadow-clay-sm">
                           <Bell className="w-3 h-3" />
                           重要
                         </span>

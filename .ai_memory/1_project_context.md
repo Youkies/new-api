@@ -46,14 +46,18 @@
 - 用户端移动端体验优先优化；管理端主要按桌面使用场景维护，只需保持基本可访问。
 - 官方 default UI 当前审美不符合用户偏好，先保留不删除；后续官方 default 更新优先借鉴 API/逻辑，不主动替换主 UI。
 - 用户头像下拉菜单的“游乐场”当前指向 `uiweb` 原生 `/playground`；第一版是“今天吃什么呀”随机工具，支持内置菜单、用户私有服务器菜单和公共审核菜品池，今日记录仍存在浏览器 `localStorage`，细节查 `docs/uiweb/features.md`、`docs/uiweb/api-contracts.md` 和 `docs/uiweb/database-and-migrations.md`。
+- **用户模型别名存档**：用户在 `/archives` 建多个存档，每存档含若干 alias→(group, model) 映射；token 可绑定默认存档；`logs.requested_model_name` 落库用户实际输入模型名。表 `user_model_archives` / `user_model_aliases`，2026-05-18 随 v6 merge main，slave 节点上线前须手动跑 SQL（清单见 `docs/uiweb/database-and-migrations.md`）。
+- **Clay 设计 token**：tailwind.config 注册了 `text-clay-{pink,blue,purple,green,yellow}-ink` 语义 ink 色 + `shadow-clay-xs/inset-sm` 轻量阴影；基础组件 `ClayIconButton/ClayBadge/ClayInsetPanel/ClayEmptyState` + `ClayButton.size/variant`、`ClayCard.density/tone` 全部 admin/用户页面通用，避免 `!important` 透传。Clay 凹陷只用于输入/track/凹槽语义，展示数据用 hairline + 大字 hero。
 
 ## 支付边界
 
 - KPay 原生充值走服务端 API 下单和回调：用户侧 `POST /api/user/kpay/pay` 创建 `direct_qr` 订单，`uiweb` 站内展示二维码，`POST /api/kpay/notify` 回调入账，`POST /api/user/kpay/check` 仅作为用户当前订单查单兜底。
-- KPay 平台回跳地址使用主 UI `/topup?show_history=true`；`uiweb` 兼容旧 `/console/topup` 回跳，并会短期保存待支付 KPay 订单，支付 App 回跳或页面重新聚焦后自动恢复 `/api/user/kpay/check` 补偿查单；KPay 平台订单号保存到 `top_ups.provider_order_no`，用于服务端查单兜底。
-- classic `/legacy/` 充值页同样会短期保存待支付 KPay 订单，支付 App 返回、页面重新聚焦或重新进入充值页时会自动恢复并查单；legacy 账单弹窗也会对用户自己的 KPay `pending` 单静默查单并提供“检查到账”按钮。
+- KPay 平台回跳地址使用主 UI `/topup?show_history=true`；`uiweb` 兼容旧 `/console/topup` 回跳，并会短期保存待支付 KPay 订单,支付 App 回跳或页面重新聚焦后自动恢复 `/api/user/kpay/check` 补偿查单；KPay 平台订单号保存到 `top_ups.provider_order_no`，用于服务端查单兜底。
+- classic `/legacy/` 充值页同样会短期保存待支付 KPay 订单，支付 App 返回、页面重新聚焦或重新进入充值页时会自动恢复并查单；legacy 账单弹窗也会对用户自己的 KPay `pending` 单静默查单并提供"检查到账"按钮。
 - KPay 配置入口在 `/legacy/` classic 支付设置的 `KPay 设置` 标签；密钥只保存到 option，不写入 docs、memory、提交或回复。
 - 旧易支付兼容链路仍保留，KPay 只是新增站内二维码链路，用于减少外部收银台跳转失败。
+- KPay 到账可靠性按四层兜底：(1) KPay webhook `/api/kpay/notify`（主路径，幂等 + 签名校验）；(2) 用户在线时前端 5 秒 `/api/user/kpay/check` 轮询；(3) 下单成功后 `SchedulePostCreateKPayWatch` 启动 master 节点 goroutine，按 25s/35s/45s/60s/90s/90s/2m/2m/2m 退避序列查单约 12 分钟，并发上限 200，订单脱离 pending 即提前退出；(4) `StartKPayPendingSweepTask` 每 5 分钟全局扫描 `payment_provider=kpay AND status=pending AND provider_order_no<>''` 且创建时间在 [now-7d, now-2min] 的订单，每轮上限 50 单、50ms 限速。三套兜底全部在后端 `RechargeKPay` / `reconcileKPayTopUp` 共用同一段原子幂等入账逻辑，前端入口（uiweb / classic）无关。
+- 后台 `/admin/kpay-topups`（uiweb）支持按状态搜索全站 KPay 订单，并对未到账订单一键触发查单补单（`POST /api/ui/admin/topups/kpay/:trade_no/replay`），仅按 KPay 真实状态入账，不强制把订单标为 success。
 
 ## 部署与生产约束
 
@@ -67,6 +71,7 @@
 - SSE/长响应反代关键配置：`proxy_buffering off`，`proxy_read_timeout 1000s`。
 - 生产必须固定 `SESSION_SECRET`；如需加密签名稳定，可同步固定 `CRYPTO_SECRET`。
 - `NODE_TYPE=slave` 不跑迁移；正式站也不能依赖自动迁移，新表/新列上线前必须手动确认或执行 SQL，完整清单查 `docs/uiweb/database-and-migrations.md`。
+- `NODE_TYPE=slave` 不跑任何后台兜底/定时任务（KPay watcher、KPay 全局扫描、订阅 quota reset、Codex 凭据刷新、AutoTestChannels 等都依赖 `common.IsMasterNode`）。验证后台任务必须在 `NODE_TYPE=master` 节点上跑，slave 节点只承担 API relay。
 - 官方 `v1.0.0-rc.4` 合并后生产需确认 `perf_metrics` 表，以及 `users.created_at`、`users.last_login_at` 两列。
 
 ## 高风险排障索引

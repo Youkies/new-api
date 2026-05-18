@@ -45,9 +45,14 @@ export default function About() {
             </div>
           )}
 
-          <div className="mt-10 border-t-2 border-white/35 pt-8">
+          <div className="mt-10 pt-8 relative">
+            <span
+              className="absolute left-0 right-0 -top-0 h-px"
+              style={{ background: 'linear-gradient(to right, transparent, rgb(var(--clay-line) / 0.18), transparent)' }}
+              aria-hidden="true"
+            />
             <div className="flex items-center gap-3 mb-5">
-              <div className="clay-icon-box !w-11 !h-11 text-clay-pink-300 shrink-0">
+              <div className="w-11 h-11 rounded-full bg-clay-pink-100 text-clay-pink-ink shadow-clay-sm flex items-center justify-center shrink-0">
                 <RotateCcw className="w-5 h-5" strokeWidth={2.5} />
               </div>
               <div>
@@ -76,27 +81,33 @@ export default function About() {
               href="https://xhslink.com/m/2PS41Q0qrIw"
               target="_blank"
               rel="noreferrer"
-              className="clay-card !p-5 !rounded-clay-lg hover:-translate-y-1 transition-transform flex items-center gap-3"
+              className="clay-card !p-5 !rounded-clay-lg hover:-translate-y-1 hover:shadow-clay-hover transition-all duration-300 ease-clay flex items-center gap-3"
             >
-              <BookHeart className="w-5 h-5" />
+              <span className="w-10 h-10 rounded-full bg-clay-pink-100 text-clay-pink-ink shadow-clay-sm flex items-center justify-center shrink-0">
+                <BookHeart className="w-5 h-5" strokeWidth={2.5} />
+              </span>
               <span className="font-extrabold">小红书</span>
             </a>
             <a
               href="https://qm.qq.com/q/LZrPnE1uge"
               target="_blank"
               rel="noreferrer"
-              className="clay-card !p-5 !rounded-clay-lg hover:-translate-y-1 transition-transform flex items-center gap-3"
+              className="clay-card !p-5 !rounded-clay-lg hover:-translate-y-1 hover:shadow-clay-hover transition-all duration-300 ease-clay flex items-center gap-3"
             >
-              <Users className="w-5 h-5" />
+              <span className="w-10 h-10 rounded-full bg-clay-blue-100 text-clay-blue-ink shadow-clay-sm flex items-center justify-center shrink-0">
+                <Users className="w-5 h-5" strokeWidth={2.5} />
+              </span>
               <span className="font-extrabold">QQ 交流群</span>
             </a>
             <a
               href="https://qm.qq.com/q/m5jzN2Ta2m"
               target="_blank"
               rel="noreferrer"
-              className="clay-card !p-5 !rounded-clay-lg hover:-translate-y-1 transition-transform flex items-center gap-3"
+              className="clay-card !p-5 !rounded-clay-lg hover:-translate-y-1 hover:shadow-clay-hover transition-all duration-300 ease-clay flex items-center gap-3"
             >
-              <MessageCircle className="w-5 h-5" />
+              <span className="w-10 h-10 rounded-full bg-clay-green-100 text-clay-green-ink shadow-clay-sm flex items-center justify-center shrink-0">
+                <MessageCircle className="w-5 h-5" strokeWidth={2.5} />
+              </span>
               <span className="font-extrabold">站长 QQ</span>
             </a>
           </div>

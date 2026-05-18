@@ -17,7 +17,7 @@ function getStatusCache() {
 
 // Mirror of web/src/helpers/render.jsx getCurrencyConfig().
 // quota_display_type: 'USD' | 'CNY' | 'CUSTOM' | 'TOKENS'
-function getCurrencyConfig() {
+export function getCurrencyConfig() {
   const type = localStorage.getItem('quota_display_type') || 'USD'
   const s = getStatusCache()
   if (type === 'TOKENS') return { type, symbol: '', rate: 1 }

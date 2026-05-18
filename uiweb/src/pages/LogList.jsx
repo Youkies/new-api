@@ -4,7 +4,7 @@ import {
   Clock, CalendarDays,
   Activity, AlertCircle, RefreshCw, CreditCard, Settings, Terminal,
   RotateCcw, FileText, TrendingUp, ShieldCheck, History, CheckCircle2, XCircle, X,
-  Cpu, Tag, ArrowDown, ArrowUp, Zap, Timer, Rows, LayoutGrid,
+  Cpu, Tag, ArrowDown, ArrowUp, Zap, Timer, Rows, LayoutGrid, Copy,
 } from 'lucide-react'
 import ClayCard from '../components/clay/ClayCard.jsx'
 import ClayButton from '../components/clay/ClayButton.jsx'
@@ -913,9 +913,9 @@ function LogCard({ log, onClick }) {
             </div>
           </div>
 
-          {/* Error message highlighted block (own row, click hint via parent modal) */}
+          {/* Error message — pure red text, no凹槽 framing */}
           {isError && log.content && (
-            <div className="mt-2 px-3 py-2 rounded-clay-sm bg-clay-pink-100/70 text-clay-pink-ink font-bold text-xs leading-relaxed break-all line-clamp-3 shadow-clay-inset-sm">
+            <div className="mt-2 text-xs font-bold text-clay-pink-400 leading-relaxed break-all line-clamp-3">
               {log.content}
             </div>
           )}
@@ -958,12 +958,6 @@ function LogCard({ log, onClick }) {
                 <span className="inline-flex items-center gap-1">
                   <Timer className="w-3 h-3 text-clay-faint/60" strokeWidth={2.5} />
                   总<b className="text-clay-ink/80 font-black ml-0.5 tabular-nums">{fmtUseTime(log.use_time)}</b>
-                </span>
-              ) : null}
-              {isError && log.model_name ? (
-                <span className="inline-flex items-center gap-1">
-                  <Cpu className="w-3 h-3 text-clay-faint/60" strokeWidth={2.5} />
-                  <b className="text-clay-ink/80 font-black tabular-nums">{log.model_name}</b>
                 </span>
               ) : null}
               {isError && log.use_time ? (

@@ -14,6 +14,7 @@ import ClayModal from '../components/clay/ClayModal.jsx'
 import ClayConsoleShell from '../components/layout/ClayConsoleShell.jsx'
 import { useToast } from '../context/ToastContext.jsx'
 import { quotaToDisplay } from '../utils/quota.js'
+import { copyTextToClipboard } from '../utils/clipboard.js'
 import { getUserLogs, getUserLogsStat } from '../services/logs.js'
 import { createRefundAppeal, getRefundCandidates, listMyRefundAppeals } from '../services/refundAppeals.js'
 
@@ -90,6 +91,47 @@ function parseOther(raw) {
   try { return JSON.parse(raw) || {} } catch { return {} }
 }
 
+const TOPUP_SOURCE_PATTERNS = [
+  { re: /^KPay/, label: 'KPay 充值' },
+  { re: /^Waffo Pancake/, label: 'Waffo 充值' },
+  { re: /^Waffo/, label: 'Waffo 充值' },
+  { re: /^Creem/, label: 'Creem 充值' },
+  { re: /^管理员补单/, label: '管理员补单' },
+  { re: /^通过兑换码/, label: '兑换码充值' },
+  { re: /^使用在线充值/, label: '在线充值' },
+  { re: /^新用户注册/, label: '新人赠送' },
+  { re: /订阅|subscription/i, label: '订阅入账' },
+]
+
+function detectTopupSource(content) {
+  const s = String(content || '').trim()
+  for (const p of TOPUP_SOURCE_PATTERNS) {
+    if (p.re.test(s)) return p.label
+  }
+  return '充值入账'
+}
+
+function parseAmountsFromContent(content) {
+  const s = String(content || '')
+  const matches = []
+  const re = /¥\s*([\d,]+(?:\.\d+)?)/g
+  let m
+  while ((m = re.exec(s)) !== null) matches.push(m[1])
+  // Fallback：no ¥, try "支付金额: 1.00" / "充值金额: 1.000000"
+  if (matches.length === 0) {
+    const re2 = /(?:充值额度|充值金额|获得额度|支付金额|金额)[：:]\s*([\d,]+(?:\.\d+)?)/g
+    while ((m = re2.exec(s)) !== null) matches.push(m[1])
+  }
+  return matches
+}
+
+function formatAmount(raw) {
+  if (!raw) return ''
+  const n = Number(String(raw).replace(/,/g, ''))
+  if (!Number.isFinite(n)) return raw
+  return n >= 100 ? n.toFixed(2) : n.toFixed(4).replace(/0+$/, '').replace(/\.$/, '')
+}
+
 function getCacheTokens(other) {
   if (!other) return { read: 0, write: 0 }
   const read = other.cache_tokens || 0
@@ -112,18 +154,49 @@ function DetailRow({ label, value, mono }) {
   )
 }
 
-function LogDetailContent({ log }) {
+function LogDetailContent({ log, onCopy }) {
   const other = parseOther(log.other)
   const cache = getCacheTokens(other)
   const frt = other.frt > 0 ? other.frt : null
   const meta = TYPE_META[log.type] ?? TYPE_META[4]
+  const isError = log.type === 5
 
   return (
     <div className="space-y-5">
+      {/* Error message — highlighted at top, click to copy */}
+      {isError && log.content && (
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={() => onCopy?.(log.content)}
+          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onCopy?.(log.content) }}
+          className="group relative cursor-pointer rounded-clay bg-clay-pink-100 px-4 py-4 shadow-clay-sm transition-all duration-200 ease-clay hover:shadow-clay-hover active:scale-[0.99]"
+          title="点击复制错误信息"
+        >
+          <div className="flex items-start gap-3">
+            <div className="w-9 h-9 rounded-full bg-clay-pink-200/70 text-clay-pink-ink flex items-center justify-center shrink-0 shadow-clay-sm">
+              <AlertCircle className="w-4 h-4" strokeWidth={2.6} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between gap-2 mb-1.5">
+                <span className="text-[11px] font-black uppercase tracking-wider text-clay-pink-ink/70">错误信息</span>
+                <span className="inline-flex items-center gap-1 text-[11px] font-extrabold text-clay-pink-ink/70 group-hover:text-clay-pink-ink transition-colors">
+                  <Copy className="w-3 h-3" strokeWidth={2.6} />
+                  点击复制
+                </span>
+              </div>
+              <div className="text-sm font-bold text-clay-pink-ink whitespace-pre-wrap break-all leading-relaxed">
+                {log.content}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div>
         <DetailRow label="时间" value={log.created_at ? new Date(log.created_at * 1000).toLocaleString('zh-CN') : '-'} />
         <DetailRow label="类型" value={
-          <span className={`text-[11px] font-extrabold px-3 py-1 rounded-clay-pill ${meta.bg} ${meta.text}`}>
+          <span className={`text-[11px] font-extrabold px-3 py-1 rounded-clay-pill shadow-clay-sm ${meta.bg} ${meta.text}`}>
             {meta.label}
           </span>
         } />
@@ -199,7 +272,8 @@ function LogDetailContent({ log }) {
         />
       ) : null}
 
-      {log.content && (
+      {/* Non-error content is shown plainly at the bottom; error already shown above */}
+      {!isError && log.content && (
         <div>
           <h4 className="text-xs font-extrabold text-clay-faint mb-2">详情</h4>
           <div className="bg-clay-bg rounded-clay p-4 shadow-clay-inset text-xs text-clay-faint whitespace-pre-wrap break-all">
@@ -669,6 +743,10 @@ function LogCard({ log, onClick }) {
   const TypeIcon = meta.icon
   const isError = log.type === 5
   const isConsume = log.type === 2
+  const isTopup = log.type === 1
+  const isSystem = log.type === 4
+  const isRefund = log.type === 6
+  const isManage = log.type === 3
   const other = parseOther(log.other)
   const cache = getCacheTokens(other)
   const frt = other.frt > 0 ? other.frt : null
@@ -678,30 +756,45 @@ function LogCard({ log, onClick }) {
   const hasAlias = Boolean(log.requested_model_name && log.requested_model_name !== log.model_name)
   const hasCache = cache.read > 0 || cache.write > 0
 
-  // Title = user-facing identifier (alias when bound, real model when passthrough)
-  // Subtitle = actual relay routing target ({group} / {real_model})
   const showModelHeader = isConsume || isError
+
+  // Parse credit amount for topup / system reward (content carries ¥X.XXXX)
+  let creditAmount = null
+  let topupSource = null
+  let payAmount = null
+  if (isTopup || isSystem || isRefund) {
+    const amounts = parseAmountsFromContent(log.content)
+    creditAmount = amounts[0] ? formatAmount(amounts[0]) : null
+    payAmount = amounts[1] ? formatAmount(amounts[1]) : null
+    if (isTopup) topupSource = detectTopupSource(log.content)
+  }
+
+  // Title: alias id / real model for consume·error; source label for topup; summary for system/refund/manage
   const titleText = showModelHeader
     ? (hasAlias ? log.requested_model_name : (log.model_name || meta.label))
-    : (log.content || meta.label)
+    : isTopup
+      ? topupSource
+      : isSystem
+        ? (String(log.content || '').split(/[,，]/)[0].trim() || meta.label)
+        : (log.content || meta.label)
 
   return (
     <div
-      className={`clay-card-interactive !p-5 !rounded-clay cursor-pointer ${isError ? '!bg-clay-pink-50/60' : ''}`}
+      className={`clay-card-interactive !p-5 !rounded-clay cursor-pointer flex min-h-[148px] ${isError ? '!bg-clay-pink-50/60' : ''}`}
       onClick={onClick}
     >
-      <div className="flex items-start gap-3.5">
-        {/* Unified big icon per category (no thinking/stream variation) */}
+      <div className="flex items-start gap-3.5 w-full">
+        {/* Unified big icon per category */}
         <div
           className={`w-11 h-11 rounded-full ${meta.bg} flex items-center justify-center shrink-0 mt-0.5 shadow-clay-sm`}
         >
           <TypeIcon className={`w-5 h-5 ${meta.text}`} strokeWidth={2.5} />
         </div>
 
-        <div className="flex-1 min-w-0">
+        <div className="flex-1 min-w-0 flex flex-col">
           <div className="flex items-start justify-between gap-3">
             <div className="flex-1 min-w-0">
-              {/* Main title: alias id (purple Tag prefix) | real model (yellow Cpu prefix) | system content */}
+              {/* Main title */}
               <div className="flex items-baseline gap-1.5 min-w-0">
                 {showModelHeader && (
                   hasAlias ? (
@@ -711,14 +804,14 @@ function LogCard({ log, onClick }) {
                   )
                 )}
                 <span
-                  className={`${showModelHeader ? 'text-[15px]' : 'text-sm'} font-black text-clay-ink break-all leading-snug tracking-tight`}
+                  className="text-[15px] font-black text-clay-ink break-all leading-snug tracking-tight"
                   title={titleText}
                 >
                   {titleText}
                 </span>
               </div>
 
-              {/* Subtitle: actual routing target — group / real_model (slash separator) */}
+              {/* Subtitle */}
               {showModelHeader && (
                 <div className="text-xs font-bold mt-1 leading-snug break-all">
                   {hasAlias ? (
@@ -742,15 +835,40 @@ function LogCard({ log, onClick }) {
                 </div>
               )}
 
-              {/* Error content — plain red text, no pill styling */}
-              {isError && log.content && (
-                <div className="mt-1.5 text-[11px] text-clay-pink-400 font-bold leading-relaxed break-all line-clamp-3">
+              {isTopup && (
+                <div className="text-xs font-bold mt-1 leading-snug text-clay-faint">
+                  {creditAmount ? (
+                    <>
+                      <span className="text-clay-green-ink font-extrabold">+¥{creditAmount}</span>
+                      <span className="mx-1.5 text-clay-faint/60">额度</span>
+                      {payAmount && (
+                        <>
+                          <span className="text-clay-faint/60 font-black">·</span>
+                          <span className="ml-1.5">实付 ¥{payAmount}</span>
+                        </>
+                      )}
+                    </>
+                  ) : (
+                    <span className="line-clamp-1">{log.content || ''}</span>
+                  )}
+                </div>
+              )}
+
+              {isSystem && creditAmount && (
+                <div className="text-xs font-bold mt-1 leading-snug">
+                  <span className="text-clay-green-ink font-extrabold">+¥{creditAmount}</span>
+                  <span className="ml-1.5 text-clay-faint/60">额度</span>
+                </div>
+              )}
+
+              {(isManage || isRefund || (isSystem && !creditAmount)) && log.content && (
+                <div className="text-xs font-bold mt-1 leading-snug text-clay-faint line-clamp-2 break-all">
                   {log.content}
                 </div>
               )}
             </div>
 
-            {/* Right column: single chip (stream for consume / type label for non-consume) above amount */}
+            {/* Right column: chip + amount */}
             <div className="flex flex-col items-end gap-1.5 shrink-0">
               {isConsume ? (
                 <span
@@ -767,14 +885,28 @@ function LogCard({ log, onClick }) {
                   {meta.label}
                 </span>
               )}
-              {quotaText && (
+              {/* Consume / refund amount from quota field */}
+              {(isConsume || isRefund) && quotaText && (
                 <span className={`text-base font-black tabular-nums whitespace-nowrap ${quotaCls}`}>{quotaText}</span>
+              )}
+              {/* Topup / system amount from parsed content */}
+              {(isTopup || isSystem) && creditAmount && (
+                <span className="text-base font-black tabular-nums whitespace-nowrap text-clay-green-ink">
+                  +¥{creditAmount}
+                </span>
               )}
             </div>
           </div>
 
-          {/* Meta line: time / 入 / 出 / 首字 / 总 — each with mini icon */}
-          <div className="mt-3 pt-2.5 border-t border-dashed border-clay-faint/15 flex items-center flex-wrap gap-x-3 gap-y-1 text-[11px] font-bold text-clay-faint">
+          {/* Error message highlighted block (own row, click hint via parent modal) */}
+          {isError && log.content && (
+            <div className="mt-2 px-3 py-2 rounded-clay-sm bg-clay-pink-100/70 text-clay-pink-ink font-bold text-xs leading-relaxed break-all line-clamp-3 shadow-clay-inset-sm">
+              {log.content}
+            </div>
+          )}
+
+          {/* Meta line: time / 入 / 出 / 首字 / 总 — pushed to bottom for uniform height */}
+          <div className="mt-auto pt-2.5 border-t border-dashed border-clay-faint/15 flex items-center flex-wrap gap-x-3 gap-y-1 text-[11px] font-bold text-clay-faint">
               <span className="inline-flex items-center gap-1">
                 <Clock className="w-3 h-3 text-clay-faint/60" strokeWidth={2.5} />
                 <span className="tabular-nums font-black text-clay-ink/80">{fmtTs(log.created_at)}</span>
@@ -811,6 +943,18 @@ function LogCard({ log, onClick }) {
                 <span className="inline-flex items-center gap-1">
                   <Timer className="w-3 h-3 text-clay-faint/60" strokeWidth={2.5} />
                   总<b className="text-clay-ink/80 font-black ml-0.5 tabular-nums">{fmtUseTime(log.use_time)}</b>
+                </span>
+              ) : null}
+              {isError && log.model_name ? (
+                <span className="inline-flex items-center gap-1">
+                  <Cpu className="w-3 h-3 text-clay-faint/60" strokeWidth={2.5} />
+                  <b className="text-clay-ink/80 font-black tabular-nums">{log.model_name}</b>
+                </span>
+              ) : null}
+              {isError && log.use_time ? (
+                <span className="inline-flex items-center gap-1">
+                  <Timer className="w-3 h-3 text-clay-faint/60" strokeWidth={2.5} />
+                  <b className="text-clay-ink/80 font-black tabular-nums">{fmtUseTime(log.use_time)}</b>
                 </span>
               ) : null}
             </div>
@@ -851,7 +995,17 @@ export default function LogList() {
   const [filter, setFilter] = useState(() => defaultLogFilter())
   const [appliedFilter, setAppliedFilter] = useState(() => defaultLogFilter())
 
-  const pageSize = 20
+  const [pageSize, setPageSizeState] = useState(() => {
+    if (typeof window === 'undefined') return 20
+    const v = Number(window.localStorage?.getItem('uiweb.logs.pageSize'))
+    return [10, 20, 50, 100].includes(v) ? v : 20
+  })
+  const setPageSize = useCallback((v) => {
+    const n = Number(v)
+    if (![10, 20, 50, 100].includes(n)) return
+    setPageSizeState(n)
+    try { window.localStorage?.setItem('uiweb.logs.pageSize', String(n)) } catch (_) {}
+  }, [])
 
   const load = useCallback(async (p) => {
     const seq = requestSeq.current + 1
@@ -879,9 +1033,12 @@ export default function LogList() {
         setLoading(false)
       }
     }
-  }, [appliedFilter, toast])
+  }, [appliedFilter, toast, pageSize])
 
   useEffect(() => { load(page) }, [page, load])
+
+  // When pageSize changes, jump back to page 1 (also auto-reloads via the effect above)
+  useEffect(() => { setPage(1) }, [pageSize])
 
   const loadTodayStat = useCallback(async () => {
     setTodayLoading(true)
@@ -1207,17 +1364,40 @@ export default function LogList() {
       </div>
 
       {/* Pagination */}
-      <div className="flex items-center justify-between mt-6">
-        <span className="text-sm text-clay-faint font-bold">共 {total} 条记录</span>
+      <div className="flex flex-wrap items-center justify-between gap-3 mt-6">
+        <div className="flex items-center gap-3 text-sm text-clay-faint font-bold">
+          <span>共 {total} 条记录</span>
+          <div className="inline-flex items-center gap-1.5">
+            <span className="text-xs">每页</span>
+            <div className="inline-flex items-center gap-0.5 p-0.5 rounded-clay-pill bg-clay-bg shadow-clay-inset-sm">
+              {[10, 20, 50, 100].map((n) => (
+                <button
+                  key={n}
+                  type="button"
+                  onClick={() => setPageSize(n)}
+                  className={`min-w-[36px] px-2.5 py-1 rounded-clay-pill text-xs font-black tabular-nums transition-all duration-200 ease-clay ${
+                    pageSize === n
+                      ? 'bg-clay-surface text-clay-ink shadow-clay-sm'
+                      : 'text-clay-faint hover:text-clay-ink'
+                  }`}
+                  aria-pressed={pageSize === n}
+                >
+                  {n}
+                </button>
+              ))}
+            </div>
+            <span className="text-xs">条</span>
+          </div>
+        </div>
         {totalPages > 1 && (
           <div className="flex items-center gap-3">
-            <ClayButton variant="ghost" disabled={page <= 1} onClick={() => setPage(page - 1)}>
+            <ClayButton variant="ghost" size="sm" disabled={page <= 1} onClick={() => setPage(page - 1)}>
               <ChevronLeft className="w-4 h-4" />
             </ClayButton>
-            <span className="text-sm font-extrabold bg-clay-bg shadow-clay-inset px-4 py-1.5 rounded-clay-pill whitespace-nowrap">
+            <span className="text-sm font-extrabold bg-clay-bg shadow-clay-inset-sm px-4 py-1.5 rounded-clay-pill whitespace-nowrap">
               {page} / {totalPages}
             </span>
-            <ClayButton variant="ghost" disabled={page >= totalPages} onClick={() => setPage(page + 1)}>
+            <ClayButton variant="ghost" size="sm" disabled={page >= totalPages} onClick={() => setPage(page + 1)}>
               <ChevronRight className="w-4 h-4" />
             </ClayButton>
           </div>
@@ -1226,7 +1406,15 @@ export default function LogList() {
 
       {/* Detail Modal */}
       <ClayModal open={!!detailLog} onClose={() => setDetailLog(null)} title="请求详情" size="lg">
-        {detailLog && <LogDetailContent log={detailLog} />}
+        {detailLog && (
+          <LogDetailContent
+            log={detailLog}
+            onCopy={async (text) => {
+              const ok = await copyTextToClipboard(text)
+              toast(ok ? '错误信息已复制' : '复制失败', ok ? 'success' : 'error')
+            }}
+          />
+        )}
       </ClayModal>
 
       <ClayModal

@@ -20,6 +20,15 @@ function fmtAmount(n) {
   return s.replace(/0+$/, '').replace(/\.$/, '') || '0'
 }
 
+/** SKU 上的金额显示：优先用 backend 提供的字面量字符串（保留 "5.20" "52.0" 等带零写法）；
+    没有则降级到通用格式化。 */
+function skuPrice(sku) {
+  return sku?.price_display || fmtAmount(sku?.price_yuan)
+}
+function skuDelivered(sku) {
+  return sku?.delivered_display || fmtAmount(sku?.delivered_yuan)
+}
+
 /**
  * Promotion landing page — driven entirely by `/api/user/promotion/:slug` payload.
  *
@@ -154,14 +163,14 @@ export default function PromotionPage() {
 
   if (loading) {
     return (
-      <ClayConsoleShell title="加载活动…" compactHeader>
+      <ClayConsoleShell showAssistantWidget={false}>
         <div className="p-12 text-center text-clay-faint">读取活动信息中</div>
       </ClayConsoleShell>
     )
   }
   if (err || !campaign) {
     return (
-      <ClayConsoleShell title="活动" compactHeader>
+      <ClayConsoleShell showAssistantWidget={false}>
         <ClayAlert tone="error">{err || '活动不存在'}</ClayAlert>
         <button
           onClick={() => navigate('/topup')}
@@ -178,7 +187,7 @@ export default function PromotionPage() {
   const theme = campaign.theme_color || 'pink'
 
   return (
-    <ClayConsoleShell title={campaign.title} subtitle={campaign.subtitle} compactHeader>
+    <ClayConsoleShell showAssistantWidget={false}>
       {/* Hero 头图区 — 紧凑横向布局：左 emoji + 右标题/倒计时；不浪费垂直空间 */}
       <ClayCard
         className={`relative overflow-hidden mb-6 bg-gradient-to-br from-clay-${theme}-50 via-white to-clay-${theme}-100`}
@@ -317,13 +326,13 @@ export default function PromotionPage() {
             <div className="flex justify-between py-2.5 items-baseline">
               <span className="text-clay-faint font-bold">实付金额</span>
               <span className="font-black text-clay-pink-400 text-lg tabular-nums">
-                {currencySymbol}{fmtAmount(kpayOrder?.amount)}
+                {currencySymbol}{kpayOrder?.price_display || fmtAmount(kpayOrder?.amount)}
               </span>
             </div>
             <div className="flex justify-between py-2.5 items-baseline">
               <span className="text-clay-faint font-bold">到账</span>
               <span className="font-black text-emerald-600 text-lg tabular-nums">
-                {currencySymbol}{fmtAmount(kpayOrder?.delivered_yuan)}
+                {currencySymbol}{kpayOrder?.delivered_display || fmtAmount(kpayOrder?.delivered_yuan)}
               </span>
             </div>
             <div className="flex justify-between py-2.5">
@@ -413,7 +422,7 @@ function SkuCard({ sku, theme, currencySymbol, selected, disabled, onSelect }) {
             到 账
           </div>
           <div className={`text-3xl sm:text-4xl font-black tabular-nums text-clay-${theme}-ink leading-none`}>
-            {currencySymbol}{fmtAmount(sku.delivered_yuan)}
+            {currencySymbol}{skuDelivered(sku)}
           </div>
         </div>
         <div className="text-right flex-shrink-0">
@@ -421,7 +430,7 @@ function SkuCard({ sku, theme, currencySymbol, selected, disabled, onSelect }) {
             付 款
           </div>
           <div className="text-base font-black tabular-nums text-clay-ink leading-none">
-            {currencySymbol}{fmtAmount(sku.price_yuan)}
+            {currencySymbol}{skuPrice(sku)}
           </div>
         </div>
       </div>
@@ -514,14 +523,14 @@ function PaymentBar({ sku, currencySymbol, theme, paying, onPay, onCancel }) {
       className="fixed sm:relative bottom-0 left-0 right-0 sm:bottom-auto sm:left-auto sm:right-auto z-40 px-3 pb-3 sm:px-0 sm:pb-0"
       style={{ paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 12px)' }}
     >
-      <ClayCard className="p-4 sm:p-5 bg-white">
+      <ClayCard className={`p-4 sm:p-5 bg-gradient-to-br from-clay-${theme}-50 via-white to-clay-${theme}-100`}>
         {/* 顶部一行：已选商品摘要 + 取消选择按钮 */}
         <div className="flex items-center gap-3 mb-4">
           <div className="text-2xl select-none flex-shrink-0">{sku.emoji}</div>
           <div className="flex-1 min-w-0">
             <div className="text-sm font-black text-clay-ink truncate">{sku.label}</div>
             <div className="text-[11px] text-clay-faint font-bold truncate">
-              {currencySymbol}{fmtAmount(sku.price_yuan)} → 到账 {currencySymbol}{fmtAmount(sku.delivered_yuan)}
+              {currencySymbol}{skuPrice(sku)} → 到账 {currencySymbol}{skuDelivered(sku)}
             </div>
           </div>
           <button
@@ -555,7 +564,7 @@ function PaymentBar({ sku, currencySymbol, theme, paying, onPay, onCancel }) {
         {/* 实付提示 */}
         <div className={`mt-3 text-center text-xs text-clay-faint font-bold`}>
           实付 <span className={`text-clay-${theme}-ink font-black tabular-nums`}>
-            {currencySymbol}{fmtAmount(sku.price_yuan)}
+            {currencySymbol}{skuPrice(sku)}
           </span>
         </div>
       </ClayCard>

@@ -9,29 +9,34 @@ import (
 // time using the live common.QuotaPerUnit so admin doesn't have to think in
 // quota units when configuring.
 type PromotionSku struct {
-	ID             string  // 路由/统计/限购 key，全局唯一 — 例 "p520-sku-1"
-	Label          string  // 卡片大标题 — "我爱你之充电站"
-	Subtitle       string  // 卡片次行 — "充 ¥46.99 到账 ¥52.10"
-	Emoji          string  // 装饰 emoji — "❤️"
-	PriceYuan      float64 // 用户实付
-	DeliveredYuan  float64 // 到账（按 QuotaPerUnit 换算成 quota）
-	Highlight      bool    // 是否主推（卡片加金色光晕）
-	TotalLimit     int     // 0 = 不限总数
-	PerUserLimit   int     // 0 = 不限每人，否则单用户购买上限
+	ID            string  // 路由/统计/限购 key，全局唯一 — 例 "p520-sku-1"
+	Label         string  // 卡片大标题 — "我爱你之充电站"
+	Subtitle      string  // 卡片次行
+	Emoji         string  // 装饰 emoji — "❤️"
+	PriceYuan     float64 // 用户实付
+	DeliveredYuan float64 // 到账（按 QuotaPerUnit 换算成 quota）
+	// DeliveredDisplay / PriceDisplay：可选的字面量显示字符串。设置后前端优先
+	// 用它（保证 "5.20" "52.0" 这种带尾零的写法不会被通用格式化吃掉）；留空
+	// 时前端 fallback 到 fmtAmount 自动格式化。
+	DeliveredDisplay string
+	PriceDisplay     string
+	Highlight        bool // 是否主推（卡片加金色光晕）
+	TotalLimit       int  // 0 = 不限总数
+	PerUserLimit     int  // 0 = 不限每人，否则单用户购买上限
 }
 
 // PromotionCampaign 描述一个限时活动；v1 写死，不进数据库。后续需要多活动并存或
 // 让运营自助配置时再升级为表驱动版本。
 type PromotionCampaign struct {
-	Slug        string
-	Title       string
-	Subtitle    string
-	Emoji       string // 落地页头部主 emoji
-	ThemeColor  string // pink / purple / blue / green / yellow（对应 Clay token）
-	StartsAt    int64  // unix 秒
-	EndsAt      int64
-	Enabled     bool
-	Skus        []PromotionSku
+	Slug       string
+	Title      string
+	Subtitle   string
+	Emoji      string // 落地页头部主 emoji
+	ThemeColor string // pink / purple / blue / green / yellow（对应 Clay token）
+	StartsAt   int64  // unix 秒
+	EndsAt     int64
+	Enabled    bool
+	Skus       []PromotionSku
 	// 防滥用门槛
 	RequireEmailVerified bool
 	MinAccountAgeDays    int
@@ -47,52 +52,60 @@ var Promotion520 = PromotionCampaign{
 	Emoji:      "❤️",
 	ThemeColor: "pink",
 	// 5/19 12:00 +08 → 5/21 23:59:59 +08
-	StartsAt: mustTime("2026-05-19T12:00:00+08:00"),
-	EndsAt:   mustTime("2026-05-21T23:59:59+08:00"),
-	Enabled:  true,
+	StartsAt:             mustTime("2026-05-19T12:00:00+08:00"),
+	EndsAt:               mustTime("2026-05-21T23:59:59+08:00"),
+	Enabled:              true,
 	RequireEmailVerified: true,
 	MinAccountAgeDays:    0,
 	Skus: []PromotionSku{
 		{
-			ID:            "p520-sku-1",
-			Label:         "5 块钱给我点关爱",
-			Subtitle:      "充 ¥4.99 到账 ¥5.21",
-			Emoji:         "🌱",
-			PriceYuan:     4.99,
-			DeliveredYuan: 5.21,
-			TotalLimit:    0,
-			PerUserLimit:  5,
+			ID:               "p520-sku-1",
+			Label:            "5 块钱给我点关爱",
+			Subtitle:         "充 ¥4.99 到账 ¥5.20",
+			Emoji:            "🌱",
+			PriceYuan:        4.99,
+			DeliveredYuan:    5.20,
+			PriceDisplay:     "4.99",
+			DeliveredDisplay: "5.20",
+			TotalLimit:       0,
+			PerUserLimit:     5,
 		},
 		{
-			ID:            "p520-sku-2",
-			Label:         "一生一世小礼物",
-			Subtitle:      "充 ¥11.99 到账 ¥13.14",
-			Emoji:         "💝",
-			PriceYuan:     11.99,
-			DeliveredYuan: 13.14,
-			TotalLimit:    1314,
-			PerUserLimit:  3,
+			ID:               "p520-sku-2",
+			Label:            "一生一世小礼物",
+			Subtitle:         "充 ¥11.99 到账 ¥13.14",
+			Emoji:            "💝",
+			PriceYuan:        11.99,
+			DeliveredYuan:    13.14,
+			PriceDisplay:     "11.99",
+			DeliveredDisplay: "13.14",
+			TotalLimit:       1314,
+			PerUserLimit:     3,
 		},
 		{
-			ID:            "p520-sku-3",
-			Label:         "我爱你之充电站",
-			Subtitle:      "充 ¥46.99 到账 ¥52.10",
-			Emoji:         "❤️",
-			PriceYuan:     46.99,
-			DeliveredYuan: 52.10,
-			Highlight:     true,
-			TotalLimit:    520,
-			PerUserLimit:  2,
+			ID:               "p520-sku-3",
+			Label:            "我爱你之充电站",
+			Subtitle:         "充 ¥46.99 到账 ¥52.0",
+			Emoji:            "❤️",
+			PriceYuan:        46.99,
+			DeliveredYuan:    52.0,
+			PriceDisplay:     "46.99",
+			DeliveredDisplay: "52.0",
+			Highlight:        true,
+			TotalLimit:       520,
+			PerUserLimit:     2,
 		},
 		{
-			ID:            "p520-sku-4",
-			Label:         "长长久久",
-			Subtitle:      "充 ¥89.99 到账 ¥99.99",
-			Emoji:         "💎",
-			PriceYuan:     89.99,
-			DeliveredYuan: 99.99,
-			TotalLimit:    99,
-			PerUserLimit:  1,
+			ID:               "p520-sku-4",
+			Label:            "长长久久",
+			Subtitle:         "充 ¥89.99 到账 ¥99.99",
+			Emoji:            "💎",
+			PriceYuan:        89.99,
+			DeliveredYuan:    99.99,
+			PriceDisplay:     "89.99",
+			DeliveredDisplay: "99.99",
+			TotalLimit:       99,
+			PerUserLimit:     1,
 		},
 	},
 }

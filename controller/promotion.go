@@ -27,19 +27,21 @@ const (
 )
 
 type promotionSkuView struct {
-	Id            string  `json:"id"`
-	Label         string  `json:"label"`
-	Subtitle      string  `json:"subtitle"`
-	Emoji         string  `json:"emoji"`
-	PriceYuan     float64 `json:"price_yuan"`
-	DeliveredYuan float64 `json:"delivered_yuan"`
-	Highlight     bool    `json:"highlight"`
-	TotalLimit    int     `json:"total_limit"`
-	PerUserLimit  int     `json:"per_user_limit"`
-	SoldCount     int64   `json:"sold_count"`
-	UserBoughtN   int64   `json:"user_bought_n"`
-	State         string  `json:"state"`
-	UserCanBuyN   int     `json:"user_can_buy_n"` // 该用户在此 SKU 还能买多少次（per_user_limit - 已买；0 = 不限）
+	Id               string  `json:"id"`
+	Label            string  `json:"label"`
+	Subtitle         string  `json:"subtitle"`
+	Emoji            string  `json:"emoji"`
+	PriceYuan        float64 `json:"price_yuan"`
+	DeliveredYuan    float64 `json:"delivered_yuan"`
+	PriceDisplay     string  `json:"price_display,omitempty"`
+	DeliveredDisplay string  `json:"delivered_display,omitempty"`
+	Highlight        bool    `json:"highlight"`
+	TotalLimit       int     `json:"total_limit"`
+	PerUserLimit     int     `json:"per_user_limit"`
+	SoldCount        int64   `json:"sold_count"`
+	UserBoughtN      int64   `json:"user_bought_n"`
+	State            string  `json:"state"`
+	UserCanBuyN      int     `json:"user_can_buy_n"` // 该用户在此 SKU 还能买多少次（per_user_limit - 已买；0 = 不限）
 }
 
 type promotionView struct {
@@ -101,19 +103,21 @@ func GetPromotion(c *gin.Context) {
 		}
 
 		skuViews = append(skuViews, promotionSkuView{
-			Id:            s.ID,
-			Label:         s.Label,
-			Subtitle:      s.Subtitle,
-			Emoji:         s.Emoji,
-			PriceYuan:     s.PriceYuan,
-			DeliveredYuan: s.DeliveredYuan,
-			Highlight:     s.Highlight,
-			TotalLimit:    s.TotalLimit,
-			PerUserLimit:  s.PerUserLimit,
-			SoldCount:     sold,
-			UserBoughtN:   userBought,
-			State:         state,
-			UserCanBuyN:   userCanBuy,
+			Id:               s.ID,
+			Label:            s.Label,
+			Subtitle:         s.Subtitle,
+			Emoji:            s.Emoji,
+			PriceYuan:        s.PriceYuan,
+			DeliveredYuan:    s.DeliveredYuan,
+			PriceDisplay:     s.PriceDisplay,
+			DeliveredDisplay: s.DeliveredDisplay,
+			Highlight:        s.Highlight,
+			TotalLimit:       s.TotalLimit,
+			PerUserLimit:     s.PerUserLimit,
+			SoldCount:        sold,
+			UserBoughtN:      userBought,
+			State:            state,
+			UserCanBuyN:      userCanBuy,
 		})
 	}
 
@@ -285,7 +289,9 @@ func OrderPromotionSku(c *gin.Context) {
 			"provider_order_no": orderData.OrderNo,
 			"sku_id":            sku.ID,
 			"amount":            sku.PriceYuan,
+			"price_display":     sku.PriceDisplay,
 			"delivered_yuan":    sku.DeliveredYuan,
+			"delivered_display": sku.DeliveredDisplay,
 			"payment_method":    payMethod,
 			"status":            orderData.Status,
 			"expire_time":       orderData.ExpireTime,

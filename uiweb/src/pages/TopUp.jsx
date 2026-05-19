@@ -19,6 +19,7 @@ import ClayInput from '../components/clay/ClayInput.jsx'
 import ClayAlert from '../components/clay/ClayAlert.jsx'
 import ClayModal from '../components/clay/ClayModal.jsx'
 import ClayConsoleShell from '../components/layout/ClayConsoleShell.jsx'
+import PromotionBanner from '../components/promotion/PromotionBanner.jsx'
 import { useUser } from '../context/UserContext.jsx'
 import { useStatus } from '../context/StatusContext.jsx'
 import { self } from '../services/user.js'
@@ -742,6 +743,7 @@ export default function TopUp() {
 
   return (
     <ClayConsoleShell title="充值中心" subtitle="兑换码或在线支付,任你选择">
+      <PromotionBanner />
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 lg:items-stretch">
         {/* 左上:余额 + 用量 */}
         <div className="grid grid-cols-2 gap-5">

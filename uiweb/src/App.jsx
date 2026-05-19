@@ -39,6 +39,7 @@ import AdminPageConfig from './pages/admin/AdminPageConfig.jsx'
 import AdminPlaygroundFoods from './pages/admin/AdminPlaygroundFoods.jsx'
 import AdminDebugTraces from './pages/admin/AdminDebugTraces.jsx'
 import AdminKPayTopUps from './pages/admin/AdminKPayTopUps.jsx'
+import PromotionPage from './pages/PromotionPage.jsx'
 
 import PioneerGuard from './components/layout/PioneerGuard.jsx'
 
@@ -297,7 +298,18 @@ export default function App() {
         }
       />
 
+      <Route
+        path="/promotion/:slug"
+        element={
+          <ProtectedRoute>
+            <PromotionPage />
+          </ProtectedRoute>
+        }
+      />
+
       <Route path="*" element={<NotFound />} />
+
+      {/* Promotion campaigns — single data-driven page; slug like "520", "double11" */}
     </Routes>
     </PioneerGuard>
   )

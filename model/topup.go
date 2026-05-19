@@ -7,6 +7,7 @@ import (
 
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/logger"
+	"github.com/QuantumNous/new-api/setting"
 
 	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
@@ -24,6 +25,10 @@ type TopUp struct {
 	CreateTime      int64   `json:"create_time"`
 	CompleteTime    int64   `json:"complete_time"`
 	Status          string  `json:"status"`
+	// PromotionSkuId — non-empty 表示这单是「活动 SKU 套餐」，入账时按
+	// setting.GetPromotionSku(...).DeliveredYuan 给固定额度，绕过通用
+	// Amount × QuotaPerUnit 计算。空 = 普通充值。
+	PromotionSkuId string `json:"promotion_sku_id,omitempty" gorm:"type:varchar(32);default:'';index:idx_promotion_sku_user,priority:1"`
 }
 
 const (
@@ -642,9 +647,22 @@ func RechargeKPay(tradeNo string, actualPaymentMethod string, callerIp string, p
 			return errors.New("支付金额不匹配")
 		}
 
-		dAmount := decimal.NewFromInt(topUp.Amount)
-		dQuotaPerUnit := decimal.NewFromFloat(common.QuotaPerUnit)
-		quotaToAdd = int(dAmount.Mul(dQuotaPerUnit).IntPart())
+		// 活动 SKU 订单：按 SKU 配置的 DeliveredYuan 入账，绕开通用
+		// Amount × QuotaPerUnit 公式。这样配活动时眼见即所得，且不受
+		// QuotaPerUnit 后续调整影响。
+		if topUp.PromotionSkuId != "" {
+			_, sku := setting.GetPromotionSku(topUp.PromotionSkuId)
+			if sku == nil {
+				return fmt.Errorf("活动 SKU 不存在：%s", topUp.PromotionSkuId)
+			}
+			dDelivered := decimal.NewFromFloat(sku.DeliveredYuan)
+			dQuotaPerUnit := decimal.NewFromFloat(common.QuotaPerUnit)
+			quotaToAdd = int(dDelivered.Mul(dQuotaPerUnit).IntPart())
+		} else {
+			dAmount := decimal.NewFromInt(topUp.Amount)
+			dQuotaPerUnit := decimal.NewFromFloat(common.QuotaPerUnit)
+			quotaToAdd = int(dAmount.Mul(dQuotaPerUnit).IntPart())
+		}
 		if quotaToAdd <= 0 {
 			return errors.New("无效的充值额度")
 		}

@@ -43,7 +43,7 @@ type PromotionCampaign struct {
 var Promotion520 = PromotionCampaign{
 	Slug:       "520",
 	Title:      "520 充值狂欢",
-	Subtitle:   "我爱你的同时也爱你的钱包 · 限时 9 折起",
+	Subtitle:   "我爱你的同时也爱你的钱包 · 限时 9 折起 — 来自 Claude Opus 4.7",
 	Emoji:      "❤️",
 	ThemeColor: "pink",
 	// 5/19 12:00 +08 → 5/21 23:59:59 +08

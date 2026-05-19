@@ -11,6 +11,16 @@ import { useToast } from '../context/ToastContext.jsx'
 import { getCurrencyConfig } from '../utils/quota.js'
 
 /**
+ * 金额展示：最多 2 位小数，去掉尾随零。
+ * 5.21 → "5.21"   52.10 → "52.1"   99 → "99"   99.99 → "99.99"
+ */
+function fmtAmount(n) {
+  const s = Number(n || 0).toFixed(2)
+  // 先去掉尾随零，再去掉裸的小数点
+  return s.replace(/0+$/, '').replace(/\.$/, '') || '0'
+}
+
+/**
  * Promotion landing page — driven entirely by `/api/user/promotion/:slug` payload.
  *
  * UX 流程：
@@ -307,13 +317,13 @@ export default function PromotionPage() {
             <div className="flex justify-between py-2.5 items-baseline">
               <span className="text-clay-faint font-bold">实付金额</span>
               <span className="font-black text-clay-pink-400 text-lg tabular-nums">
-                {currencySymbol}{Number(kpayOrder?.amount || 0).toFixed(2)}
+                {currencySymbol}{fmtAmount(kpayOrder?.amount)}
               </span>
             </div>
             <div className="flex justify-between py-2.5 items-baseline">
               <span className="text-clay-faint font-bold">到账</span>
               <span className="font-black text-emerald-600 text-lg tabular-nums">
-                {currencySymbol}{Number(kpayOrder?.delivered_yuan || 0).toFixed(2)}
+                {currencySymbol}{fmtAmount(kpayOrder?.delivered_yuan)}
               </span>
             </div>
             <div className="flex justify-between py-2.5">
@@ -403,7 +413,7 @@ function SkuCard({ sku, theme, currencySymbol, selected, disabled, onSelect }) {
             到 账
           </div>
           <div className={`text-3xl sm:text-4xl font-black tabular-nums text-clay-${theme}-ink leading-none`}>
-            {currencySymbol}{sku.delivered_yuan.toFixed(2)}
+            {currencySymbol}{fmtAmount(sku.delivered_yuan)}
           </div>
         </div>
         <div className="text-right flex-shrink-0">
@@ -411,7 +421,7 @@ function SkuCard({ sku, theme, currencySymbol, selected, disabled, onSelect }) {
             付 款
           </div>
           <div className="text-base font-black tabular-nums text-clay-ink leading-none">
-            {currencySymbol}{sku.price_yuan.toFixed(2)}
+            {currencySymbol}{fmtAmount(sku.price_yuan)}
           </div>
         </div>
       </div>
@@ -420,7 +430,7 @@ function SkuCard({ sku, theme, currencySymbol, selected, disabled, onSelect }) {
       {savings > 0.005 && (
         <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-clay-pill bg-clay-bg shadow-clay-inset-sm text-[11px] font-black text-clay-pink-400 mb-3">
           <Sparkles className="w-3 h-3" strokeWidth={2.6} />
-          省 {currencySymbol}{savings.toFixed(2)}{zhe && ` · ${zhe} 折`}
+          省 {currencySymbol}{fmtAmount(savings)}{zhe && ` · ${zhe} 折`}
         </div>
       )}
 
@@ -480,14 +490,14 @@ function SubtitleWithSignature({ subtitle }) {
       <p className="text-[11px] sm:text-sm text-clay-faint font-bold mt-0.5 truncate">
         {main}
       </p>
-      <div className="inline-flex items-center gap-1.5 mt-1">
+      <div className="inline-flex items-center gap-2 mt-1.5">
         <img
           src="/claude-sprite.gif"
           alt="Claude"
-          className="w-7 h-7 object-contain shadow-clay-sm rounded-full bg-clay-bg"
+          className="w-12 h-12 sm:w-14 sm:h-14 object-contain"
           loading="lazy"
         />
-        <span className="text-[10px] sm:text-[11px] text-clay-faint font-bold">{credit}</span>
+        <span className="text-xs sm:text-sm text-clay-faint font-bold">{credit}</span>
       </div>
     </>
   )
@@ -511,7 +521,7 @@ function PaymentBar({ sku, currencySymbol, theme, paying, onPay, onCancel }) {
           <div className="flex-1 min-w-0">
             <div className="text-sm font-black text-clay-ink truncate">{sku.label}</div>
             <div className="text-[11px] text-clay-faint font-bold truncate">
-              {currencySymbol}{sku.price_yuan.toFixed(2)} → 到账 {currencySymbol}{sku.delivered_yuan.toFixed(2)}
+              {currencySymbol}{fmtAmount(sku.price_yuan)} → 到账 {currencySymbol}{fmtAmount(sku.delivered_yuan)}
             </div>
           </div>
           <button
@@ -545,7 +555,7 @@ function PaymentBar({ sku, currencySymbol, theme, paying, onPay, onCancel }) {
         {/* 实付提示 */}
         <div className={`mt-3 text-center text-xs text-clay-faint font-bold`}>
           实付 <span className={`text-clay-${theme}-ink font-black tabular-nums`}>
-            {currencySymbol}{sku.price_yuan.toFixed(2)}
+            {currencySymbol}{fmtAmount(sku.price_yuan)}
           </span>
         </div>
       </ClayCard>

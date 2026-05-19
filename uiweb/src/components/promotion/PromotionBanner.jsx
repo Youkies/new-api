@@ -49,33 +49,26 @@ export default function PromotionBanner() {
     <button
       type="button"
       onClick={() => navigate(`/promotion/${active.slug}`)}
-      className={`group relative w-full mb-5 px-3 sm:px-4 py-2.5 rounded-clay-lg overflow-hidden flex items-center gap-3 text-left bg-white shadow-clay-sm hover:shadow-clay transition-shadow`}
+      className={`group w-full mb-5 px-4 sm:px-5 py-3 rounded-clay-lg flex items-center gap-3 sm:gap-4 text-left bg-gradient-to-r from-clay-${theme}-50 via-clay-${theme}-100 to-clay-${theme}-50 shadow-clay-sm hover:shadow-clay transition-shadow`}
     >
-      {/* 左侧细条主题色 */}
-      <span className={`absolute left-0 top-0 bottom-0 w-1 bg-clay-${theme}-300`} aria-hidden />
-
-      <span className="text-xl sm:text-2xl flex-shrink-0 select-none ml-1" aria-hidden>
+      <span className="text-2xl sm:text-3xl flex-shrink-0" aria-hidden>
         {active.emoji || '🎉'}
       </span>
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 min-w-0">
-          <span className="text-sm sm:text-base font-black text-clay-ink truncate">
-            {active.title}
-          </span>
-          <span className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-clay-pill bg-clay-${theme}-100 text-clay-${theme}-ink text-[10px] font-black flex-shrink-0`}>
-            进行中
-          </span>
+        <div className={`text-sm sm:text-base font-black text-clay-${theme}-ink truncate`}>
+          {active.title}
         </div>
-        <div className="text-[11px] text-clay-faint font-bold flex items-center gap-1 mt-0.5 truncate">
-          <Clock className="w-3 h-3 flex-shrink-0" strokeWidth={2.5} />
-          剩 {remainText}
+        <div className="text-[11px] sm:text-xs text-clay-faint font-bold flex items-center gap-1 mt-0.5">
+          <Clock className="w-3 h-3" strokeWidth={2.5} />
+          剩 {remainText} · {active.subtitle || '限时优惠'}
         </div>
       </div>
-      <span className={`inline-flex items-center gap-1 px-2.5 sm:px-3 py-1.5 rounded-clay-pill bg-clay-${theme}-100 text-clay-${theme}-ink text-xs font-black flex-shrink-0 group-hover:shadow-clay-sm transition-shadow`}>
+      <span className={`hidden sm:inline-flex items-center gap-1 px-3 py-1.5 rounded-clay-pill bg-white shadow-clay-sm text-clay-${theme}-ink text-xs font-black flex-shrink-0 group-hover:shadow-clay transition-shadow`}>
         <Sparkles className="w-3 h-3" strokeWidth={2.5} />
-        <span className="hidden sm:inline">立即查看</span>
+        立即查看
         <ArrowRight className="w-3 h-3" strokeWidth={2.5} />
       </span>
+      <ArrowRight className={`sm:hidden w-5 h-5 text-clay-${theme}-ink flex-shrink-0`} strokeWidth={2.5} />
     </button>
   )
 }

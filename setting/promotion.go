@@ -87,10 +87,10 @@ var Promotion520 = PromotionCampaign{
 		{
 			ID:            "p520-sku-4",
 			Label:         "长长久久",
-			Subtitle:      "充 ¥89.99 到账 ¥99.00",
+			Subtitle:      "充 ¥89.99 到账 ¥99.99",
 			Emoji:         "💎",
 			PriceYuan:     89.99,
-			DeliveredYuan: 99.00,
+			DeliveredYuan: 99.99,
 			TotalLimit:    99,
 			PerUserLimit:  1,
 		},

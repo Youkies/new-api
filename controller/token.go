@@ -253,6 +253,14 @@ func AddToken(c *gin.Context) {
 		common.SysLog("failed to generate token key: " + err.Error())
 		return
 	}
+	resolvedArchiveId := resolveTokenArchiveId(c.GetInt("id"), token.ArchiveId)
+	// Mutual exclusion: archive binding overrides system group binding.
+	// When a user binds a custom-model archive, the system group must be
+	// cleared so only one routing source is active at request time.
+	effectiveGroup := token.Group
+	if resolvedArchiveId != nil {
+		effectiveGroup = ""
+	}
 	cleanToken := model.Token{
 		UserId:             c.GetInt("id"),
 		Name:               token.Name,
@@ -265,11 +273,11 @@ func AddToken(c *gin.Context) {
 		ModelLimitsEnabled: token.ModelLimitsEnabled,
 		ModelLimits:        token.ModelLimits,
 		AllowIps:           token.AllowIps,
-		Group:              token.Group,
+		Group:              effectiveGroup,
 		CrossGroupRetry:    token.CrossGroupRetry,
 		DebugEnabled:       token.DebugEnabled && c.GetInt("role") >= common.RoleAdminUser,
 		DebugConnectivity:  token.DebugEnabled && token.DebugConnectivity && c.GetInt("role") >= common.RoleAdminUser,
-		ArchiveId:          resolveTokenArchiveId(c.GetInt("id"), token.ArchiveId),
+		ArchiveId:          resolvedArchiveId,
 	}
 	err = cleanToken.Insert()
 	if err != nil {
@@ -370,6 +378,13 @@ func UpdateToken(c *gin.Context) {
 		}
 		if fields["archive_id"] {
 			cleanToken.ArchiveId = resolveTokenArchiveId(userId, token.ArchiveId)
+		}
+		// Mutual exclusion: when an archive is bound, the system group is
+		// cleared so only one routing source is active. archive wins because
+		// the relay (service/model_alias.go) already overrides UsingGroup on
+		// alias hit, and falls back to the user's own group on miss.
+		if cleanToken.ArchiveId != nil {
+			cleanToken.Group = ""
 		}
 	}
 	err = cleanToken.Update()

@@ -66,6 +66,7 @@ function parseModels(str) {
 function TokenCard({ t, revealedKeys, onRevealKey, onCopyKey, onToggleStatus, openEdit, onDelete, archiveName }) {
   const st = STATUS_MAP[t.status] ?? STATUS_MAP[2]
   const revealed = revealedKeys[t.id]
+  const archiveBound = t.archive_id != null
   const group = t.group || '-'
   const models = parseModels(t.model_limits)
   const isEnabled = t.status === 1
@@ -145,7 +146,9 @@ function TokenCard({ t, revealedKeys, onRevealKey, onCopyKey, onToggleStatus, op
       {/* Row 4: group + time + actions (circular clay icon buttons) */}
       <div className="flex items-center justify-between gap-3 text-xs">
         <div className="flex items-center gap-2 min-w-0 flex-1">
-          {group !== '-' ? (
+          {archiveBound ? (
+            <span className="text-clay-faint font-bold">存档接管</span>
+          ) : group !== '-' ? (
             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-clay-pill bg-clay-purple-100 text-clay-purple-ink shadow-clay-sm">
               <Layers className="w-3 h-3" strokeWidth={2.5} />
               <span className="text-[11px] font-black truncate max-w-[100px]">{group}</span>
@@ -204,6 +207,10 @@ export default function TokenManage() {
   const [showModal, setShowModal] = useState(false)
   const [editing, setEditing] = useState(null)
   const [form, setForm] = useState({ name: '', remain_quota: 0, expired_time: -1, unlimited_quota: true, group: '', display_amount: '', debug_enabled: false, debug_connectivity_enabled: false, archive_id: null })
+  // Binding mode is mutually exclusive: a token routes either via a system
+  // group OR a custom-model archive, never both. The backend enforces the
+  // same rule by clearing `group` when `archive_id` is set.
+  const [bindingMode, setBindingMode] = useState('group')
   const [saving, setSaving] = useState(false)
   const [groupOptions, setGroupOptions] = useState([])
   const [archiveOptions, setArchiveOptions] = useState([])
@@ -284,6 +291,7 @@ export default function TokenManage() {
     setEditing(null)
     const defaultGroup = groupOptions.find((o) => o.value === 'default') ? 'default' : (groupOptions[0]?.value || '')
     setForm({ name: '', remain_quota: 0, expired_time: -1, unlimited_quota: true, group: defaultGroup, display_amount: '', debug_enabled: false, debug_connectivity_enabled: false, archive_id: null })
+    setBindingMode('group')
     setShowModal(true)
   }
 
@@ -301,6 +309,7 @@ export default function TokenManage() {
       debug_connectivity_enabled: Boolean(t.debug_connectivity_enabled),
       archive_id: t.archive_id ?? null,
     })
+    setBindingMode(t.archive_id ? 'archive' : 'group')
     setShowModal(true)
   }
 
@@ -312,8 +321,10 @@ export default function TokenManage() {
       expired_time: form.expired_time,
       unlimited_quota: form.unlimited_quota,
       remain_quota: form.unlimited_quota ? 0 : displayToQuota(parseFloat(form.display_amount) || 0),
-      group: form.group,
-      archive_id: form.archive_id,
+      // Mutual exclusion: only the active binding field is sent; the other
+      // is cleared so backend and UI stay in sync.
+      group: bindingMode === 'group' ? form.group : '',
+      archive_id: bindingMode === 'archive' ? form.archive_id : null,
     }
     if (isAdmin) {
       payload.debug_enabled = Boolean(form.debug_enabled)
@@ -519,6 +530,7 @@ export default function TokenManage() {
             {!loading && tokens.map((t) => {
               const st = STATUS_MAP[t.status] ?? STATUS_MAP[2]
               const revealed = revealedKeys[t.id]
+              const archiveBound = t.archive_id != null
               const group = t.group || '-'
               const models = parseModels(t.model_limits)
               const isExpanded = expandedRow === t.id
@@ -609,7 +621,9 @@ export default function TokenManage() {
                     </div>
                   </td>
                   <td className="px-5 py-4">
-                    {group !== '-' ? (
+                    {archiveBound ? (
+                      <span className="text-clay-faint text-xs font-bold">存档接管</span>
+                    ) : group !== '-' ? (
                       <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-clay-pill bg-clay-purple-100 text-clay-purple-ink shadow-clay-sm">
                         <Layers className="w-3 h-3" strokeWidth={2.5} />
                         <span className="text-xs font-black">{group}</span>
@@ -684,28 +698,59 @@ export default function TokenManage() {
       <ClayModal open={showModal} onClose={() => setShowModal(false)} title={editing ? '编辑令牌' : '新建令牌'} size="md">
         <div className="space-y-4">
           <ClayField label="名称" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="我的令牌" maxLength={50} />
-          {groupOptions.length > 0 && (
-            <div>
-              <label className="block ml-4 mb-2 font-bold text-sm text-clay-ink">分组</label>
-              <ClaySelect
-                value={form.group}
-                onChange={(v) => setForm({ ...form, group: v })}
-                options={groupOptions}
-                placeholder="选择分组"
-              />
-            </div>
-          )}
           <div>
-            <label className="block ml-4 mb-2 font-bold text-sm text-clay-ink">默认存档（可选）</label>
-            <ClaySelect
-              value={form.archive_id != null ? String(form.archive_id) : ''}
-              onChange={(v) => setForm({ ...form, archive_id: v ? parseInt(v, 10) : null })}
-              options={[{ value: '', label: '不绑定', subtitle: '走原模型路由' }, ...archiveOptions]}
-              placeholder="不绑定"
-            />
-            <p className="ml-4 mt-1 text-[11px] text-clay-faint">
-              绑定后用这把 Key 调用别名会自动解析到该存档的源模型/分组。
-            </p>
+            <label className="block ml-4 mb-2 font-bold text-sm text-clay-ink">绑定方式</label>
+            <div className="inline-flex items-center bg-clay-bg shadow-clay-inset rounded-clay-pill p-1 gap-1 mb-2">
+              <button
+                type="button"
+                onClick={() => setBindingMode('group')}
+                className={`px-3.5 py-1.5 rounded-clay-pill text-xs font-black transition-all inline-flex items-center gap-1.5 ${
+                  bindingMode === 'group'
+                    ? 'bg-clay-purple-100 text-clay-purple-ink shadow-clay-sm'
+                    : 'text-clay-faint hover:text-clay-ink'
+                }`}
+              >
+                <Layers className="w-3 h-3" strokeWidth={2.6} />
+                系统分组
+              </button>
+              <button
+                type="button"
+                onClick={() => setBindingMode('archive')}
+                className={`px-3.5 py-1.5 rounded-clay-pill text-xs font-black transition-all inline-flex items-center gap-1.5 ${
+                  bindingMode === 'archive'
+                    ? 'bg-clay-purple-100 text-clay-purple-ink shadow-clay-sm'
+                    : 'text-clay-faint hover:text-clay-ink'
+                }`}
+              >
+                <Tag className="w-3 h-3" strokeWidth={2.6} />
+                自定义存档
+              </button>
+            </div>
+            {bindingMode === 'group' ? (
+              <>
+                <ClaySelect
+                  value={form.group}
+                  onChange={(v) => setForm({ ...form, group: v })}
+                  options={groupOptions}
+                  placeholder={groupOptions.length === 0 ? '暂无可选分组' : '选择分组'}
+                />
+                <p className="ml-4 mt-1 text-[11px] text-clay-faint">
+                  请求按所选系统分组路由，使用原始模型名。
+                </p>
+              </>
+            ) : (
+              <>
+                <ClaySelect
+                  value={form.archive_id != null ? String(form.archive_id) : ''}
+                  onChange={(v) => setForm({ ...form, archive_id: v ? parseInt(v, 10) : null })}
+                  options={[{ value: '', label: '不绑定', subtitle: '走原模型路由' }, ...archiveOptions]}
+                  placeholder={archiveOptions.length === 0 ? '暂无可用存档' : '不绑定'}
+                />
+                <p className="ml-4 mt-1 text-[11px] text-clay-faint">
+                  绑定后用这把 Key 调用别名会自动解析到该存档的源模型/分组；命中别名时使用存档配置的源分组，未命中时走账号默认分组。
+                </p>
+              </>
+            )}
           </div>
           <div className="flex items-center gap-3">
             <label className="text-sm font-bold">无限额度</label>

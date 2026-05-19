@@ -188,7 +188,7 @@ export default function PromotionPage() {
 
   return (
     <ClayConsoleShell showAssistantWidget={false}>
-      {/* Hero 头图区 — 紧凑横向布局：左 emoji + 右标题/倒计时；不浪费垂直空间 */}
+      {/* Hero 头图区 — 移动端垂直居中堆叠 / 桌面横向；不挤位 */}
       <ClayCard
         className={`relative overflow-hidden mb-6 bg-gradient-to-br from-clay-${theme}-50 via-white to-clay-${theme}-100`}
       >
@@ -200,21 +200,21 @@ export default function PromotionPage() {
           {campaign.emoji || '🎉'}
         </div>
 
-        <div className="relative flex items-center gap-4 sm:gap-6 py-2">
-          {/* 左：主 emoji */}
-          <div className="text-5xl sm:text-6xl select-none flex-shrink-0" aria-hidden>
+        <div className="relative flex flex-col sm:flex-row items-center sm:items-center gap-3 sm:gap-6 py-2 text-center sm:text-left">
+          {/* 主 emoji */}
+          <div className="text-6xl select-none flex-shrink-0" aria-hidden>
             {campaign.emoji || '🎉'}
           </div>
 
-          {/* 中：标题 + 副标题 */}
-          <div className="flex-1 min-w-0">
-            <h1 className="text-xl sm:text-3xl font-black tracking-tight text-clay-ink leading-tight">
+          {/* 标题 + 副标题 + 署名 */}
+          <div className="flex-1 min-w-0 w-full sm:w-auto">
+            <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-clay-ink leading-tight">
               {campaign.title}
             </h1>
             <SubtitleWithSignature subtitle={campaign.subtitle} />
           </div>
 
-          {/* 右：倒计时 / 状态 */}
+          {/* 倒计时 / 状态 */}
           <div className="flex-shrink-0">
             {ended ? (
               <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-clay-pill bg-clay-bg shadow-clay-inset-sm text-xs font-black text-clay-faint">
@@ -227,12 +227,13 @@ export default function PromotionPage() {
             ) : (
               <div className="inline-flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 rounded-clay-pill bg-white shadow-clay-sm">
                 <Clock className={`w-3.5 h-3.5 text-clay-${theme}-ink`} strokeWidth={2.5} />
-                <span className="text-xs sm:text-sm font-black text-clay-ink tabular-nums">
+                <span className="text-xs sm:text-sm font-black text-clay-ink tabular-nums whitespace-nowrap">
                   {countdown.d > 0 ? `${countdown.d}天` : ''}
                   {String(countdown.h).padStart(2, '0')}:
                   {String(countdown.m).padStart(2, '0')}:
                   {String(countdown.s).padStart(2, '0')}
                 </span>
+                <span className="hidden sm:inline text-xs text-clay-faint font-bold">后结束</span>
               </div>
             )}
           </div>
@@ -487,7 +488,7 @@ function SubtitleWithSignature({ subtitle }) {
   const idx = subtitle.indexOf('— 来自')
   if (idx < 0) {
     return (
-      <p className="text-[11px] sm:text-sm text-clay-faint font-bold mt-0.5 truncate">
+      <p className="text-xs sm:text-sm text-clay-faint font-bold mt-1 leading-snug">
         {subtitle}
       </p>
     )
@@ -496,17 +497,17 @@ function SubtitleWithSignature({ subtitle }) {
   const credit = subtitle.slice(idx).replace(/^—\s*/, '').trim()
   return (
     <>
-      <p className="text-[11px] sm:text-sm text-clay-faint font-bold mt-0.5 truncate">
+      <p className="text-xs sm:text-sm text-clay-faint font-bold mt-1 leading-snug">
         {main}
       </p>
-      <div className="inline-flex items-center gap-2 mt-1.5">
+      <div className="inline-flex items-center gap-2 mt-2 justify-center sm:justify-start">
         <img
           src="/claude-sprite.gif"
           alt="Claude"
-          className="w-12 h-12 sm:w-14 sm:h-14 object-contain"
+          className="w-11 h-11 sm:w-12 sm:h-12 object-contain flex-shrink-0"
           loading="lazy"
         />
-        <span className="text-xs sm:text-sm text-clay-faint font-bold">{credit}</span>
+        <span className="text-xs sm:text-sm text-clay-faint font-bold whitespace-nowrap">{credit}</span>
       </div>
     </>
   )

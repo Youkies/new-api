@@ -192,9 +192,7 @@ export default function PromotionPage() {
             <h1 className="text-xl sm:text-3xl font-black tracking-tight text-clay-ink leading-tight">
               {campaign.title}
             </h1>
-            <p className="text-[11px] sm:text-sm text-clay-faint font-bold mt-0.5 truncate">
-              {campaign.subtitle}
-            </p>
+            <SubtitleWithSignature subtitle={campaign.subtitle} />
           </div>
 
           {/* 右：倒计时 / 状态 */}
@@ -458,6 +456,40 @@ function SkuCard({ sku, theme, currencySymbol, selected, disabled, onSelect }) {
         </div>
       )}
     </button>
+  )
+}
+
+/**
+ * 副标题渲染：检测「— 来自」署名标记，把署名拆出来配 Claude 像素吉祥物 gif 单独展示。
+ * 没有署名时退化为普通副标题。
+ */
+function SubtitleWithSignature({ subtitle }) {
+  if (!subtitle) return null
+  const idx = subtitle.indexOf('— 来自')
+  if (idx < 0) {
+    return (
+      <p className="text-[11px] sm:text-sm text-clay-faint font-bold mt-0.5 truncate">
+        {subtitle}
+      </p>
+    )
+  }
+  const main = subtitle.slice(0, idx).replace(/[·\s]+$/, '').trim()
+  const credit = subtitle.slice(idx).replace(/^—\s*/, '').trim()
+  return (
+    <>
+      <p className="text-[11px] sm:text-sm text-clay-faint font-bold mt-0.5 truncate">
+        {main}
+      </p>
+      <div className="inline-flex items-center gap-1.5 mt-1">
+        <img
+          src="/claude-sprite.gif"
+          alt="Claude"
+          className="w-7 h-7 object-contain shadow-clay-sm rounded-full bg-clay-bg"
+          loading="lazy"
+        />
+        <span className="text-[10px] sm:text-[11px] text-clay-faint font-bold">{credit}</span>
+      </div>
+    </>
   )
 }
 

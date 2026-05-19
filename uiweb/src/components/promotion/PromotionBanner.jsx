@@ -17,7 +17,7 @@ export default function PromotionBanner() {
 
   useEffect(() => {
     let cancelled = false
-    api.get('/api/promotions/active').then((res) => {
+    api.get('/api/user/promotions/active').then((res) => {
       if (cancelled) return
       const arr = res?.data?.data
       if (Array.isArray(arr) && arr.length > 0) setActive(arr[0])

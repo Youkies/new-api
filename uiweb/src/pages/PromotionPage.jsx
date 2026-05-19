@@ -29,7 +29,7 @@ export default function PromotionPage() {
 
   const load = useCallback(async () => {
     try {
-      const res = await api.get(`/api/promotion/${encodeURIComponent(slug)}`)
+      const res = await api.get(`/api/user/promotion/${encodeURIComponent(slug)}`)
       const j = res.data
       if (!j?.success) {
         setErr(j?.message || '活动加载失败')
@@ -79,7 +79,7 @@ export default function PromotionPage() {
     if (orderingSku) return
     setOrderingSku(skuId)
     try {
-      const res = await api.post(`/api/promotion/${encodeURIComponent(slug)}/order`, {
+      const res = await api.post(`/api/user/promotion/${encodeURIComponent(slug)}/order`, {
         sku_id: skuId,
         payment_method: 'alipay', // 默认支付宝，二维码同时支持微信扫
       })

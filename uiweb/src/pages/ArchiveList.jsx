@@ -9,6 +9,7 @@ import ClayButton from '../components/clay/ClayButton.jsx'
 import ClayField from '../components/clay/ClayField.jsx'
 import ClayModal from '../components/clay/ClayModal.jsx'
 import ClayConsoleShell from '../components/layout/ClayConsoleShell.jsx'
+import TutorialButton from '../components/tutorial/TutorialButton.jsx'
 import { useToast } from '../context/ToastContext.jsx'
 import {
   listArchives, createArchive, updateArchive, deleteArchive,
@@ -162,6 +163,7 @@ export default function ArchiveList() {
       subtitle="自建分组，把不同分组的模型重命名后统一在 Key 上调用"
       actions={
         <div className="flex items-center gap-2">
+          <TutorialButton tours={['archive-create', 'archive-import']}>新手指引</TutorialButton>
           <ClayButton variant="ghost" onClick={() => setShowImport(true)}>
             <Download className="w-4 h-4" /> 导入
           </ClayButton>

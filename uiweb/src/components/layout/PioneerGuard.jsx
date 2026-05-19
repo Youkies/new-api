@@ -57,7 +57,7 @@ export default function PioneerGuard({ children }) {
           {isAnonymous && (
             <a
               href="/login"
-              className="inline-flex items-center justify-center gap-2 w-full px-5 py-3 rounded-clay-pill bg-clay-purple-100 text-clay-purple-ink font-black shadow-clay hover:shadow-clay-lg transition-all"
+              className="inline-flex items-center justify-center gap-2 w-full px-5 py-3 rounded-clay-pill bg-clay-purple-100 text-clay-purple-ink font-black shadow-clay hover:shadow-clay-hover transition-all"
             >
               登录看看
             </a>
@@ -67,7 +67,7 @@ export default function PioneerGuard({ children }) {
             className={`inline-flex items-center justify-center gap-2 w-full px-5 py-3 rounded-clay-pill font-black transition-all ${
               isAnonymous
                 ? 'bg-clay-bg shadow-clay-sm text-clay-ink hover:shadow-clay'
-                : 'bg-clay-purple-100 text-clay-purple-ink shadow-clay hover:shadow-clay-lg'
+                : 'bg-clay-purple-100 text-clay-purple-ink shadow-clay hover:shadow-clay-hover'
             }`}
           >
             返回主站

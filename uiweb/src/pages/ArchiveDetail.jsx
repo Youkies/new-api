@@ -11,6 +11,7 @@ import ClayField from '../components/clay/ClayField.jsx'
 import ClaySelect from '../components/clay/ClaySelect.jsx'
 import ClayModal from '../components/clay/ClayModal.jsx'
 import ClayConsoleShell from '../components/layout/ClayConsoleShell.jsx'
+import TutorialButton from '../components/tutorial/TutorialButton.jsx'
 import { useToast } from '../context/ToastContext.jsx'
 import {
   getArchive, createAlias, updateAlias, deleteAlias,
@@ -225,9 +226,12 @@ export default function ArchiveDetail() {
       subtitle={archive?.description}
       compactHeader
       actions={
-        <ClayButton variant="primary" onClick={openCreate}>
-          <Plus className="w-4 h-4" /> 新建别名
-        </ClayButton>
+        <div className="flex items-center gap-2">
+          <TutorialButton tour="archive-share">分享指引</TutorialButton>
+          <ClayButton variant="primary" onClick={openCreate}>
+            <Plus className="w-4 h-4" /> 新建别名
+          </ClayButton>
+        </div>
       }
     >
       <div className="mb-4">

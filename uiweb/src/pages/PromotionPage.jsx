@@ -169,35 +169,57 @@ export default function PromotionPage() {
 
   return (
     <ClayConsoleShell title={campaign.title} subtitle={campaign.subtitle} compactHeader>
-      {/* Hero 头图区 */}
+      {/* Hero 头图区 — 紧凑横向布局：左 emoji + 右标题/倒计时；不浪费垂直空间 */}
       <ClayCard
-        className={`relative overflow-hidden text-center py-12 mb-6 bg-gradient-to-br from-clay-${theme}-50 via-white to-clay-${theme}-100`}
+        className={`relative overflow-hidden mb-6 bg-gradient-to-br from-clay-${theme}-50 via-white to-clay-${theme}-100`}
       >
-        <div className="text-7xl sm:text-8xl mb-4 select-none" aria-hidden>
+        {/* 背景装饰：左下 + 右上 emoji halo */}
+        <div className="pointer-events-none absolute -left-6 -bottom-10 text-[180px] opacity-10 rotate-12 select-none" aria-hidden>
           {campaign.emoji || '🎉'}
         </div>
-        <h1 className="text-3xl sm:text-5xl font-black tracking-tight text-clay-ink mb-2">
-          {campaign.title}
-        </h1>
-        <p className="text-sm sm:text-base text-clay-faint font-bold mb-6 px-4">
-          {campaign.subtitle}
-        </p>
-        {ended ? (
-          <ClayAlert tone="info">活动已结束，期待下次再见</ClayAlert>
-        ) : inactive ? (
-          <ClayAlert tone="warning">活动尚未开始</ClayAlert>
-        ) : (
-          <div className="inline-flex items-center gap-2 px-5 py-2.5 rounded-clay-pill bg-white shadow-clay-sm">
-            <Clock className={`w-4 h-4 text-clay-${theme}-ink`} strokeWidth={2.5} />
-            <span className="text-sm font-black text-clay-ink tabular-nums">
-              {countdown.d > 0 ? `${countdown.d} 天 ` : ''}
-              {String(countdown.h).padStart(2, '0')}:
-              {String(countdown.m).padStart(2, '0')}:
-              {String(countdown.s).padStart(2, '0')}
-            </span>
-            <span className="text-xs text-clay-faint font-bold">后结束</span>
+        <div className="pointer-events-none absolute -right-4 -top-8 text-[120px] opacity-10 -rotate-12 select-none" aria-hidden>
+          {campaign.emoji || '🎉'}
+        </div>
+
+        <div className="relative flex items-center gap-4 sm:gap-6 py-2">
+          {/* 左：主 emoji */}
+          <div className="text-5xl sm:text-6xl select-none flex-shrink-0" aria-hidden>
+            {campaign.emoji || '🎉'}
           </div>
-        )}
+
+          {/* 中：标题 + 副标题 */}
+          <div className="flex-1 min-w-0">
+            <h1 className="text-xl sm:text-3xl font-black tracking-tight text-clay-ink leading-tight">
+              {campaign.title}
+            </h1>
+            <p className="text-[11px] sm:text-sm text-clay-faint font-bold mt-0.5 truncate">
+              {campaign.subtitle}
+            </p>
+          </div>
+
+          {/* 右：倒计时 / 状态 */}
+          <div className="flex-shrink-0">
+            {ended ? (
+              <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-clay-pill bg-clay-bg shadow-clay-inset-sm text-xs font-black text-clay-faint">
+                已结束
+              </span>
+            ) : inactive ? (
+              <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-clay-pill bg-clay-yellow-100 shadow-clay-sm text-xs font-black text-clay-yellow-ink">
+                未开始
+              </span>
+            ) : (
+              <div className="inline-flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 rounded-clay-pill bg-white shadow-clay-sm">
+                <Clock className={`w-3.5 h-3.5 text-clay-${theme}-ink`} strokeWidth={2.5} />
+                <span className="text-xs sm:text-sm font-black text-clay-ink tabular-nums">
+                  {countdown.d > 0 ? `${countdown.d}天` : ''}
+                  {String(countdown.h).padStart(2, '0')}:
+                  {String(countdown.m).padStart(2, '0')}:
+                  {String(countdown.s).padStart(2, '0')}
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
       </ClayCard>
 
       {/* 提示文案 */}
@@ -328,6 +350,12 @@ function SkuCard({ sku, theme, currencySymbol, selected, disabled, onSelect }) {
     ? Math.min(100, Math.round((sku.sold_count / sku.total_limit) * 100))
     : 0
 
+  // 优惠节省 = 到账 - 实付。折扣率展示为「N.N 折」（10 折 = 原价）
+  const savings = sku.delivered_yuan - sku.price_yuan
+  const zhe = sku.delivered_yuan > 0
+    ? (10 * sku.price_yuan / sku.delivered_yuan).toFixed(1)
+    : null
+
   // 主推光晕：选中时改为主题色 ring，否则金色
   const highlightRing = selected
     ? `ring-2 ring-clay-${theme}-300`
@@ -344,31 +372,59 @@ function SkuCard({ sku, theme, currencySymbol, selected, disabled, onSelect }) {
       disabled={!interactive}
       className={`relative text-left p-5 rounded-clay-lg bg-clay-bg ${selected ? '' : 'shadow-clay-sm hover:shadow-clay'} ${selectedInset} ${highlightRing} ${dimmed ? 'opacity-55 cursor-not-allowed' : 'cursor-pointer'} transition-shadow`}
     >
-      {/* 主推/已选 角标 */}
-      {selected ? (
-        <span className={`absolute top-3 right-3 inline-flex items-center gap-1 px-2.5 py-1 rounded-clay-pill bg-clay-${theme}-100 text-clay-${theme}-ink shadow-clay-sm text-[10px] font-black`}>
-          <CheckCircle2 className="w-3 h-3" strokeWidth={2.6} />
-          已选中
-        </span>
-      ) : sku.highlight ? (
-        <span className="absolute top-3 right-3 inline-flex items-center gap-1 px-2.5 py-1 rounded-clay-pill bg-clay-yellow-100 text-clay-yellow-ink shadow-clay-sm text-[10px] font-black">
-          <Sparkles className="w-3 h-3" strokeWidth={2.6} />
-          主推
-        </span>
-      ) : null}
-
-      <div className="text-5xl mb-3 select-none">{sku.emoji || '🎁'}</div>
-      <div className="text-lg sm:text-xl font-black text-clay-ink mb-1 truncate">{sku.label}</div>
-      <div className="text-xs text-clay-faint font-bold mb-4 truncate">{sku.subtitle}</div>
-
-      <div className="flex items-baseline gap-2 mb-4">
-        <span className="text-3xl font-black tabular-nums text-clay-pink-400">
-          {currencySymbol}{sku.price_yuan.toFixed(2)}
-        </span>
-        <span className="text-sm text-clay-faint font-bold line-through tabular-nums">
-          {currencySymbol}{sku.delivered_yuan.toFixed(2)}
-        </span>
+      {/* 顶部一行：emoji + 标题 + 已选/主推角标 */}
+      <div className="flex items-start gap-3 mb-3">
+        <div className="text-4xl sm:text-5xl select-none flex-shrink-0 leading-none">{sku.emoji || '🎁'}</div>
+        <div className="flex-1 min-w-0">
+          <div className="text-base sm:text-lg font-black text-clay-ink leading-tight truncate">
+            {sku.label}
+          </div>
+          {sku.subtitle && (
+            <div className="text-[11px] text-clay-faint font-bold mt-0.5 truncate">
+              {sku.subtitle}
+            </div>
+          )}
+        </div>
+        {selected ? (
+          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-clay-pill bg-clay-${theme}-100 text-clay-${theme}-ink shadow-clay-sm text-[10px] font-black flex-shrink-0`}>
+            <CheckCircle2 className="w-3 h-3" strokeWidth={2.6} />
+            已选
+          </span>
+        ) : sku.highlight ? (
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-clay-pill bg-clay-yellow-100 text-clay-yellow-ink shadow-clay-sm text-[10px] font-black flex-shrink-0">
+            <Sparkles className="w-3 h-3" strokeWidth={2.6} />
+            主推
+          </span>
+        ) : null}
       </div>
+
+      {/* 中区 — 到账金额 hero */}
+      <div className="flex items-end justify-between gap-3 mb-3">
+        <div className="min-w-0">
+          <div className="text-[10px] uppercase tracking-wider text-clay-faint font-black mb-0.5">
+            到 账
+          </div>
+          <div className={`text-3xl sm:text-4xl font-black tabular-nums text-clay-${theme}-ink leading-none`}>
+            {currencySymbol}{sku.delivered_yuan.toFixed(2)}
+          </div>
+        </div>
+        <div className="text-right flex-shrink-0">
+          <div className="text-[10px] uppercase tracking-wider text-clay-faint font-black mb-0.5">
+            付 款
+          </div>
+          <div className="text-base font-black tabular-nums text-clay-ink leading-none">
+            {currencySymbol}{sku.price_yuan.toFixed(2)}
+          </div>
+        </div>
+      </div>
+
+      {/* 省钱标签（凹陷 chip 风） */}
+      {savings > 0.005 && (
+        <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-clay-pill bg-clay-bg shadow-clay-inset-sm text-[11px] font-black text-clay-pink-400 mb-3">
+          <Sparkles className="w-3 h-3" strokeWidth={2.6} />
+          省 {currencySymbol}{savings.toFixed(2)}{zhe && ` · ${zhe} 折`}
+        </div>
+      )}
 
       {/* 销量进度 */}
       {sku.total_limit > 0 && (
@@ -379,7 +435,7 @@ function SkuCard({ sku, theme, currencySymbol, selected, disabled, onSelect }) {
               style={{ width: `${progressPct}%` }}
             />
           </div>
-          <div className="flex justify-between text-[11px] font-bold text-clay-faint mt-1 tabular-nums">
+          <div className="flex justify-between text-[10px] font-bold text-clay-faint mt-1 tabular-nums">
             <span>已售 {sku.sold_count}</span>
             <span>限量 {sku.total_limit}</span>
           </div>

@@ -51,9 +51,9 @@ var Promotion520 = PromotionCampaign{
 	Subtitle:   "我爱你的同时也爱你的钱包 · 限时 9 折起 — 来自 Claude Opus 4.7",
 	Emoji:      "❤️",
 	ThemeColor: "pink",
-	// 5/19 12:00 +08 → 5/21 23:59:59 +08
+	// 5/19 12:00 +08 → 5/20 23:59:59 +08（活动止于 520 当晚 24 点）
 	StartsAt:             mustTime("2026-05-19T12:00:00+08:00"),
-	EndsAt:               mustTime("2026-05-21T23:59:59+08:00"),
+	EndsAt:               mustTime("2026-05-20T23:59:59+08:00"),
 	Enabled:              true,
 	RequireEmailVerified: true,
 	MinAccountAgeDays:    0,

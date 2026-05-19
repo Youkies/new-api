@@ -10,6 +10,7 @@ import ClayField from '../components/clay/ClayField.jsx'
 import ClayModal from '../components/clay/ClayModal.jsx'
 import ClayConsoleShell from '../components/layout/ClayConsoleShell.jsx'
 import TutorialButton from '../components/tutorial/TutorialButton.jsx'
+import { prefetchTutorials } from '../components/tutorial/registry.js'
 import { useToast } from '../context/ToastContext.jsx'
 import {
   listArchives, createArchive, updateArchive, deleteArchive,
@@ -103,6 +104,13 @@ export default function ArchiveList() {
   }, [toast])
 
   useEffect(() => { load() }, [load])
+
+  // Warm browser cache with tutorial images so the in-page guide opens
+  // without per-step network round trips. Scheduled via requestIdleCallback
+  // inside the helper so it doesn't compete with the page's data load.
+  useEffect(() => {
+    prefetchTutorials(['archive-create', 'archive-import'])
+  }, [])
 
   const openCreate = () => {
     setEditing(null)

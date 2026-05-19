@@ -12,6 +12,7 @@ import ClaySelect from '../components/clay/ClaySelect.jsx'
 import ClayModal from '../components/clay/ClayModal.jsx'
 import ClayConsoleShell from '../components/layout/ClayConsoleShell.jsx'
 import TutorialButton from '../components/tutorial/TutorialButton.jsx'
+import { prefetchTutorials } from '../components/tutorial/registry.js'
 import { useToast } from '../context/ToastContext.jsx'
 import {
   getArchive, createAlias, updateAlias, deleteAlias,
@@ -103,6 +104,11 @@ export default function ArchiveDetail() {
   }, [archiveId, toast])
 
   useEffect(() => { load() }, [load])
+
+  // Warm browser cache with share-tutorial images on entry.
+  useEffect(() => {
+    prefetchTutorials(['archive-share'])
+  }, [])
 
   useEffect(() => {
     getArchiveOptions().then((res) => {

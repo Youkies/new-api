@@ -151,7 +151,7 @@ export default function TutorialModal({ open, onClose, tour, tours }) {
                 src={step.image}
                 alt={step.caption}
                 className="w-full max-h-[55vh] object-contain"
-                loading="lazy"
+                decoding="async"
               />
             </div>
 

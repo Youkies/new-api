@@ -46,3 +46,45 @@ export const tutorials = {
 export function getTutorial(id) {
   return tutorials[id] || null
 }
+
+/**
+ * Warm the browser cache by issuing parallel image requests for a tour's
+ * steps. The Image objects are discarded immediately — the browser caches
+ * the response (subject to the same Cache-Control headers as the real
+ * <img> requests later), so when the user actually opens the modal each
+ * step renders instantly.
+ *
+ * Safe to call multiple times: subsequent calls for an already-prefetched
+ * tour are no-ops. Calls are scheduled via requestIdleCallback so they
+ * don't compete with critical page loads.
+ */
+const prefetched = new Set()
+
+function schedule(fn) {
+  if (typeof window === 'undefined') return () => {}
+  if (typeof window.requestIdleCallback === 'function') {
+    const id = window.requestIdleCallback(fn, { timeout: 2000 })
+    return () => window.cancelIdleCallback?.(id)
+  }
+  const id = window.setTimeout(fn, 200)
+  return () => window.clearTimeout(id)
+}
+
+export function prefetchTutorial(id) {
+  const t = getTutorial(id)
+  if (!t) return () => {}
+  if (prefetched.has(id)) return () => {}
+  prefetched.add(id)
+  return schedule(() => {
+    for (const step of t.steps) {
+      const img = new Image()
+      img.decoding = 'async'
+      img.src = step.image
+    }
+  })
+}
+
+export function prefetchTutorials(ids = []) {
+  const cancels = ids.map(prefetchTutorial)
+  return () => cancels.forEach((c) => c?.())
+}

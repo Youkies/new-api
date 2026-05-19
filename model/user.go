@@ -54,6 +54,9 @@ type User struct {
 	AvatarType       string         `json:"-" gorm:"column:avatar_type;type:varchar(32)"`
 	CreatedAt        int64          `json:"created_at" gorm:"autoCreateTime;column:created_at"`
 	LastLoginAt      int64          `json:"last_login_at" gorm:"default:0;column:last_login_at"`
+	// Pioneer 优先锋计划成员标记。与会员分组解耦：用作 NODE_TYPE=slave 节点的访问门票，
+	// 当 slave 配置 SLAVE_NODE_PIONEER_ONLY=true 时，只有 Pioneer=true 的用户可调用 /v1。
+	Pioneer bool `json:"pioneer" gorm:"type:tinyint(1);default:0;column:pioneer"`
 }
 
 func (user *User) ToBaseUser() *UserBase {
@@ -65,6 +68,7 @@ func (user *User) ToBaseUser() *UserBase {
 		Username: user.Username,
 		Setting:  user.Setting,
 		Email:    user.Email,
+		Pioneer:  user.Pioneer,
 	}
 	return cache
 }
@@ -551,6 +555,7 @@ func (user *User) Edit(updatePassword bool) error {
 		"display_name": newUser.DisplayName,
 		"group":        newUser.Group,
 		"remark":       newUser.Remark,
+		"pioneer":      newUser.Pioneer,
 	}
 	if updatePassword {
 		updates["password"] = newUser.Password

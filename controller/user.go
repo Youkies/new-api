@@ -417,6 +417,7 @@ func GetSelf(c *gin.Context) {
 		"sidebar_modules":   userSetting.SidebarModules, // 正确提取sidebar_modules字段
 		"permissions":       permissions,                // 新增权限字段
 		"has_avatar":        user.AvatarType != "",
+		"pioneer":           user.Pioneer, // Pioneer 优先锋计划成员标记（前端用于 slave 节点访问引导）
 	}
 
 	c.JSON(http.StatusOK, gin.H{

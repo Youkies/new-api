@@ -83,6 +83,8 @@ func InitEnv() {
 	MemoryCacheEnabled = os.Getenv("MEMORY_CACHE_ENABLED") == "true"
 	IsMasterNode = os.Getenv("NODE_TYPE") != "slave"
 	NodeName = os.Getenv("NODE_NAME")
+	SlavePioneerOnly = os.Getenv("SLAVE_NODE_PIONEER_ONLY") == "true"
+	PrimarySiteURL = strings.TrimSpace(os.Getenv("PRIMARY_SITE_URL"))
 	TLSInsecureSkipVerify = GetEnvOrDefaultBool("TLS_INSECURE_SKIP_VERIFY", false)
 	if TLSInsecureSkipVerify {
 		if tr, ok := http.DefaultTransport.(*http.Transport); ok && tr != nil {

@@ -379,6 +379,21 @@ func TokenAuth() func(c *gin.Context) {
 
 		userCache.WriteContext(c)
 
+		// Slave node Pioneer gate: when SLAVE_NODE_PIONEER_ONLY=true is set on a
+		// slave node, only users with users.pioneer=true may use /v1. Decoupled
+		// from group routing so existing 会员体系 (group_ratio + channel groups)
+		// stays unchanged — Pioneer is purely an access ticket.
+		if !common.IsMasterNode && common.SlavePioneerOnly && !userCache.Pioneer {
+			mainSite := common.PrimarySiteURL
+			if mainSite == "" {
+				mainSite = "https://newapi.youkies.space"
+			}
+			abortWithOpenAiMessage(c, http.StatusForbidden,
+				fmt.Sprintf("该节点为 Pioneer 优先锋计划专属，您当前账号未开通该权限。请使用主站接入：%s/v1", mainSite),
+				types.ErrorCodeAccessDenied)
+			return
+		}
+
 		userGroup := userCache.Group
 		tokenGroup := token.Group
 		if tokenGroup != "" {

@@ -40,8 +40,11 @@ import AdminPlaygroundFoods from './pages/admin/AdminPlaygroundFoods.jsx'
 import AdminDebugTraces from './pages/admin/AdminDebugTraces.jsx'
 import AdminKPayTopUps from './pages/admin/AdminKPayTopUps.jsx'
 
+import PioneerGuard from './components/layout/PioneerGuard.jsx'
+
 export default function App() {
   return (
+    <PioneerGuard>
     <Routes>
       <Route path="/" element={<Home />} />
       <Route path="/about" element={<About />} />
@@ -296,5 +299,6 @@ export default function App() {
 
       <Route path="*" element={<NotFound />} />
     </Routes>
+    </PioneerGuard>
   )
 }

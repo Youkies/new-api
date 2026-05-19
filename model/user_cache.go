@@ -22,6 +22,7 @@ type UserBase struct {
 	Status   int    `json:"status"`
 	Username string `json:"username"`
 	Setting  string `json:"setting"`
+	Pioneer  bool   `json:"pioneer"`
 }
 
 func (user *UserBase) WriteContext(c *gin.Context) {
@@ -113,6 +114,7 @@ func GetUserCache(userId int) (userCache *UserBase, err error) {
 		Username: user.Username,
 		Setting:  user.Setting,
 		Email:    user.Email,
+		Pioneer:  user.Pioneer,
 	}
 
 	return userCache, nil

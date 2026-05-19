@@ -354,6 +354,28 @@ ALTER TABLE debug_key_traces
 
 这两个字段如果缺失，生产 `NODE_TYPE=slave` 不会自动补齐，需要手动 `ALTER TABLE`。
 
+## Pioneer 优先锋计划字段
+
+slave 节点访问门票，与会员分组 / 计费完全解耦：
+
+- `users.pioneer` `tinyint(1) DEFAULT 0` — 1 表示该账号属于 Pioneer 计划
+
+slave 手动 SQL（master 启动一次后会自动添加，slave 只跑 SQL）：
+
+```sql
+ALTER TABLE `users` ADD COLUMN `pioneer` tinyint(1) NOT NULL DEFAULT 0;
+```
+
+slave 节点环境变量：
+
+| 变量 | 示例 | 作用 |
+|------|------|------|
+| `SLAVE_NODE_PIONEER_ONLY` | `true` | 开启 Pioneer gate：`users.pioneer=false` 的用户 `/v1` 返回 403，uiweb 自动重定向到主站 |
+| `PRIMARY_SITE_URL` | `https://newapi.youkies.space` | 错误消息与 uiweb"返回主站"按钮的目标 URL |
+
+> ⚠️ 仅在 slave 节点（`NODE_TYPE=slave`）上启用 `SLAVE_NODE_PIONEER_ONLY=true`。master 节点忽略该变量。  
+> 已有 Redis 用户缓存条目反序列化时 `pioneer` 缺失会得到 `false`（安全降级到非 Pioneer），缓存 TTL 后自动刷新。
+
 ## perf_metrics
 
 官方 rc.4 合并后新增模型性能指标能力，需要确认：

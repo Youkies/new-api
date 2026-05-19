@@ -117,6 +117,11 @@ func GetStatus(c *gin.Context) {
 		"user_agreement_enabled":      legalSetting.UserAgreement != "",
 		"privacy_policy_enabled":      legalSetting.PrivacyPolicy != "",
 		"checkin_enabled":             operation_setting.GetCheckinSetting().Enabled,
+
+		// Slave node Pioneer 优先锋计划 access gate. uiweb 拿到这两个字段后，
+		// 在 slave_pioneer_only=true 时对 pioneer=false 的登录用户展示「返回主站」引导。
+		"slave_pioneer_only": !common.IsMasterNode && common.SlavePioneerOnly,
+		"primary_site_url":   common.PrimarySiteURL,
 	}
 
 	// 根据启用状态注入可选内容

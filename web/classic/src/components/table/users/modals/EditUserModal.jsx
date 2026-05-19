@@ -94,6 +94,7 @@ const EditUserModal = (props) => {
     quota_amount: 0,
     group: 'default',
     remark: '',
+    pioneer: false,
   });
 
   const fetchGroups = async () => {
@@ -365,6 +366,18 @@ const EditUserModal = (props) => {
                           allowAdditions
                           search
                           rules={[{ required: true, message: t('请选择分组') }]}
+                        />
+                      </Col>
+
+                      <Col span={24}>
+                        <Form.Switch
+                          field='pioneer'
+                          label={t('Pioneer 优先锋计划')}
+                          checkedText={t('开')}
+                          uncheckedText={t('关')}
+                          extraText={t(
+                            '开启后该用户可访问设置了 SLAVE_NODE_PIONEER_ONLY=true 的专属节点。与分组/会员等级解耦，不影响计费。',
+                          )}
                         />
                       </Col>
 

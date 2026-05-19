@@ -139,6 +139,15 @@ var IsMasterNode bool
 // 用于审计日志中标识节点身份，在容器/K8s 部署时比自动探测到的容器内网 IP 更具可读性。
 var NodeName = ""
 
+// SlavePioneerOnly 当此 slave 节点设置 SLAVE_NODE_PIONEER_ONLY=true 时，
+// TokenAuth 拒绝 users.pioneer=false 的用户调用 /v1，引导其使用主站。
+// master 节点始终忽略此开关。
+var SlavePioneerOnly bool
+
+// PrimarySiteURL 主站完整 URL（如 https://newapi.youkies.space），
+// 用于 slave 节点 Pioneer gate 错误信息与 uiweb 重定向引导。
+var PrimarySiteURL string
+
 var requestInterval int
 var RequestInterval time.Duration
 

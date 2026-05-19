@@ -29,6 +29,16 @@ function skuDelivered(sku) {
   return sku?.delivered_display || fmtAmount(sku?.delivered_yuan)
 }
 
+// 与 TopUp.jsx 同实现 — 微信内置浏览器 / 手机端识别，决定是否拉起支付 App。
+function isMobilePaymentContext() {
+  if (typeof window === 'undefined') return false
+  const ua = window.navigator?.userAgent || ''
+  return (
+    window.matchMedia?.('(max-width: 767px)').matches ||
+    /Android|iPhone|iPad|iPod|Mobile|MicroMessenger/i.test(ua)
+  )
+}
+
 /**
  * Promotion landing page — driven entirely by `/api/user/promotion/:slug` payload.
  *
@@ -127,7 +137,13 @@ export default function PromotionPage() {
         toast(j?.message || '下单失败', 'error')
         return
       }
-      setKpayOrder({ ...j.data, status: 'pending' })
+      const orderPayload = { ...j.data, status: 'pending' }
+      setKpayOrder(orderPayload)
+      // 移动端支付宝直接拉起 App（与 TopUp 同行为）；微信不支持外部 H5 直跳，
+      // 仍走二维码 + 「保存截图打开微信」提示路径
+      if (method === 'alipay' && isMobilePaymentContext() && orderPayload.direct_pay_url) {
+        window.location.assign(orderPayload.direct_pay_url)
+      }
     } catch (e) {
       toast(e?.response?.data?.message || e.message || '下单失败', 'error')
     } finally {
@@ -307,9 +323,11 @@ export default function PromotionPage() {
           )}
           {!['success', 'failed', 'expired'].includes(kpayOrder?.status) && (
             <ClayAlert tone="info">
-              {kpayOrder?.payment_method === 'wechat'
-                ? '请用微信扫一扫，完成后会自动到账'
-                : '请用支付宝扫一扫，完成后会自动到账'}
+              {isMobilePaymentContext() && kpayOrder?.payment_method === 'wechat'
+                ? '请长按二维码保存或截图，回到微信扫一扫，完成后会自动到账'
+                : kpayOrder?.payment_method === 'wechat'
+                  ? '请用微信扫一扫，完成后会自动到账'
+                  : '请用支付宝扫一扫，完成后会自动到账'}
             </ClayAlert>
           )}
           <div className="mx-auto w-56 h-56 rounded-clay-lg shadow-clay-inset bg-white flex items-center justify-center p-3">

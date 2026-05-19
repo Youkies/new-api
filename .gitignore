@@ -48,3 +48,12 @@ uiweb-dist/
 
 # Local private deployment records and secrets
 .local/
+
+# Sibling local-only side-projects sitting in the workspace root (not part of new-api)
+cpa2/
+kpay-epay-api/
+log目录/
+
+# Local data exports / spreadsheets / submission statistics
+*.xlsx
+*.xls

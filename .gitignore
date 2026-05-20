@@ -57,3 +57,7 @@ log目录/
 # Local data exports / spreadsheets / submission statistics
 *.xlsx
 *.xls
+
+# 分享给外部用户的适配包（每次需要可重新生成）
+kpay-adapter-pack.zip
+*-adapter-pack.zip

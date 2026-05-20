@@ -57,3 +57,9 @@
 - [2026-05-18 22:30] v6.7 充值/签到/退款金额符号始终用全局 `getCurrencyConfig()` 渲染（历史 content 写入符号不再被沿用，切换货币时全局一致）→ `ad0d3e83`。
 - [2026-05-18 23:00] v6.10 PayMethodIcon 改 SVG 内嵌双层 clay 图标（外圈中性 clay 渐变 + 内圈品牌色 + 中心白色 SimpleIcons logo path），修复 v6.9 用 `p-[12%]` 百分比 padding 相对父容器导致内圈坍缩的 bug → `ff5372b0`。
 - [2026-05-18 23:30] feature 分支 v6 系列收口，准备合并 main。
+- [2026-05-19 21:58] 东京 API-only 节点 `newapi-jp.youkies.space` 拉取并重启 GHCR `:latest`，digest `sha256:150446548591b73db888cadf2a1c12f5da18dd348848948148f8d5b1becdf596`；容器 healthy，公网 `/api/status` 200、根路径 404、`/v1/models` 401。
+- [2026-05-19] Pioneer 优先锋计划上线（`users.pioneer` + slave middleware gate + PioneerGuard）；`SLAVE_NODE_PIONEER_ONLY=true` 仅在 newapi-clay slave 启用；master 不动。
+- [2026-05-19] 520 充值狂欢活动 v1（写死版）：setting/promotion.go 4 个 SKU + 落地页 + 顶部 banner + 后台读 DB 统计 + KPay 复用入账链路。多轮迭代：UI 重做（选商品+底部支付方式按钮）/ 货币符号全局统一 / Hero 移动端垂直堆叠 / Claude 像素 gif 放大去灰底 / SKU 金额 5.20+52.0+13.14+99.99 / 移动端支付宝直跳。最终镜像 `feature-promotion-520-7283969b` → 用 `imagetools` 重打 `:latest`，commit `7283969b`。
+- [2026-05-20] 启动 `feature/promotion-admin` 分支，把 520 写死的活动配置后台化。5 个 Phase 全部完成：1) model/promotion_campaign.go GORM + 30s 缓存 + seed；2) admin CRUD API（/api/ui/admin/promotions）；3) classic /legacy/promotion 列表+编辑+SKU 子表+克隆+统计页（~900 行 JSX）；4) banner show_topup_banner 过滤；5) migrations 文档。HEAD `ea70ac22`，docker `feature-promotion-admin-ea70ac22` 推 GHCR，待测试机验收。
+- [2026-05-20] 应需求打包 KPay 适配包（`kpay-adapter-pack.zip` 43KB 仓库根 git 忽略）：README + PROMPT-FOR-AI + ARCHITECTURE + backend Go 源码 + frontend 片段 + known-issues + webhook payload sample；目标是其他 new-api 用户扔给 GPT/Claude 直接做适配。
+- [2026-05-21] 整理记忆库为 handoff 文档：active_task.md 改成"接手立刻做的事"清单（验收 14 项 + 合并 main + retag :latest 流程），1_project_context.md 加促销活动后台化稳定共识章节。GitHub Releases 上传暂搁置（用户选「先不上传」）。

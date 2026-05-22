@@ -48,7 +48,7 @@ SELECT sku_key, label, sort_order FROM promotion_skus ORDER BY campaign_id, sort
 
 | # | 验证 | 操作 | 期望 |
 |---|------|------|------|
-| 1 | 后台可见 | 登 `newapi-test.youkies.space/legacy/promotion` | 列表显示 1 条 520 活动 |
+| 1 | 后台可见 | 登 `newapi-test.youkies.space/legacy/console/promotion` | 列表显示 1 条 520 活动 |
 | 2 | 编辑活动 | 点编辑 520 → 改主题色 → 保存 | Toast 成功 |
 | 3 | 落地页生效 | 30 秒后刷 `newapi-test.youkies.space/promotion/520` | 主题色变了（30s 缓存 TTL） |
 | 4 | SKU 编辑 | 改 SKU 价格 / display / 限购 | 保存生效 |

@@ -363,12 +363,31 @@ const DEFAULT_FOODS = [
 
 const PLAYGROUND_GAMES = [
   {
+    id: 'chat',
+    label: 'AI 对话',
+    subtitle: '流式聊天 · 全模型',
+    icon: Sparkles,
+    enabled: true,
+    badge: '新',
+    tone: 'pink',
+  },
+  {
+    id: 'image',
+    label: 'AI 生图',
+    subtitle: '文生图 · 多模型',
+    icon: ImagePlus,
+    enabled: true,
+    badge: '新',
+    tone: 'purple',
+  },
+  {
     id: 'what-to-eat',
     label: '今天吃什么呀',
     subtitle: '随机开吃',
     icon: UtensilsCrossed,
     enabled: true,
     badge: '已上线',
+    tone: 'pink',
   },
   {
     id: 'lucky-dice',

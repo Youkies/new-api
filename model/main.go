@@ -203,6 +203,12 @@ func InitDB() (err error) {
 		}
 		common.SysLog("database migration started")
 		err = migrateDB()
+		if err == nil {
+			// Seed default promotion campaigns on first run (idempotent).
+			if seedErr := SeedDefaultPromotions(); seedErr != nil {
+				common.SysLog("seed default promotions failed: " + seedErr.Error())
+			}
+		}
 		return err
 	} else {
 		common.FatalLog(err)
@@ -298,6 +304,8 @@ func migrateDB() error {
 		&PerfMetric{},
 		&UserModelArchive{},
 		&UserModelAlias{},
+		&PromotionCampaign{},
+		&PromotionSku{},
 	)
 	if err != nil {
 		return err
@@ -364,6 +372,8 @@ func migrateDBFast() error {
 		{&PerfMetric{}, "PerfMetric"},
 		{&UserModelArchive{}, "UserModelArchive"},
 		{&UserModelAlias{}, "UserModelAlias"},
+		{&PromotionCampaign{}, "PromotionCampaign"},
+		{&PromotionSku{}, "PromotionSku"},
 	}
 	// 动态计算migration数量，确保errChan缓冲区足够大
 	errChan := make(chan error, len(migrations))

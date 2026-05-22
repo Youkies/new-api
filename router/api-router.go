@@ -105,6 +105,19 @@ func SetApiRouter(router *gin.Engine) {
 				uiAdminRoute.GET("/assistant/sessions", controller.AdminListUIAssistantSessions)
 				uiAdminRoute.GET("/topups/kpay", controller.AdminListKPayTopUps)
 				uiAdminRoute.POST("/topups/kpay/:trade_no/replay", controller.AdminReplayKPayTopUp)
+
+				// Promotion campaigns (520, future seasonal events) — admin management
+				uiAdminRoute.GET("/promotions", controller.AdminListPromotions)
+				uiAdminRoute.POST("/promotions", controller.AdminCreatePromotion)
+				uiAdminRoute.GET("/promotions/:id", controller.AdminGetPromotion)
+				uiAdminRoute.PUT("/promotions/:id", controller.AdminUpdatePromotion)
+				uiAdminRoute.DELETE("/promotions/:id", controller.AdminDeletePromotion)
+				uiAdminRoute.POST("/promotions/:id/clone", controller.AdminClonePromotion)
+				uiAdminRoute.POST("/promotions/:id/skus", controller.AdminCreateSku)
+				uiAdminRoute.PUT("/promotions/:id/skus/:sku_id", controller.AdminUpdateSku)
+				uiAdminRoute.DELETE("/promotions/:id/skus/:sku_id", controller.AdminDeleteSku)
+				uiAdminRoute.POST("/promotions/:id/skus/reorder", controller.AdminReorderSkus)
+				uiAdminRoute.GET("/promotions/:id/stats", controller.AdminCampaignStats)
 			}
 		}
 		perfMetricsRoute := apiRouter.Group("/perf-metrics")

@@ -5,9 +5,9 @@ import api from '../../services/api.js'
 
 /**
  * 全站通用活动入口横幅。挂在 /topup 顶部（或其它需要引流的页面），
- * 自动展示当前进行中的活动。无活动时返回 null，对原页面布局零干扰。
+ * 自动展示当前进行中且 show_topup_banner=true 的活动。无活动时返回 null。
  *
- * 多活动并存时只显示第一个（按 setting.activePromotions 注册顺序）。
+ * 多活动并存时只显示第一个（按 sort_order ASC，与后端缓存顺序一致）。
  * 自带倒计时（60s 更新一次，不需要每秒精度）。
  */
 export default function PromotionBanner() {
@@ -20,7 +20,11 @@ export default function PromotionBanner() {
     api.get('/api/user/promotions/active').then((res) => {
       if (cancelled) return
       const arr = res?.data?.data
-      if (Array.isArray(arr) && arr.length > 0) setActive(arr[0])
+      if (!Array.isArray(arr) || arr.length === 0) return
+      // 选第一个明确开启横幅展示的；老 payload 不带 show_topup_banner
+      // 字段时回退到第一条（保持向后兼容）。
+      const first = arr.find((p) => p.show_topup_banner !== false) || arr[0]
+      setActive(first)
     }).catch(() => {})
     return () => { cancelled = true }
   }, [])

@@ -88,6 +88,18 @@
 - 必吃榜代码保留在远端分支 `feature/youkies-must-eat-shelved`，需要恢复时从该分支继续。
 - 当前主线不要依赖 `/must-eat`、`/admin/model-reviews` 或 `ui_model_review_*` 表；相关迁移 SQL 暂不执行。
 
+## 促销活动 / 充值活动体系（2026-05-20 后台化）
+
+- 数据模型：`promotion_campaigns`（活动主表，slug 全局唯一、soft delete）+ `promotion_skus`（SKU 子表，sku_key 全局唯一被 `top_ups.promotion_sku_id` 引用，无 soft delete 但有 enabled 字段）。表结构在 `docs/uiweb/database-and-migrations.md`。
+- 关键不变量：**`top_ups.promotion_sku_id` 字段是 varchar(64) 字符串，对齐 `promotion_skus.sku_key`**（不用 int FK，因为历史订单稳定引用）。SKU 软删不真删，硬删前后端检查订单引用。
+- 入账路径：`model.RechargeKPay` 检测 `topUp.PromotionSkuId != ""` 时调 `model.FindSkuByKey` 拿 SKU 配置（**不看 enabled**，让已禁用 SKU 的历史订单仍能解析），按 `SKU.DeliveredYuan × QuotaPerUnit` 落账，绕过通用 Amount 公式。
+- 缓存：`ListActiveCampaigns` / `FindCampaignBySlugCached` / `ListSkusByCampaignCached` 走 30 秒 TTL 进程内缓存；`FindSkuByKey` 走 60 秒 sync.Map（入账高频）。Admin 任意写操作主动 `InvalidatePromotionCache`。
+- Seed：master 启动 AutoMigrate 后检测 `promotion_campaigns` Unscoped count==0 时自动写入 520 默认数据（sku_key `p520-sku-1..4` 与历史订单对齐）。再次启动不重复 seed。
+- Admin UI：classic `/console/promotion`（已注册 AdminRoute），列表 + 编辑 modal + SKU 子表 + 销售统计页。SKU 排序用上下箭头（v1 不引入 dnd 库）。
+- 公开 API：`/api/user/promotion/:slug`、`/api/user/promotion/:slug/order`、`/api/user/promotions/active` 都改为读 DB。前端 API 契约不变（`sku.id` 仍是 sku_key 字符串）。
+- Admin API：`/api/ui/admin/promotions[/...]`（GET/POST/PUT/DELETE + clone + skus + stats）。
+- 显示尾零：SKU 加 `PriceDisplay` / `DeliveredDisplay` 两个可选字符串字段，让 "5.20" "52.0" 这种带尾零写法不被通用 `fmtAmount` 吃掉。
+
 ## 协作偏好
 
 - 对功能/界面小迭代，用户通常希望完成后整理 diff，并在合适时提交到当前分支。

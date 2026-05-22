@@ -354,6 +354,75 @@ ALTER TABLE debug_key_traces
 
 这两个字段如果缺失，生产 `NODE_TYPE=slave` 不会自动补齐，需要手动 `ALTER TABLE`。
 
+## 促销活动后台化（promotion_campaigns + promotion_skus）
+
+`top_ups.promotion_sku_id` 列在更早的 520 活动 v1 已加入；本次后台化新增两张配置表：
+
+```sql
+-- 1. 活动主表（GORM soft delete 用 deleted_at）
+CREATE TABLE IF NOT EXISTS `promotion_campaigns` (
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
+  `slug` varchar(64) NOT NULL,
+  `title` varchar(191) NOT NULL,
+  `subtitle` varchar(255) DEFAULT '',
+  `emoji` varchar(16) DEFAULT '',
+  `theme_color` varchar(16) DEFAULT 'pink',
+  `starts_at` bigint NOT NULL,
+  `ends_at` bigint NOT NULL,
+  `enabled` tinyint(1) DEFAULT 0,
+  `require_email_verified` tinyint(1) DEFAULT 0,
+  `min_account_age_days` int DEFAULT 0,
+  `total_limit` int DEFAULT 0,
+  `per_user_limit` int DEFAULT 0,
+  `show_topup_banner` tinyint(1) DEFAULT 1,
+  `show_dashboard_card` tinyint(1) DEFAULT 0,
+  `sort_order` int DEFAULT 0,
+  `created_time` bigint DEFAULT NULL,
+  `updated_time` bigint DEFAULT NULL,
+  `deleted_at` datetime(3) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `idx_promo_slug` (`slug`),
+  KEY `idx_enabled` (`enabled`),
+  KEY `idx_deleted_at` (`deleted_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 2. SKU 子表（无 soft delete，硬删前后端检查订单引用）
+CREATE TABLE IF NOT EXISTS `promotion_skus` (
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
+  `sku_key` varchar(64) NOT NULL,
+  `campaign_id` int unsigned NOT NULL,
+  `sort_order` int DEFAULT 0,
+  `label` varchar(64) NOT NULL,
+  `subtitle` varchar(128) DEFAULT '',
+  `emoji` varchar(16) DEFAULT '',
+  `price_yuan` decimal(10,2) NOT NULL,
+  `delivered_yuan` decimal(10,2) NOT NULL,
+  `price_display` varchar(32) DEFAULT '',
+  `delivered_display` varchar(32) DEFAULT '',
+  `highlight` tinyint(1) DEFAULT 0,
+  `total_limit` int DEFAULT 0,
+  `per_user_limit` int DEFAULT 0,
+  `enabled` tinyint(1) DEFAULT 1,
+  `created_time` bigint DEFAULT NULL,
+  `updated_time` bigint DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `idx_promo_sku_key` (`sku_key`),
+  KEY `idx_promo_sku_campaign` (`campaign_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+```
+
+> ⚠️ slave 节点需要手动跑这两段 SQL。master 节点 AutoMigrate 会建表，并在
+> `promotion_campaigns` 表 Unscoped count == 0 时自动 seed 520 默认数据
+> （sku_key 与历史 `top_ups.promotion_sku_id` "p520-sku-1..4" 对齐）。
+>
+> **从硬编码版本升级路径**：
+> 1. master 先发新代码 → AutoMigrate 建表 + seed 520（如果 DB 表空）
+> 2. 历史订单的 `top_ups.promotion_sku_id = "p520-sku-1"` 等仍能解析
+>    （`model.FindSkuByKey` 不看 enabled，按 sku_key 直接匹配即可）
+> 3. slave 上线前在 Zeabur MySQL 跑上面两段 SQL；不需要 seed（slave 不跑
+>    后台任务，seed 也是 master 启动时触发的）
+> 4. 后续运营改活动直接走 /legacy/promotion 后台 UI，不再依赖发版
+
 ## Pioneer 优先锋计划字段
 
 slave 节点访问门票，与会员分组 / 计费完全解耦：

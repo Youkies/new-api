@@ -7,7 +7,6 @@ import (
 
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/logger"
-	"github.com/QuantumNous/new-api/setting"
 
 	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
@@ -26,7 +25,7 @@ type TopUp struct {
 	CompleteTime    int64   `json:"complete_time"`
 	Status          string  `json:"status"`
 	// PromotionSkuId — non-empty 表示这单是「活动 SKU 套餐」，入账时按
-	// setting.GetPromotionSku(...).DeliveredYuan 给固定额度，绕过通用
+	// model.FindSkuByKey(promotion_sku_id).DeliveredYuan 给固定额度，绕过通用
 	// Amount × QuotaPerUnit 计算。空 = 普通充值。
 	PromotionSkuId string `json:"promotion_sku_id,omitempty" gorm:"type:varchar(32);default:'';index:idx_promotion_sku_user,priority:1"`
 }
@@ -648,16 +647,16 @@ func RechargeKPay(tradeNo string, actualPaymentMethod string, callerIp string, p
 		}
 
 		// 活动 SKU 订单：按 SKU 配置的 DeliveredYuan 入账，绕开通用
-		// Amount × QuotaPerUnit 公式。这样配活动时眼见即所得，且不受
-		// QuotaPerUnit 后续调整影响。
+		// Amount × QuotaPerUnit 公式。SKU 现在从 DB 查（v1 是写死在 setting
+		// 包里的；admin 后台化后改读 model.FindSkuByKey 拿到当前生效配置）。
+		// 哪怕 SKU 已被 admin 禁用，历史订单仍能解析（FindSkuByKey 不看 enabled）。
 		if topUp.PromotionSkuId != "" {
-			_, sku := setting.GetPromotionSku(topUp.PromotionSkuId)
-			if sku == nil {
+			sku, _, lookupErr := FindSkuByKey(topUp.PromotionSkuId)
+			if lookupErr != nil || sku == nil {
 				return fmt.Errorf("活动 SKU 不存在：%s", topUp.PromotionSkuId)
 			}
-			dDelivered := decimal.NewFromFloat(sku.DeliveredYuan)
 			dQuotaPerUnit := decimal.NewFromFloat(common.QuotaPerUnit)
-			quotaToAdd = int(dDelivered.Mul(dQuotaPerUnit).IntPart())
+			quotaToAdd = int(sku.DeliveredYuan.Mul(dQuotaPerUnit).IntPart())
 		} else {
 			dAmount := decimal.NewFromInt(topUp.Amount)
 			dQuotaPerUnit := decimal.NewFromFloat(common.QuotaPerUnit)

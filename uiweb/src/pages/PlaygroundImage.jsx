@@ -1,25 +1,22 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Link, NavLink } from 'react-router-dom'
 import {
-  ArrowLeft,
   Cpu,
   Download,
   Image as ImageIcon,
   Layers,
   Loader2,
-  MessageSquare,
   Sparkles,
   Trash2,
   Wand2,
   X,
   RotateCcw,
+  Maximize2,
 } from 'lucide-react'
 import ClayButton from '../components/clay/ClayButton.jsx'
-import ClayCard from '../components/clay/ClayCard.jsx'
 import ClayIconButton from '../components/clay/ClayIconButton.jsx'
 import ClayModal from '../components/clay/ClayModal.jsx'
 import ClaySelect from '../components/clay/ClaySelect.jsx'
-import ClayConsoleShell from '../components/layout/ClayConsoleShell.jsx'
+import PlaygroundShell from '../components/layout/PlaygroundShell.jsx'
 import { useToast } from '../context/ToastContext.jsx'
 import {
   deleteSavedPlaygroundImage,
@@ -35,28 +32,25 @@ import {
 const CONFIG_KEY = 'uiweb.playground.image.config'
 
 const SIZE_PRESETS = [
-  { value: '1024x1024', label: '1024 × 1024 · 正方形' },
-  { value: '1792x1024', label: '1792 × 1024 · 宽屏' },
-  { value: '1024x1792', label: '1024 × 1792 · 竖图' },
-  { value: '512x512', label: '512 × 512 · 小图' },
-  { value: 'auto', label: '自动 (Auto)' },
+  { value: 'auto', label: '自动' },
+  { value: '1024x1024', label: '1024 × 1024' },
+  { value: '1792x1024', label: '1792 × 1024' },
+  { value: '1024x1792', label: '1024 × 1792' },
+  { value: '512x512', label: '512 × 512' },
 ]
-
 const QUALITY_PRESETS = [
   { value: 'auto', label: '自动' },
-  { value: 'low', label: '低 (低成本)' },
+  { value: 'low', label: '低 · 省' },
   { value: 'medium', label: '中' },
-  { value: 'high', label: '高 (高清)' },
+  { value: 'high', label: '高 · 清' },
   { value: 'standard', label: 'standard' },
   { value: 'hd', label: 'HD' },
 ]
-
 const STYLE_PRESETS = [
   { value: '', label: '默认' },
-  { value: 'vivid', label: 'vivid · 鲜艳' },
-  { value: 'natural', label: 'natural · 自然' },
+  { value: 'vivid', label: 'vivid' },
+  { value: 'natural', label: 'natural' },
 ]
-
 const PROMPT_PRESETS = [
   '一只在云朵上奔跑的橘色小猫，黏土质感，柔和粉彩光',
   '清晨阳光照进窗台的咖啡杯，文艺向，胶片质感',
@@ -75,24 +69,15 @@ function useIsMobile() {
   }, [])
   return m
 }
-
 function safeReadConfig() {
   if (typeof window === 'undefined') return null
-  try {
-    const raw = window.localStorage.getItem(CONFIG_KEY)
-    return raw ? JSON.parse(raw) : null
-  } catch (_) { return null }
+  try { const raw = window.localStorage.getItem(CONFIG_KEY); return raw ? JSON.parse(raw) : null } catch (_) { return null }
 }
-
-function safeWriteConfig(cfg) {
-  try { window.localStorage.setItem(CONFIG_KEY, JSON.stringify(cfg)) } catch (_) {}
-}
-
+function safeWriteConfig(cfg) { try { window.localStorage.setItem(CONFIG_KEY, JSON.stringify(cfg)) } catch (_) {} }
 function formatTime(ts) {
   if (!ts) return ''
   const num = typeof ts === 'number' ? (ts < 1e12 ? ts * 1000 : ts) : new Date(ts).getTime()
-  const d = new Date(num)
-  const now = new Date()
+  const d = new Date(num); const now = new Date()
   const sameDay = d.toDateString() === now.toDateString()
   if (sameDay) return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
   return `${d.getMonth() + 1}/${d.getDate()}`
@@ -102,6 +87,7 @@ export default function PlaygroundImage() {
   const toast = useToast()
   const isMobile = useIsMobile()
   const abortRef = useRef(null)
+  const inputRef = useRef(null)
 
   const cfg0 = safeReadConfig() || {}
   const [group, setGroup] = useState(cfg0.group || 'auto')
@@ -129,8 +115,7 @@ export default function PlaygroundImage() {
     Promise.all([listPlaygroundGroups(), listPlaygroundPricing()])
       .then(([gs, pr]) => {
         if (cancelled) return
-        setGroups(gs)
-        setPricing(pr)
+        setGroups(gs); setPricing(pr)
         if (!group || !gs.some((g) => g.name === group)) setGroup(gs[0]?.name || 'auto')
       })
       .catch((e) => { if (!cancelled) toast(e?.response?.data?.message || e?.message || '加载失败', 'error') })
@@ -150,29 +135,22 @@ export default function PlaygroundImage() {
 
   const imageModels = useMemo(() => pickImageModels(pricing), [pricing])
   const availableModels = useMemo(() => filterModelsByGroup(imageModels, group), [imageModels, group])
-
   useEffect(() => {
     if (!availableModels.length) return
-    if (!model || !availableModels.some((m) => m.name === model)) {
-      setModel(availableModels[0].name)
-    }
+    if (!model || !availableModels.some((m) => m.name === model)) setModel(availableModels[0].name)
   }, [availableModels, model])
 
   const groupOptions = useMemo(() => groups.map((g) => ({
     value: g.name,
-    label: g.name === 'auto' ? '自动 (Auto)' : `${g.name}${g.ratio !== undefined ? ` · 倍率 ${g.ratio}` : ''}`,
+    label: g.name === 'auto' ? '自动' : `${g.name}${g.ratio !== undefined ? ` · ${g.ratio}x` : ''}`,
   })), [groups])
-
   const modelOptions = useMemo(() => availableModels.map((m) => ({
     value: m.name,
     label: m.vendor ? `${m.vendor} · ${m.name}` : m.name,
   })), [availableModels])
 
   const stop = useCallback(() => {
-    if (abortRef.current) {
-      abortRef.current.abort()
-      abortRef.current = null
-    }
+    if (abortRef.current) { abortRef.current.abort(); abortRef.current = null }
   }, [])
 
   const handleGenerate = useCallback(async (overridePrompt) => {
@@ -194,31 +172,17 @@ export default function PlaygroundImage() {
     try {
       const res = await generatePlaygroundImage({ payload, signal: ctrl.signal })
       const datas = Array.isArray(res?.data) ? res.data : []
-      if (!datas.length) {
-        toast('上游未返回图片', 'error')
-        return
-      }
-      // Persist each image to backend
+      if (!datas.length) { toast('上游未返回图片', 'error'); return }
       const saved = []
       for (const d of datas) {
-        const body = {
-          prompt: text,
-          model,
-          group_name: group,
-          size: payload.size || '',
-          quality: payload.quality || '',
-          style: payload.style || '',
-        }
+        const body = { prompt: text, model, group_name: group, size: payload.size || '', quality: payload.quality || '', style: payload.style || '' }
         if (d?.b64_json) body.b64_json = d.b64_json
         else if (d?.url) body.url = d.url
         else continue
         try {
           const view = await savePlaygroundImage(body)
           if (view) saved.push(view)
-        } catch (e) {
-          // eslint-disable-next-line no-console
-          console.warn('savePlaygroundImage failed', e)
-        }
+        } catch (e) { console.warn('savePlaygroundImage failed', e) }
       }
       if (saved.length) {
         setHistory((prev) => [...saved, ...prev].slice(0, 60))
@@ -228,11 +192,8 @@ export default function PlaygroundImage() {
         toast('图片保存失败', 'warning')
       }
     } catch (e) {
-      if (e?.name === 'AbortError') {
-        toast('已中止', 'info')
-      } else {
-        toast(e?.message || '生图失败', 'error')
-      }
+      if (e?.name === 'AbortError') toast('已中止', 'info')
+      else toast(e?.message || '生图失败', 'error')
     } finally {
       abortRef.current = null
       setGenerating(false)
@@ -245,9 +206,7 @@ export default function PlaygroundImage() {
       setHistory((prev) => prev.filter((it) => it.id !== id))
       if (previewId === id) setPreviewId(null)
       toast('已删除', 'info')
-    } catch (e) {
-      toast(e?.response?.data?.message || e?.message || '删除失败', 'error')
-    }
+    } catch (e) { toast(e?.response?.data?.message || e?.message || '删除失败', 'error') }
   }, [previewId, toast])
 
   const handleDownload = useCallback(async (item) => {
@@ -260,168 +219,117 @@ export default function PlaygroundImage() {
       a.href = url
       const ext = (item.image_type || 'image/png').split('/')[1] || 'png'
       a.download = `playground-${item.id}.${ext}`
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
+      document.body.appendChild(a); a.click(); document.body.removeChild(a)
       setTimeout(() => URL.revokeObjectURL(url), 4000)
-    } catch (e) {
-      toast(e?.message || '下载失败', 'error')
-    }
+    } catch (e) { toast(e?.message || '下载失败', 'error') }
   }, [toast])
 
   const previewItem = useMemo(() => history.find((it) => it.id === previewId), [history, previewId])
 
-  return (
-    <ClayConsoleShell
-      title="AI 游乐场"
-      subtitle="对话 · 生图 · 直接使用你的分组与模型"
-      compactHeader
-      showAssistantWidget={false}
-      actions={(
-        <ClayButton as={Link} to="/playground" variant="ghost" className="!px-5">
-          <ArrowLeft className="h-4 w-4" strokeWidth={2.8} />
-          返回
-        </ClayButton>
-      )}
+  const headerActions = null
+
+  const footer = (
+    <div
+      className="fixed bottom-3 left-1/2 z-20 w-full max-w-4xl -translate-x-1/2 px-3 sm:bottom-5 sm:px-6"
+      style={{ paddingBottom: 'env(safe-area-inset-bottom, 0)' }}
     >
-      {/* Tabs */}
-      <div className="mb-4 flex flex-wrap items-center gap-2 sm:mb-6">
-        <NavLink
-          to="/playground/chat"
-          className={({ isActive }) => `inline-flex min-h-10 items-center gap-2 rounded-clay-pill px-4 text-sm font-black transition active:scale-95 ${
-            isActive ? 'bg-clay-pink-100 text-clay-pink-ink shadow-clay-sm' : 'bg-clay-bg text-clay-faint shadow-clay-inset-sm hover:text-clay-pink-ink'
-          }`}
-        >
-          <MessageSquare className="h-4 w-4" strokeWidth={2.8} />
-          对话
-        </NavLink>
-        <NavLink
-          to="/playground/image"
-          end
-          className={({ isActive }) => `inline-flex min-h-10 items-center gap-2 rounded-clay-pill px-4 text-sm font-black transition active:scale-95 ${
-            isActive ? 'bg-clay-purple-100 text-[#6b4d83] shadow-clay-sm' : 'bg-clay-bg text-clay-faint shadow-clay-inset-sm hover:text-[#6b4d83]'
-          }`}
-        >
-          <ImageIcon className="h-4 w-4" strokeWidth={2.8} />
-          生图
-        </NavLink>
-      </div>
-
-      {/* Model / Group / Size / Quality bar */}
-      <ClayCard className="mb-4 !p-3 sm:mb-5 sm:!p-4">
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3 lg:grid-cols-4">
-          <PickerRow icon={<Layers className="h-3.5 w-3.5" />} label="分组" color="purple">
-            <ClaySelect value={group} onChange={setGroup} options={groupOptions.length ? groupOptions : [{ value: 'auto', label: '自动' }]} disabled={loadingMeta} />
-          </PickerRow>
-          <PickerRow icon={<Cpu className="h-3.5 w-3.5" />} label="模型" color="yellow">
-            <ClaySelect value={model} onChange={setModel} options={modelOptions.length ? modelOptions : [{ value: '', label: loadingMeta ? '加载中…' : '无生图模型' }]} disabled={loadingMeta || !modelOptions.length} />
-          </PickerRow>
-          <PickerRow icon={<ImageIcon className="h-3.5 w-3.5" />} label="尺寸" color="pink">
-            <ClaySelect value={size} onChange={setSize} options={SIZE_PRESETS} />
-          </PickerRow>
-          <PickerRow icon={<Sparkles className="h-3.5 w-3.5" />} label="质量" color="green">
-            <ClaySelect value={quality} onChange={setQuality} options={QUALITY_PRESETS} />
-          </PickerRow>
-        </div>
-        <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3">
-          <PickerRow icon={<Wand2 className="h-3.5 w-3.5" />} label="风格" color="pink">
-            <ClaySelect value={style} onChange={setStyle} options={STYLE_PRESETS} />
-          </PickerRow>
-          <PickerRow icon={<Layers className="h-3.5 w-3.5" />} label="数量" color="purple">
-            <ClaySelect
-              value={String(n)}
-              onChange={(v) => setN(parseInt(v, 10) || 1)}
-              options={[1, 2, 3, 4].map((v) => ({ value: String(v), label: `${v} 张` }))}
-            />
-          </PickerRow>
-        </div>
-      </ClayCard>
-
-      {/* Prompt + Action */}
-      <ClayCard className="mb-4 !p-4 sm:mb-5 sm:!p-5">
-        <div className="mb-2 flex items-center justify-between">
-          <span className="inline-flex items-center gap-1.5 rounded-clay-pill bg-clay-pink-100 px-2.5 py-1 text-xs font-black text-clay-pink-ink shadow-clay-sm">
-            <Wand2 className="h-3.5 w-3.5" strokeWidth={2.8} />
-            Prompt
-          </span>
-          <span className="text-[11px] font-bold text-clay-faint">{prompt.length}/4000</span>
+      <div className="rounded-3xl border border-white/40 bg-clay-surface/95 p-2 shadow-clay backdrop-blur sm:p-3">
+        {/* Chips row */}
+        <div className="clay-scrollbar-none flex items-center gap-1.5 overflow-x-auto px-1 pb-1.5">
+          <Chip icon={<Cpu className="h-3 w-3" />} label="模型">
+            <ClaySelect value={model} onChange={setModel} options={modelOptions.length ? modelOptions : [{ value: '', label: loadingMeta ? '加载中…' : '无可用模型' }]} disabled={loadingMeta || !modelOptions.length} className="!min-h-7 !rounded-clay-pill !px-2 !py-0.5 !text-[12px] !font-bold !shadow-none !bg-clay-bg !text-clay-ink" />
+          </Chip>
+          <Chip icon={<Layers className="h-3 w-3" />} label="分组">
+            <ClaySelect value={group} onChange={setGroup} options={groupOptions.length ? groupOptions : [{ value: 'auto', label: '自动' }]} disabled={loadingMeta} className="!min-h-7 !rounded-clay-pill !px-2 !py-0.5 !text-[12px] !font-bold !shadow-none !bg-clay-bg !text-clay-ink" />
+          </Chip>
+          <Chip icon={<ImageIcon className="h-3 w-3" />} label="尺寸">
+            <ClaySelect value={size} onChange={setSize} options={SIZE_PRESETS} className="!min-h-7 !rounded-clay-pill !px-2 !py-0.5 !text-[12px] !font-bold !shadow-none !bg-clay-bg !text-clay-ink" />
+          </Chip>
+          <Chip icon={<Sparkles className="h-3 w-3" />} label="质量">
+            <ClaySelect value={quality} onChange={setQuality} options={QUALITY_PRESETS} className="!min-h-7 !rounded-clay-pill !px-2 !py-0.5 !text-[12px] !font-bold !shadow-none !bg-clay-bg !text-clay-ink" />
+          </Chip>
+          <Chip icon={<Wand2 className="h-3 w-3" />} label="风格">
+            <ClaySelect value={style} onChange={setStyle} options={STYLE_PRESETS} className="!min-h-7 !rounded-clay-pill !px-2 !py-0.5 !text-[12px] !font-bold !shadow-none !bg-clay-bg !text-clay-ink" />
+          </Chip>
+          <Chip icon={<Layers className="h-3 w-3" />} label="数量">
+            <ClaySelect value={String(n)} onChange={(v) => setN(parseInt(v, 10) || 1)} options={[1, 2, 3, 4].map((v) => ({ value: String(v), label: `${v} 张` }))} className="!min-h-7 !rounded-clay-pill !px-2 !py-0.5 !text-[12px] !font-bold !shadow-none !bg-clay-bg !text-clay-ink" />
+          </Chip>
         </div>
         <textarea
+          ref={inputRef}
           value={prompt}
           onChange={(e) => setPrompt(e.target.value.slice(0, 4000))}
           placeholder="描述你想要的画面，越具体越好…"
-          rows={isMobile ? 3 : 4}
+          rows={isMobile ? 2 : 3}
           disabled={generating}
-          className="clay-input min-h-[88px] resize-none"
+          className="block max-h-40 w-full resize-none border-0 bg-transparent px-2 py-1.5 text-[15px] font-medium text-clay-ink placeholder:font-bold placeholder:text-clay-faint focus:outline-none disabled:opacity-50"
+          style={{ minHeight: 44 }}
         />
-        <div className="mt-3 flex flex-wrap gap-2">
-          {PROMPT_PRESETS.map((p) => (
-            <button
-              key={p}
-              type="button"
-              onClick={() => setPrompt(p)}
-              disabled={generating}
-              className="rounded-clay-pill bg-clay-bg px-3 py-1.5 text-[12.5px] font-bold text-clay-ink shadow-clay-inset-sm transition hover:bg-clay-purple-100 hover:text-[#6b4d83] active:scale-95 disabled:opacity-60"
-            >
-              <Sparkles className="-mt-0.5 mr-1 inline h-3 w-3 text-clay-purple-300" strokeWidth={2.8} />
-              {p}
-            </button>
-          ))}
-        </div>
-        <div className="mt-4 flex items-center justify-end gap-2">
-          {generating ? (
-            <ClayButton type="button" variant="secondary" onClick={stop}>
-              <X className="h-4 w-4" strokeWidth={2.8} />
-              停止
-            </ClayButton>
-          ) : (
-            <ClayButton type="button" onClick={() => handleGenerate()} disabled={!model || !prompt.trim()}>
-              <Wand2 className="h-4 w-4" strokeWidth={2.8} />
-              生成
-            </ClayButton>
-          )}
-        </div>
-      </ClayCard>
-
-      {/* History gallery */}
-      <ClayCard className="!p-4 sm:!p-5">
-        <div className="mb-3 flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <ImageIcon className="h-5 w-5 text-clay-purple-300" strokeWidth={2.8} />
-            <h3 className="text-lg font-black">历史画廊</h3>
+        <div className="flex items-center justify-between gap-2 px-1">
+          <div className="truncate text-[11px] font-bold text-clay-faint">
+            {prompt.length > 0 && <span>{prompt.length}/4000</span>}
           </div>
-          <span className="rounded-clay-pill bg-clay-bg px-3 py-1 text-xs font-black text-clay-faint shadow-clay-inset">{history.length}</span>
+          <div className="flex items-center gap-2">
+            {generating ? (
+              <ClayButton type="button" variant="secondary" onClick={stop} className="!min-h-9 !px-3 !text-xs">
+                <X className="h-3.5 w-3.5" strokeWidth={2.8} />
+                停止
+              </ClayButton>
+            ) : (
+              <ClayButton type="button" onClick={() => handleGenerate()} disabled={!model || !prompt.trim()} className="!min-h-9 !px-4 !text-xs">
+                <Wand2 className="h-3.5 w-3.5" strokeWidth={2.8} />
+                生成
+              </ClayButton>
+            )}
+          </div>
         </div>
+      </div>
+    </div>
+  )
+
+  return (
+    <PlaygroundShell tab="image" actions={headerActions} footer={footer}>
+      <div className="pt-4">
         {loadingHistory ? (
           <div className="flex h-40 items-center justify-center text-sm font-bold text-clay-faint">
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" /> 加载中…
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" /> 加载历史…
           </div>
         ) : history.length === 0 ? (
-          <div className="rounded-[24px] bg-clay-bg px-5 py-10 text-center text-sm font-bold text-clay-faint shadow-clay-inset">
-            还没有生成记录，输入 prompt 试试
-          </div>
+          <EmptyHint onPick={(t) => setPrompt(t)} isMobile={isMobile} />
         ) : (
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-            {history.map((it) => (
-              <button
-                key={it.id}
-                type="button"
-                onClick={() => setPreviewId(it.id)}
-                className="group relative aspect-square overflow-hidden rounded-[20px] bg-clay-bg shadow-clay-sm transition active:scale-95"
-                title={it.prompt}
-              >
-                <img src={it.image_url} alt={it.prompt} className="h-full w-full object-cover transition group-hover:scale-[1.03]" loading="lazy" />
-                <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/55 via-black/15 to-transparent px-2 pb-2 pt-6 text-left text-[11px] font-bold text-white">
-                  <div className="line-clamp-2 leading-snug">{it.prompt}</div>
-                  <div className="mt-0.5 text-[10px] opacity-80">{formatTime(it.created_at)}</div>
-                </div>
-              </button>
-            ))}
-          </div>
+          <>
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="text-sm font-black text-clay-ink">历史画廊</h3>
+              <span className="text-[11px] font-bold text-clay-faint">{history.length} 张</span>
+            </div>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 lg:grid-cols-4">
+              {history.map((it) => (
+                <button
+                  key={it.id}
+                  type="button"
+                  onClick={() => setPreviewId(it.id)}
+                  className="group relative aspect-square overflow-hidden rounded-2xl bg-white/70 shadow-clay-sm transition active:scale-95"
+                  title={it.prompt}
+                >
+                  <img
+                    src={it.image_url}
+                    alt={it.prompt}
+                    className="h-full w-full object-cover transition group-hover:scale-[1.03]"
+                    loading="lazy"
+                  />
+                  <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/65 via-black/15 to-transparent px-2 pb-1.5 pt-6 text-left text-[11px] font-bold text-white">
+                    <div className="line-clamp-2 leading-snug">{it.prompt}</div>
+                  </div>
+                  <div className="absolute right-1.5 top-1.5 hidden h-7 w-7 items-center justify-center rounded-full bg-white/85 text-clay-ink shadow-clay-sm backdrop-blur group-hover:flex">
+                    <Maximize2 className="h-3.5 w-3.5" strokeWidth={2.8} />
+                  </div>
+                </button>
+              ))}
+            </div>
+          </>
         )}
-      </ClayCard>
+      </div>
 
-      {/* Preview Modal */}
       <ClayModal
         open={!!previewItem}
         onClose={() => setPreviewId(null)}
@@ -429,13 +337,9 @@ export default function PlaygroundImage() {
         size="lg"
         footer={previewItem ? (
           <>
-            <ClayButton type="button" variant="ghost" onClick={() => {
-              setPrompt(previewItem.prompt)
-              setPreviewId(null)
-              toast('已填入 prompt', 'info')
-            }}>
+            <ClayButton type="button" variant="ghost" onClick={() => { setPrompt(previewItem.prompt); setPreviewId(null); toast('已填入 prompt', 'info') }}>
               <RotateCcw className="h-4 w-4" strokeWidth={2.8} />
-              用此 prompt 再生
+              再生
             </ClayButton>
             <ClayButton type="button" onClick={() => handleDownload(previewItem)}>
               <Download className="h-4 w-4" strokeWidth={2.8} />
@@ -446,25 +350,26 @@ export default function PlaygroundImage() {
       >
         {previewItem && (
           <div className="space-y-3">
-            <div className="overflow-hidden rounded-[24px] bg-clay-bg shadow-clay-inset">
+            <div className="overflow-hidden rounded-2xl bg-clay-bg">
               <img src={previewItem.image_url} alt={previewItem.prompt} className="block max-h-[60vh] w-full object-contain" />
             </div>
-            <div className="rounded-[20px] bg-clay-bg p-3 shadow-clay-inset-sm">
+            <div className="rounded-2xl bg-clay-bg p-3">
               <div className="text-[11px] font-bold uppercase tracking-wider text-clay-faint">Prompt</div>
               <div className="mt-1 whitespace-pre-wrap break-words text-[13.5px] font-medium leading-6">{previewItem.prompt}</div>
             </div>
-            <div className="flex flex-wrap items-center gap-2 text-[11px] font-bold text-clay-faint">
-              {previewItem.model && <span className="rounded-clay-pill bg-clay-yellow-100 px-2 py-1 text-[#8a6a32] shadow-clay-sm">{previewItem.model}</span>}
-              {previewItem.size && <span className="rounded-clay-pill bg-clay-bg px-2 py-1 shadow-clay-inset-sm">{previewItem.size}</span>}
-              {previewItem.quality && <span className="rounded-clay-pill bg-clay-bg px-2 py-1 shadow-clay-inset-sm">{previewItem.quality}</span>}
-              {previewItem.style && <span className="rounded-clay-pill bg-clay-bg px-2 py-1 shadow-clay-inset-sm">{previewItem.style}</span>}
+            <div className="flex flex-wrap items-center gap-1.5 text-[11px] font-bold text-clay-faint">
+              {previewItem.model && <span className="rounded-clay-pill bg-clay-yellow-100 px-2 py-0.5 text-[#8a6a32]">{previewItem.model}</span>}
+              {previewItem.size && <span className="rounded-clay-pill bg-clay-bg px-2 py-0.5">{previewItem.size}</span>}
+              {previewItem.quality && <span className="rounded-clay-pill bg-clay-bg px-2 py-0.5">{previewItem.quality}</span>}
+              {previewItem.style && <span className="rounded-clay-pill bg-clay-bg px-2 py-0.5">{previewItem.style}</span>}
               {previewItem.group_name && previewItem.group_name !== 'auto' && (
-                <span className="rounded-clay-pill bg-clay-purple-100 px-2 py-1 text-[#6b4d83] shadow-clay-sm">{previewItem.group_name}</span>
+                <span className="rounded-clay-pill bg-clay-purple-100 px-2 py-0.5 text-[#6b4d83]">{previewItem.group_name}</span>
               )}
+              <span>{formatTime(previewItem.created_at)}</span>
               <button
                 type="button"
                 onClick={() => handleDelete(previewItem.id)}
-                className="ml-auto inline-flex items-center gap-1 rounded-clay-pill bg-clay-bg px-3 py-1 text-clay-pink-400 shadow-clay-inset-sm hover:bg-clay-pink-100 hover:text-clay-pink-ink"
+                className="ml-auto inline-flex items-center gap-1 rounded-clay-pill px-2 py-0.5 text-clay-pink-400 hover:bg-clay-pink-100 hover:text-clay-pink-ink"
               >
                 <Trash2 className="h-3.5 w-3.5" strokeWidth={2.8} />
                 删除
@@ -473,25 +378,44 @@ export default function PlaygroundImage() {
           </div>
         )}
       </ClayModal>
-    </ClayConsoleShell>
+    </PlaygroundShell>
   )
 }
 
-function PickerRow({ icon, label, color, children }) {
-  const palette = {
-    pink: 'bg-clay-pink-100 text-clay-pink-ink',
-    purple: 'bg-clay-purple-100 text-[#6b4d83]',
-    yellow: 'bg-clay-yellow-100 text-[#8a6a32]',
-    green: 'bg-clay-green-100 text-[#3f6e57]',
-    blue: 'bg-clay-blue-100 text-[#43658b]',
-  }[color] || 'bg-clay-bg text-clay-ink'
+function Chip({ icon, label, children }) {
   return (
-    <div className="flex items-center gap-2">
-      <span className={`inline-flex shrink-0 items-center gap-1.5 rounded-clay-pill px-2.5 py-1 text-xs font-black shadow-clay-sm ${palette}`}>
+    <div className="flex shrink-0 items-center gap-1 rounded-clay-pill bg-clay-bg pl-2 pr-0.5 py-0.5 shadow-clay-inset-sm">
+      <span className="flex items-center gap-1 text-[11px] font-black text-clay-faint">
         {icon}
         {label}
       </span>
-      <div className="min-w-0 flex-1">{children}</div>
+      <div className="min-w-[110px] max-w-[180px] sm:min-w-[130px] sm:max-w-[220px]">{children}</div>
+    </div>
+  )
+}
+
+function EmptyHint({ onPick, isMobile }) {
+  return (
+    <div className="flex min-h-[60vh] flex-col items-center justify-center gap-5 px-2 text-center">
+      <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-clay-purple-100 text-[#6b4d83] shadow-clay-sm">
+        <Wand2 className="h-6 w-6" strokeWidth={2.6} />
+      </div>
+      <div>
+        <h3 className="text-lg font-black sm:text-xl">用 prompt 生成图片</h3>
+        <p className="mt-1 text-[13px] font-bold text-clay-faint">底部输入框写下你想要的画面</p>
+      </div>
+      <div className={`flex w-full max-w-2xl ${isMobile ? 'flex-col' : 'flex-wrap justify-center'} gap-2`}>
+        {PROMPT_PRESETS.map((s) => (
+          <button
+            key={s}
+            type="button"
+            onClick={() => onPick(s)}
+            className="min-h-10 rounded-2xl bg-white/60 px-4 py-2 text-left text-sm font-bold text-clay-ink shadow-clay-sm transition hover:bg-clay-purple-100 hover:text-[#6b4d83] active:scale-[0.98]"
+          >
+            {s}
+          </button>
+        ))}
+      </div>
     </div>
   )
 }

@@ -259,9 +259,9 @@ export default function PlaygroundImage() {
       className="fixed bottom-3 left-1/2 z-20 w-full max-w-4xl -translate-x-1/2 px-3 sm:bottom-5 sm:px-6"
       style={{ paddingBottom: 'env(safe-area-inset-bottom, 0)' }}
     >
-      <div className="rounded-3xl border border-white/55 bg-white/55 p-2.5 shadow-[0_18px_60px_-18px_rgba(0,0,0,0.22)] ring-1 ring-black/[0.04] backdrop-blur-2xl sm:p-3">
+      <div className="rounded-3xl border border-white/55 bg-white/55 px-3 py-3 shadow-[0_18px_60px_-18px_rgba(0,0,0,0.22)] ring-1 ring-black/[0.04] backdrop-blur-2xl sm:px-4 sm:py-3.5">
         {/* Chips row */}
-        <div className="clay-scrollbar-none flex items-center gap-1.5 overflow-x-auto pb-2">
+        <div className="clay-scrollbar-none -mx-1 flex flex-nowrap items-center gap-1.5 overflow-x-auto px-1 pb-2 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0">
           <GlassSelect
             icon={<Cpu className="h-3 w-3" strokeWidth={2.8} />}
             value={model}
@@ -341,24 +341,33 @@ export default function PlaygroundImage() {
           placeholder="描述你想要的画面，越具体越好…"
           rows={isMobile ? 2 : 3}
           disabled={generating}
-          className="block max-h-40 w-full resize-none border-0 bg-transparent px-2 py-1.5 text-[15px] font-medium text-clay-ink placeholder:font-bold placeholder:text-clay-faint/70 focus:outline-none disabled:opacity-50"
+          className="block max-h-40 w-full resize-none border-0 bg-transparent px-1 py-1.5 text-[15px] font-medium text-clay-ink placeholder:font-bold placeholder:text-clay-faint/70 focus:outline-none disabled:opacity-50"
           style={{ minHeight: 44 }}
         />
-        <div className="flex items-center justify-between gap-2 px-1">
+        <div className="flex items-center justify-between gap-2 pt-1.5">
           <div className="truncate text-[11px] font-bold text-clay-faint">
             {prompt.length > 0 && <span>{prompt.length}/4000</span>}
           </div>
           <div className="flex items-center gap-2">
             {generating ? (
-              <ClayButton type="button" variant="secondary" onClick={stop} className="!min-h-9 !px-3 !text-xs">
+              <button
+                type="button"
+                onClick={stop}
+                className="inline-flex h-9 items-center gap-1.5 rounded-full border border-clay-pink-200/60 bg-clay-pink-100/80 px-4 text-[12.5px] font-black text-clay-pink-ink shadow-[0_4px_14px_-4px_rgba(255,143,179,0.5)] ring-1 ring-clay-pink-200/40 transition hover:bg-clay-pink-100 active:scale-95"
+              >
                 <X className="h-3.5 w-3.5" strokeWidth={2.8} />
                 停止
-              </ClayButton>
+              </button>
             ) : (
-              <ClayButton type="button" onClick={() => handleGenerate()} disabled={!model || !prompt.trim()} className="!min-h-9 !px-4 !text-xs">
+              <button
+                type="button"
+                onClick={() => handleGenerate()}
+                disabled={!model || !prompt.trim()}
+                className="inline-flex h-9 items-center gap-1.5 rounded-full border border-clay-purple-200/60 bg-gradient-to-br from-clay-purple-100 to-clay-purple-200 px-4 text-[12.5px] font-black text-[#5a3a76] shadow-[0_6px_18px_-4px_rgba(180,142,232,0.55)] ring-1 ring-white/40 transition hover:brightness-105 active:scale-95 disabled:!from-white/70 disabled:!to-white/70 disabled:!text-clay-faint disabled:!shadow-none disabled:!ring-black/5 disabled:cursor-not-allowed"
+              >
                 <Wand2 className="h-3.5 w-3.5" strokeWidth={2.8} />
                 生成
-              </ClayButton>
+              </button>
             )}
           </div>
         </div>

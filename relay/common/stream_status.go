@@ -31,6 +31,7 @@ type StreamErrorEntry struct {
 type StreamStatus struct {
 	EndReason StreamEndReason
 	EndError  error
+	EndAt     time.Time
 	endOnce   sync.Once
 
 	mu         sync.Mutex
@@ -49,6 +50,7 @@ func (s *StreamStatus) SetEndReason(reason StreamEndReason, err error) {
 	s.endOnce.Do(func() {
 		s.EndReason = reason
 		s.EndError = err
+		s.EndAt = time.Now()
 	})
 }
 

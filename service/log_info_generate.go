@@ -3,6 +3,7 @@ package service
 import (
 	"encoding/base64"
 	"strings"
+	"time"
 
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/constant"
@@ -78,7 +79,7 @@ func GenerateTextOtherInfo(ctx *gin.Context, relayInfo *relaycommon.RelayInfo, m
 	appendFinalRequestFormat(relayInfo, other)
 	appendBillingInfo(relayInfo, other)
 	appendParamOverrideInfo(relayInfo, other)
-	appendStreamStatus(relayInfo, other)
+	appendStreamStatus(ctx, relayInfo, other)
 	return other
 }
 
@@ -89,13 +90,14 @@ func appendParamOverrideInfo(relayInfo *relaycommon.RelayInfo, other map[string]
 	other["po"] = relayInfo.ParamOverrideAudit
 }
 
-func appendStreamStatus(relayInfo *relaycommon.RelayInfo, other map[string]interface{}) {
+func appendStreamStatus(ctx *gin.Context, relayInfo *relaycommon.RelayInfo, other map[string]interface{}) {
 	if relayInfo == nil || other == nil || !relayInfo.IsStream || relayInfo.StreamStatus == nil {
 		return
 	}
 	ss := relayInfo.StreamStatus
+	isAbnormal := !ss.IsNormalEnd() || ss.HasErrors()
 	status := "ok"
-	if !ss.IsNormalEnd() || ss.HasErrors() {
+	if isAbnormal {
 		status = "error"
 	}
 	streamInfo := map[string]interface{}{
@@ -112,6 +114,34 @@ func appendStreamStatus(relayInfo *relaycommon.RelayInfo, other map[string]inter
 			messages = append(messages, e.Message)
 		}
 		streamInfo["errors"] = messages
+	}
+	if isAbnormal {
+		streamInfo["chunks"] = relayInfo.ReceivedResponseCount
+
+		endAt := ss.EndAt
+		if endAt.IsZero() {
+			endAt = time.Now()
+		}
+		// elapsed_ms: prefer first-chunk → end (stream duration after first byte).
+		// Only valid when the upstream already sent at least one chunk; HasSendResponse
+		// rules out the sentinel (StartTime - 1s) initial value.
+		if relayInfo.HasSendResponse() {
+			streamInfo["elapsed_ms"] = endAt.Sub(relayInfo.FirstResponseTime).Milliseconds()
+		} else if !relayInfo.StartTime.IsZero() {
+			streamInfo["elapsed_ms"] = endAt.Sub(relayInfo.StartTime).Milliseconds()
+		}
+
+		if ctx != nil && ctx.Request != nil {
+			if ua := ctx.GetHeader("User-Agent"); ua != "" {
+				if len(ua) > 200 {
+					ua = ua[:200]
+				}
+				streamInfo["ua"] = ua
+			}
+			if ip := ctx.ClientIP(); ip != "" {
+				streamInfo["ip"] = ip
+			}
+		}
 	}
 	other["stream_status"] = streamInfo
 }

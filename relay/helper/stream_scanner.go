@@ -300,6 +300,25 @@ func StreamScannerHandler(c *gin.Context, resp *http.Response, info *relaycommon
 	if info.StreamStatus.IsNormalEnd() && !info.StreamStatus.HasErrors() {
 		logger.LogInfo(c, fmt.Sprintf("stream ended: %s", info.StreamStatus.Summary()))
 	} else {
-		logger.LogError(c, fmt.Sprintf("stream ended: %s, received=%d", info.StreamStatus.Summary(), info.ReceivedResponseCount))
+		endAt := info.StreamStatus.EndAt
+		if endAt.IsZero() {
+			endAt = time.Now()
+		}
+		var elapsedMs int64
+		if info.HasSendResponse() {
+			elapsedMs = endAt.Sub(info.FirstResponseTime).Milliseconds()
+		} else if !info.StartTime.IsZero() {
+			elapsedMs = endAt.Sub(info.StartTime).Milliseconds()
+		}
+		ua := c.GetHeader("User-Agent")
+		if len(ua) > 200 {
+			ua = ua[:200]
+		}
+		logger.LogError(c, fmt.Sprintf("stream ended: %s received=%d elapsed_ms=%d ua=%q ip=%s",
+			info.StreamStatus.Summary(),
+			info.ReceivedResponseCount,
+			elapsedMs,
+			ua,
+			c.ClientIP()))
 	}
 }

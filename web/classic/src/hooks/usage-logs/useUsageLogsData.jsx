@@ -548,6 +548,32 @@ export const useLogsData = () => {
           key: t('流状态'),
           value: streamValue,
         });
+        const diagParts = [];
+        if (typeof ss.chunks === 'number') {
+          diagParts.push(`chunks=${ss.chunks}`);
+        }
+        if (typeof ss.elapsed_ms === 'number') {
+          diagParts.push(`elapsed=${ss.elapsed_ms}ms`);
+        }
+        if (ss.ip) {
+          diagParts.push(`ip=${ss.ip}`);
+        }
+        if (diagParts.length > 0) {
+          expandDataLocal.push({
+            key: t('流诊断'),
+            value: diagParts.join('  '),
+          });
+        }
+        if (ss.ua) {
+          expandDataLocal.push({
+            key: t('客户端 UA'),
+            value: (
+              <div style={{ maxWidth: 600, whiteSpace: 'normal', wordBreak: 'break-all', lineHeight: 1.6 }}>
+                {ss.ua}
+              </div>
+            ),
+          });
+        }
         if (Array.isArray(ss.errors) && ss.errors.length > 0) {
           expandDataLocal.push({
             key: t('流错误详情'),

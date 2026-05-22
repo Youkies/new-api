@@ -19,10 +19,9 @@ import {
   ArrowDown,
 } from 'lucide-react'
 import ClayButton from '../components/clay/ClayButton.jsx'
-import ClayIconButton from '../components/clay/ClayIconButton.jsx'
 import ClayInput from '../components/clay/ClayInput.jsx'
 import ClayModal from '../components/clay/ClayModal.jsx'
-import ClaySelect from '../components/clay/ClaySelect.jsx'
+import GlassSelect from '../components/clay/GlassSelect.jsx'
 import PlaygroundShell from '../components/layout/PlaygroundShell.jsx'
 import { useToast } from '../context/ToastContext.jsx'
 import {
@@ -435,15 +434,15 @@ export default function PlaygroundChat() {
 
   const headerActions = (
     <>
-      <ClayIconButton onClick={() => setSessionsOpen(true)} aria-label="会话列表" title="会话">
+      <GlassIconBtn onClick={() => setSessionsOpen(true)} aria-label="会话" title="会话">
         <History className="h-4 w-4" strokeWidth={2.8} />
-      </ClayIconButton>
-      <ClayIconButton onClick={() => setParamsOpen(true)} aria-label="参数" title="参数">
+      </GlassIconBtn>
+      <GlassIconBtn onClick={() => setParamsOpen(true)} aria-label="参数" title="参数">
         <Settings2 className="h-4 w-4" strokeWidth={2.8} />
-      </ClayIconButton>
-      <ClayIconButton onClick={startNewSession} aria-label="新对话" title="新对话">
+      </GlassIconBtn>
+      <GlassIconBtn onClick={startNewSession} aria-label="新对话" title="新对话">
         <SquarePen className="h-4 w-4" strokeWidth={2.8} />
-      </ClayIconButton>
+      </GlassIconBtn>
     </>
   )
 
@@ -453,42 +452,54 @@ export default function PlaygroundChat() {
       className="fixed bottom-3 left-1/2 z-20 w-full max-w-4xl -translate-x-1/2 px-3 sm:bottom-5 sm:px-6"
       style={{ paddingBottom: 'env(safe-area-inset-bottom, 0)' }}
     >
-      <div className="rounded-3xl border border-white/40 bg-clay-surface/95 p-2 shadow-clay backdrop-blur sm:p-3">
-        {/* Param chips row */}
-        <div className="clay-scrollbar-none flex items-center gap-1.5 overflow-x-auto px-1 pb-1.5">
-          <Chip icon={<Cpu className="h-3 w-3" />} label="模型">
-            <ClaySelect
-              value={model}
-              onChange={setModel}
-              options={modelOptions.length ? modelOptions : [{ value: '', label: loadingMeta ? '加载中…' : '无可用模型' }]}
-              disabled={loadingMeta || !modelOptions.length}
-              className="!min-h-7 !rounded-clay-pill !px-2 !py-0.5 !text-[12px] !font-bold !shadow-none !bg-clay-bg !text-clay-ink"
-            />
-          </Chip>
-          <Chip icon={<Layers className="h-3 w-3" />} label="分组">
-            <ClaySelect
-              value={group}
-              onChange={setGroup}
-              options={groupOptions.length ? groupOptions : [{ value: 'auto', label: '自动' }]}
-              disabled={loadingMeta}
-              className="!min-h-7 !rounded-clay-pill !px-2 !py-0.5 !text-[12px] !font-bold !shadow-none !bg-clay-bg !text-clay-ink"
-            />
-          </Chip>
+      <div className="rounded-3xl border border-white/55 bg-white/55 p-2.5 shadow-[0_18px_60px_-18px_rgba(0,0,0,0.22)] ring-1 ring-black/[0.04] backdrop-blur-2xl sm:p-3">
+        {/* Chips row */}
+        <div className="clay-scrollbar-none flex items-center gap-1.5 overflow-x-auto pb-2">
+          <GlassSelect
+            icon={<Cpu className="h-3 w-3" strokeWidth={2.8} />}
+            value={model}
+            onChange={setModel}
+            options={modelOptions.length ? modelOptions : [{ value: '', label: loadingMeta ? '加载中…' : '无可用模型' }]}
+            disabled={loadingMeta || !modelOptions.length}
+            placeholder="选择模型"
+            tone="pink"
+            minWidth={200}
+          />
+          <GlassSelect
+            icon={<Layers className="h-3 w-3" strokeWidth={2.8} />}
+            value={group}
+            onChange={setGroup}
+            options={groupOptions.length ? groupOptions : [{ value: 'auto', label: '自动' }]}
+            disabled={loadingMeta}
+            placeholder="分组"
+            tone="purple"
+            minWidth={140}
+          />
           {params.enableTemperature && (
-            <span className="inline-flex shrink-0 items-center gap-1 rounded-clay-pill bg-clay-bg px-2 py-1 text-[11px] font-bold text-clay-faint">
+            <button
+              type="button"
+              onClick={() => setParamsOpen(true)}
+              className="inline-flex h-7 shrink-0 items-center gap-1 rounded-full border border-white/60 bg-white/55 px-2.5 text-[11.5px] font-bold text-clay-faint ring-1 ring-black/[0.04] transition hover:bg-white/80"
+              title="调整温度"
+            >
               T {Number(params.temperature).toFixed(1)}
-            </span>
+            </button>
           )}
           {params.enableMaxTokens && (
-            <span className="inline-flex shrink-0 items-center gap-1 rounded-clay-pill bg-clay-bg px-2 py-1 text-[11px] font-bold text-clay-faint">
+            <button
+              type="button"
+              onClick={() => setParamsOpen(true)}
+              className="inline-flex h-7 shrink-0 items-center gap-1 rounded-full border border-white/60 bg-white/55 px-2.5 text-[11.5px] font-bold text-clay-faint ring-1 ring-black/[0.04] transition hover:bg-white/80"
+              title="调整 max tokens"
+            >
               max {params.max_tokens}
-            </span>
+            </button>
           )}
           {params.system_prompt && (
             <button
               type="button"
               onClick={() => setParamsOpen(true)}
-              className="inline-flex shrink-0 items-center gap-1 rounded-clay-pill bg-clay-yellow-100 px-2 py-1 text-[11px] font-bold text-[#8a6a32] hover:brightness-105"
+              className="inline-flex h-7 shrink-0 items-center gap-1 rounded-full border border-white/60 bg-clay-yellow-100/70 px-2.5 text-[11.5px] font-bold text-[#8a6a32] ring-1 ring-amber-200/50 transition hover:brightness-105"
               title={params.system_prompt}
             >
               <Sparkles className="h-3 w-3" strokeWidth={2.8} />
@@ -505,7 +516,7 @@ export default function PlaygroundChat() {
           placeholder={model ? '输入消息，Enter 发送，Shift+Enter 换行' : '请先选择模型'}
           rows={isMobile ? 2 : 3}
           disabled={!model || sending}
-          className="block max-h-48 w-full resize-none border-0 bg-transparent px-2 py-1.5 text-[15px] font-medium text-clay-ink placeholder:font-bold placeholder:text-clay-faint focus:outline-none disabled:opacity-50"
+          className="block max-h-48 w-full resize-none border-0 bg-transparent px-2 py-1.5 text-[15px] font-medium text-clay-ink placeholder:font-bold placeholder:text-clay-faint/70 focus:outline-none disabled:opacity-50"
           style={{ minHeight: 44 }}
         />
         {/* footer */}
@@ -532,7 +543,7 @@ export default function PlaygroundChat() {
         <button
           type="button"
           onClick={() => { userScrolledUp.current = false; window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'smooth' }) }}
-          className="absolute -top-12 right-3 inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/90 text-clay-pink-ink shadow-clay backdrop-blur"
+          className="absolute -top-12 right-3 inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/60 bg-white/85 text-clay-pink-ink shadow-[0_8px_22px_-6px_rgba(0,0,0,0.18)] ring-1 ring-black/[0.04] backdrop-blur"
           aria-label="回到最新"
         >
           <ArrowDown className="h-4 w-4" strokeWidth={2.8} />
@@ -655,15 +666,17 @@ export default function PlaygroundChat() {
   )
 }
 
-function Chip({ icon, label, children }) {
+function GlassIconBtn({ children, onClick, title, 'aria-label': ariaLabel }) {
   return (
-    <div className="flex shrink-0 items-center gap-1 rounded-clay-pill bg-clay-bg pl-2 pr-0.5 py-0.5 shadow-clay-inset-sm">
-      <span className="flex items-center gap-1 text-[11px] font-black text-clay-faint">
-        {icon}
-        {label}
-      </span>
-      <div className="min-w-[120px] max-w-[180px] sm:min-w-[140px] sm:max-w-[220px]">{children}</div>
-    </div>
+    <button
+      type="button"
+      onClick={onClick}
+      title={title}
+      aria-label={ariaLabel}
+      className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/60 bg-white/60 text-clay-ink ring-1 ring-black/[0.04] backdrop-blur transition hover:bg-white/85 active:scale-95"
+    >
+      {children}
+    </button>
   )
 }
 

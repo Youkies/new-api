@@ -13,9 +13,8 @@ import {
   Maximize2,
 } from 'lucide-react'
 import ClayButton from '../components/clay/ClayButton.jsx'
-import ClayIconButton from '../components/clay/ClayIconButton.jsx'
 import ClayModal from '../components/clay/ClayModal.jsx'
-import ClaySelect from '../components/clay/ClaySelect.jsx'
+import GlassSelect from '../components/clay/GlassSelect.jsx'
 import PlaygroundShell from '../components/layout/PlaygroundShell.jsx'
 import { useToast } from '../context/ToastContext.jsx'
 import {
@@ -36,7 +35,10 @@ const SIZE_PRESETS = [
   { value: '1024x1024', label: '1024 × 1024' },
   { value: '1792x1024', label: '1792 × 1024' },
   { value: '1024x1792', label: '1024 × 1792' },
+  { value: '1536x1024', label: '1536 × 1024' },
+  { value: '1024x1536', label: '1024 × 1536' },
   { value: '512x512', label: '512 × 512' },
+  { value: '256x256', label: '256 × 256' },
 ]
 const QUALITY_PRESETS = [
   { value: 'auto', label: '自动' },
@@ -48,9 +50,27 @@ const QUALITY_PRESETS = [
 ]
 const STYLE_PRESETS = [
   { value: '', label: '默认' },
-  { value: 'vivid', label: 'vivid' },
-  { value: 'natural', label: 'natural' },
+  { value: 'vivid', label: 'vivid · 鲜艳' },
+  { value: 'natural', label: 'natural · 自然' },
 ]
+const BACKGROUND_PRESETS = [
+  { value: '', label: '默认' },
+  { value: 'auto', label: 'auto · 自动' },
+  { value: 'transparent', label: 'transparent · 透明' },
+  { value: 'opaque', label: 'opaque · 不透明' },
+]
+const FORMAT_PRESETS = [
+  { value: '', label: '默认' },
+  { value: 'png', label: 'PNG' },
+  { value: 'jpeg', label: 'JPEG' },
+  { value: 'webp', label: 'WebP' },
+]
+const MODERATION_PRESETS = [
+  { value: '', label: '默认' },
+  { value: 'auto', label: 'auto · 标准' },
+  { value: 'low', label: 'low · 宽松' },
+]
+const COUNT_PRESETS = [1, 2, 3, 4].map((v) => ({ value: String(v), label: `${v} 张` }))
 const PROMPT_PRESETS = [
   '一只在云朵上奔跑的橘色小猫，黏土质感，柔和粉彩光',
   '清晨阳光照进窗台的咖啡杯，文艺向，胶片质感',
@@ -95,6 +115,9 @@ export default function PlaygroundImage() {
   const [size, setSize] = useState(cfg0.size || '1024x1024')
   const [quality, setQuality] = useState(cfg0.quality || 'auto')
   const [style, setStyle] = useState(cfg0.style || '')
+  const [background, setBackground] = useState(cfg0.background || '')
+  const [outputFormat, setOutputFormat] = useState(cfg0.output_format || '')
+  const [moderation, setModeration] = useState(cfg0.moderation || '')
   const [n, setN] = useState(cfg0.n || 1)
   const [prompt, setPrompt] = useState('')
 
@@ -107,7 +130,7 @@ export default function PlaygroundImage() {
   const [generating, setGenerating] = useState(false)
   const [previewId, setPreviewId] = useState(null)
 
-  useEffect(() => { safeWriteConfig({ group, model, size, quality, style, n }) }, [group, model, size, quality, style, n])
+  useEffect(() => { safeWriteConfig({ group, model, size, quality, style, background, output_format: outputFormat, moderation, n }) }, [group, model, size, quality, style, background, outputFormat, moderation, n])
 
   useEffect(() => {
     let cancelled = false
@@ -163,6 +186,9 @@ export default function PlaygroundImage() {
     if (size && size !== 'auto') payload.size = size
     if (quality && quality !== 'auto') payload.quality = quality
     if (style) payload.style = style
+    if (background) payload.background = background
+    if (outputFormat) payload.output_format = outputFormat
+    if (moderation) payload.moderation = moderation
     const nClamped = Math.max(1, Math.min(4, Number(n) || 1))
     if (nClamped > 1) payload.n = nClamped
 
@@ -233,27 +259,80 @@ export default function PlaygroundImage() {
       className="fixed bottom-3 left-1/2 z-20 w-full max-w-4xl -translate-x-1/2 px-3 sm:bottom-5 sm:px-6"
       style={{ paddingBottom: 'env(safe-area-inset-bottom, 0)' }}
     >
-      <div className="rounded-3xl border border-white/40 bg-clay-surface/95 p-2 shadow-clay backdrop-blur sm:p-3">
+      <div className="rounded-3xl border border-white/55 bg-white/55 p-2.5 shadow-[0_18px_60px_-18px_rgba(0,0,0,0.22)] ring-1 ring-black/[0.04] backdrop-blur-2xl sm:p-3">
         {/* Chips row */}
-        <div className="clay-scrollbar-none flex items-center gap-1.5 overflow-x-auto px-1 pb-1.5">
-          <Chip icon={<Cpu className="h-3 w-3" />} label="模型">
-            <ClaySelect value={model} onChange={setModel} options={modelOptions.length ? modelOptions : [{ value: '', label: loadingMeta ? '加载中…' : '无可用模型' }]} disabled={loadingMeta || !modelOptions.length} className="!min-h-7 !rounded-clay-pill !px-2 !py-0.5 !text-[12px] !font-bold !shadow-none !bg-clay-bg !text-clay-ink" />
-          </Chip>
-          <Chip icon={<Layers className="h-3 w-3" />} label="分组">
-            <ClaySelect value={group} onChange={setGroup} options={groupOptions.length ? groupOptions : [{ value: 'auto', label: '自动' }]} disabled={loadingMeta} className="!min-h-7 !rounded-clay-pill !px-2 !py-0.5 !text-[12px] !font-bold !shadow-none !bg-clay-bg !text-clay-ink" />
-          </Chip>
-          <Chip icon={<ImageIcon className="h-3 w-3" />} label="尺寸">
-            <ClaySelect value={size} onChange={setSize} options={SIZE_PRESETS} className="!min-h-7 !rounded-clay-pill !px-2 !py-0.5 !text-[12px] !font-bold !shadow-none !bg-clay-bg !text-clay-ink" />
-          </Chip>
-          <Chip icon={<Sparkles className="h-3 w-3" />} label="质量">
-            <ClaySelect value={quality} onChange={setQuality} options={QUALITY_PRESETS} className="!min-h-7 !rounded-clay-pill !px-2 !py-0.5 !text-[12px] !font-bold !shadow-none !bg-clay-bg !text-clay-ink" />
-          </Chip>
-          <Chip icon={<Wand2 className="h-3 w-3" />} label="风格">
-            <ClaySelect value={style} onChange={setStyle} options={STYLE_PRESETS} className="!min-h-7 !rounded-clay-pill !px-2 !py-0.5 !text-[12px] !font-bold !shadow-none !bg-clay-bg !text-clay-ink" />
-          </Chip>
-          <Chip icon={<Layers className="h-3 w-3" />} label="数量">
-            <ClaySelect value={String(n)} onChange={(v) => setN(parseInt(v, 10) || 1)} options={[1, 2, 3, 4].map((v) => ({ value: String(v), label: `${v} 张` }))} className="!min-h-7 !rounded-clay-pill !px-2 !py-0.5 !text-[12px] !font-bold !shadow-none !bg-clay-bg !text-clay-ink" />
-          </Chip>
+        <div className="clay-scrollbar-none flex items-center gap-1.5 overflow-x-auto pb-2">
+          <GlassSelect
+            icon={<Cpu className="h-3 w-3" strokeWidth={2.8} />}
+            value={model}
+            onChange={setModel}
+            options={modelOptions.length ? modelOptions : [{ value: '', label: loadingMeta ? '加载中…' : '无可用模型' }]}
+            disabled={loadingMeta || !modelOptions.length}
+            placeholder="选择模型"
+            tone="purple"
+            minWidth={200}
+          />
+          <GlassSelect
+            icon={<Layers className="h-3 w-3" strokeWidth={2.8} />}
+            value={group}
+            onChange={setGroup}
+            options={groupOptions.length ? groupOptions : [{ value: 'auto', label: '自动' }]}
+            disabled={loadingMeta}
+            tone="purple"
+            minWidth={140}
+          />
+          <GlassSelect
+            icon={<ImageIcon className="h-3 w-3" strokeWidth={2.8} />}
+            label="尺寸"
+            value={size}
+            onChange={setSize}
+            options={SIZE_PRESETS}
+            minWidth={160}
+          />
+          <GlassSelect
+            icon={<Sparkles className="h-3 w-3" strokeWidth={2.8} />}
+            label="质量"
+            value={quality}
+            onChange={setQuality}
+            options={QUALITY_PRESETS}
+            minWidth={140}
+          />
+          <GlassSelect
+            icon={<Wand2 className="h-3 w-3" strokeWidth={2.8} />}
+            label="风格"
+            value={style}
+            onChange={setStyle}
+            options={STYLE_PRESETS}
+            minWidth={140}
+          />
+          <GlassSelect
+            label="数量"
+            value={String(n)}
+            onChange={(v) => setN(parseInt(v, 10) || 1)}
+            options={COUNT_PRESETS}
+            minWidth={110}
+          />
+          <GlassSelect
+            label="背景"
+            value={background}
+            onChange={setBackground}
+            options={BACKGROUND_PRESETS}
+            minWidth={150}
+          />
+          <GlassSelect
+            label="格式"
+            value={outputFormat}
+            onChange={setOutputFormat}
+            options={FORMAT_PRESETS}
+            minWidth={120}
+          />
+          <GlassSelect
+            label="审核"
+            value={moderation}
+            onChange={setModeration}
+            options={MODERATION_PRESETS}
+            minWidth={130}
+          />
         </div>
         <textarea
           ref={inputRef}
@@ -262,7 +341,7 @@ export default function PlaygroundImage() {
           placeholder="描述你想要的画面，越具体越好…"
           rows={isMobile ? 2 : 3}
           disabled={generating}
-          className="block max-h-40 w-full resize-none border-0 bg-transparent px-2 py-1.5 text-[15px] font-medium text-clay-ink placeholder:font-bold placeholder:text-clay-faint focus:outline-none disabled:opacity-50"
+          className="block max-h-40 w-full resize-none border-0 bg-transparent px-2 py-1.5 text-[15px] font-medium text-clay-ink placeholder:font-bold placeholder:text-clay-faint/70 focus:outline-none disabled:opacity-50"
           style={{ minHeight: 44 }}
         />
         <div className="flex items-center justify-between gap-2 px-1">
@@ -379,18 +458,6 @@ export default function PlaygroundImage() {
         )}
       </ClayModal>
     </PlaygroundShell>
-  )
-}
-
-function Chip({ icon, label, children }) {
-  return (
-    <div className="flex shrink-0 items-center gap-1 rounded-clay-pill bg-clay-bg pl-2 pr-0.5 py-0.5 shadow-clay-inset-sm">
-      <span className="flex items-center gap-1 text-[11px] font-black text-clay-faint">
-        {icon}
-        {label}
-      </span>
-      <div className="min-w-[110px] max-w-[180px] sm:min-w-[130px] sm:max-w-[220px]">{children}</div>
-    </div>
   )
 }
 

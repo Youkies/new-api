@@ -121,6 +121,19 @@ const LogsFilters = ({
                 pure
                 size='small'
               />
+              <div className='col-span-1 flex items-center'>
+                <Form.Checkbox
+                  field='stream_error'
+                  noLabel
+                  onChange={() => {
+                    setTimeout(() => {
+                      refresh();
+                    }, 0);
+                  }}
+                >
+                  {t('仅流异常')}
+                </Form.Checkbox>
+              </div>
             </>
           )}
         </div>

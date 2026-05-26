@@ -44,7 +44,7 @@ func SetApiRouter(router *gin.Engine) {
 			uiRoute.POST("/playground/foods/submissions", middleware.UserAuth(), middleware.CriticalRateLimit(), controller.CreateUIPlaygroundFoodSubmission)
 			uiRoute.GET("/playground/images", middleware.UserAuth(), controller.ListUIPlaygroundImages)
 			uiRoute.POST("/playground/images", middleware.UserAuth(), middleware.CriticalRateLimit(), controller.CreateUIPlaygroundImage)
-			uiRoute.GET("/playground/images/:id/image", middleware.UserAuth(), controller.GetUIPlaygroundImage)
+			uiRoute.GET("/playground/images/:id/image", middleware.TryUserAuth(), controller.GetUIPlaygroundImage)
 			uiRoute.DELETE("/playground/images/:id", middleware.UserAuth(), controller.DeleteUIPlaygroundImage)
 			uiRoute.POST("/announcement_acks/:id", middleware.UserAuth(), controller.AckUIAnnouncement)
 			uiRoute.GET("/notifications", middleware.UserAuth(), controller.ListUINotifications)

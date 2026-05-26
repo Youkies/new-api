@@ -114,6 +114,11 @@ func GetUIPlaygroundImage(c *gin.Context) {
 		return
 	}
 	userId := c.GetInt("id")
+	if userId <= 0 {
+		// <img> tag cannot send custom New-Api-User header — fall back to session-only auth.
+		c.AbortWithStatus(http.StatusUnauthorized)
+		return
+	}
 	img, err := model.GetPlaygroundImageBinary(id, userId)
 	if err != nil {
 		c.AbortWithStatus(http.StatusNotFound)

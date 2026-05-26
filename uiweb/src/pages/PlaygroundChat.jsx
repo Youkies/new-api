@@ -19,23 +19,21 @@ import {
   ArrowDown,
 } from 'lucide-react'
 import ClayButton from '../components/clay/ClayButton.jsx'
-import ClayInput from '../components/clay/ClayInput.jsx'
 import ClayModal from '../components/clay/ClayModal.jsx'
 import GlassSelect from '../components/clay/GlassSelect.jsx'
 import PlaygroundShell from '../components/layout/PlaygroundShell.jsx'
 import { useToast } from '../context/ToastContext.jsx'
 import {
-  appendServerMessage,
-  createServerSession,
-  deleteServerSession,
+  dropLocalMessages,
   filterModelsByGroup,
   listPlaygroundGroups,
   listPlaygroundPricing,
-  listServerMessages,
-  listServerSessions,
+  loadLocalMessages,
+  loadLocalSessions,
   pickChatModels,
+  saveLocalMessages,
+  saveLocalSessions,
   streamPlaygroundChat,
-  updateServerSession,
 } from '../services/playgroundAI.js'
 
 const CONFIG_KEY = 'uiweb.playground.chat.config'
@@ -162,13 +160,7 @@ function MarkdownLite({ text }) {
 
 // ---- defaults ----
 const DEFAULT_PARAMS = {
-  temperature: 0.7,
-  top_p: 1,
-  max_tokens: 4096,
   system_prompt: '',
-  enableTemperature: true,
-  enableTopP: false,
-  enableMaxTokens: false,
 }
 const SUGGESTIONS = [
   '帮我用三句话解释「黏土设计」的核心',
@@ -178,11 +170,15 @@ const SUGGESTIONS = [
 ]
 function normalizeSession(s) {
   if (!s) return null
-  return { id: s.id, title: s.title || '新对话', model: s.model || '', groupName: s.group_name || 'auto', config: s.config || '', updatedAt: s.updated_at || 0, createdAt: s.created_at || 0 }
+  return { id: s.id, title: s.title || '新对话', model: s.model || '', groupName: s.groupName || s.group_name || 'auto', updatedAt: s.updatedAt || s.updated_at || 0, createdAt: s.createdAt || s.created_at || 0 }
 }
 function normalizeMessage(m) {
   if (!m) return null
-  return { id: m.id, role: m.role, content: m.content || '', reasoning: m.reasoning || '', model: m.model || '', groupName: m.group_name || '', ts: m.created_at || Date.now(), pending: false }
+  return { id: m.id, role: m.role, content: m.content || '', reasoning: m.reasoning || '', model: m.model || '', groupName: m.groupName || m.group_name || '', ts: m.ts || m.created_at || Date.now(), pending: false, error: m.error || '' }
+}
+function makeSessionId() {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') return crypto.randomUUID()
+  return `s_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
 }
 
 export default function PlaygroundChat() {
@@ -203,12 +199,10 @@ export default function PlaygroundChat() {
   const [loadingMeta, setLoadingMeta] = useState(true)
 
   const [sessions, setSessions] = useState([])
-  const [activeId, setActiveId] = useState(0)
+  const [activeId, setActiveId] = useState('')
   const [messages, setMessages] = useState([])
   const [composer, setComposer] = useState('')
   const [sending, setSending] = useState(false)
-  const [loadingSessions, setLoadingSessions] = useState(true)
-  const [loadingMsgs, setLoadingMsgs] = useState(false)
 
   const [sessionsOpen, setSessionsOpen] = useState(false)
   const [paramsOpen, setParamsOpen] = useState(false)
@@ -253,32 +247,23 @@ export default function PlaygroundChat() {
     return () => { cancelled = true }
   }, [])
 
-  // Load server sessions
+  // Load local sessions on mount
   useEffect(() => {
-    let cancelled = false
-    setLoadingSessions(true)
-    listServerSessions('chat')
-      .then((items) => {
-        if (cancelled) return
-        const list = items.map(normalizeSession).filter(Boolean)
-        setSessions(list)
-        if (list.length && !activeId) setActiveId(list[0].id)
-      })
-      .catch((e) => { if (!cancelled && e?.status !== 401 && e?.response?.status !== 401) console.warn('listServerSessions failed', e) })
-      .finally(() => { if (!cancelled) setLoadingSessions(false) })
-    return () => { cancelled = true }
+    const items = loadLocalSessions().map(normalizeSession).filter(Boolean)
+    setSessions(items)
+    if (items.length && !activeId) setActiveId(items[0].id)
   }, [])
 
-  // Load messages on session change
+  // Persist sessions whenever they change
+  useEffect(() => {
+    saveLocalSessions(sessions)
+  }, [sessions])
+
+  // Load messages on session change (from localStorage)
   useEffect(() => {
     if (!activeId) { setMessages([]); return }
-    let cancelled = false
-    setLoadingMsgs(true)
-    listServerMessages(activeId)
-      .then((items) => { if (!cancelled) setMessages(items.map(normalizeMessage).filter(Boolean)) })
-      .catch((e) => { if (!cancelled) console.warn('listServerMessages failed', e) })
-      .finally(() => { if (!cancelled) setLoadingMsgs(false) })
-    return () => { cancelled = true }
+    const items = loadLocalMessages(activeId).map(normalizeMessage).filter(Boolean)
+    setMessages(items)
   }, [activeId])
 
   const chatModels = useMemo(() => pickChatModels(pricing), [pricing])
@@ -288,44 +273,37 @@ export default function PlaygroundChat() {
     if (!model || !availableModels.some((m) => m.name === model)) setModel(availableModels[0].name)
   }, [availableModels, model])
 
-  const ensureSession = useCallback(async (titleHint) => {
+  const ensureSession = useCallback((titleHint) => {
     if (activeId) return activeId
-    try {
-      const s = await createServerSession({ kind: 'chat', title: (titleHint || '新对话').slice(0, 60), model, groupName: group })
-      if (s?.id) {
-        const norm = normalizeSession(s)
-        setSessions((prev) => [norm, ...prev])
-        setActiveId(norm.id)
-        return norm.id
-      }
-    } catch (e) { toast(e?.response?.data?.message || e?.message || '创建会话失败', 'error') }
-    return 0
-  }, [activeId, group, model, toast])
+    const id = makeSessionId()
+    const now = Math.floor(Date.now() / 1000)
+    const sess = { id, title: (titleHint || '新对话').slice(0, 60), model, groupName: group, updatedAt: now, createdAt: now }
+    setSessions((prev) => [sess, ...prev].slice(0, 100))
+    setActiveId(id)
+    return id
+  }, [activeId, group, model])
 
   const startNewSession = useCallback(() => {
-    setActiveId(0); setMessages([]); setSessionsOpen(false)
+    setActiveId(''); setMessages([]); setSessionsOpen(false)
     inputRef.current?.focus()
   }, [])
   const switchSession = useCallback((id) => { setActiveId(id); setSessionsOpen(false) }, [])
-  const removeSession = useCallback(async (id) => {
-    try {
-      await deleteServerSession(id)
-      setSessions((prev) => prev.filter((s) => s.id !== id))
-      if (id === activeId) { setActiveId(0); setMessages([]) }
-      toast('已删除会话', 'info')
-    } catch (e) { toast(e?.response?.data?.message || e?.message || '删除失败', 'error') }
+  const removeSession = useCallback((id) => {
+    dropLocalMessages(id)
+    setSessions((prev) => prev.filter((s) => s.id !== id))
+    if (id === activeId) { setActiveId(''); setMessages([]) }
+    toast('已删除会话', 'info')
   }, [activeId, toast])
 
   const stopGenerating = useCallback(() => {
     if (abortRef.current) { abortRef.current.abort(); abortRef.current = null }
   }, [])
 
-  const updateSessionTitleIfNew = useCallback(async (sid, firstUserText) => {
+  const updateSessionTitleIfNew = useCallback((sid, firstUserText) => {
     const sess = sessions.find((s) => s.id === sid)
     if (!sess || (sess.title && sess.title !== '新对话')) return
     const newTitle = firstUserText.slice(0, 24) || '新对话'
-    setSessions((prev) => prev.map((s) => (s.id === sid ? { ...s, title: newTitle, updatedAt: Date.now() / 1000 } : s)))
-    try { await updateServerSession(sid, { title: newTitle }) } catch (_) {}
+    setSessions((prev) => prev.map((s) => (s.id === sid ? { ...s, title: newTitle, updatedAt: Math.floor(Date.now() / 1000) } : s)))
   }, [sessions])
 
   const handleSend = useCallback(async (overrideText) => {
@@ -342,7 +320,7 @@ export default function PlaygroundChat() {
     const baseMessages = [...messages, userMsg, assistantMsg]
     setMessages(baseMessages); setComposer(''); setSending(true)
     userScrolledUp.current = false
-    void updateSessionTitleIfNew(sid, text)
+    updateSessionTitleIfNew(sid, text)
 
     const payload = {
       model, group,
@@ -351,9 +329,6 @@ export default function PlaygroundChat() {
         ...baseMessages.slice(0, -1).filter((m) => m.role === 'user' || m.role === 'assistant').map((m) => ({ role: m.role, content: m.content })),
       ],
     }
-    if (params.enableTemperature && params.temperature !== '') payload.temperature = Number(params.temperature)
-    if (params.enableTopP && params.top_p !== '') payload.top_p = Number(params.top_p)
-    if (params.enableMaxTokens && params.max_tokens !== '') payload.max_tokens = Number(params.max_tokens)
 
     const ctrl = new AbortController()
     abortRef.current = ctrl
@@ -390,13 +365,12 @@ export default function PlaygroundChat() {
       return next
     })
     setSending(false)
-    try {
-      await appendServerMessage(sid, { role: 'user', content: text, model, groupName: group })
-      await appendServerMessage(sid, { role: 'assistant', content: acc, reasoning, model, groupName: group, extra: errorMsg ? JSON.stringify({ error: errorMsg }) : '' })
-    } catch (e) { console.warn('append messages failed', e) }
+    const finalUser = { ...userMsg }
+    const finalAssistant = { role: 'assistant', content: acc, reasoning, ts: Date.now(), model, groupName: group, pending: false, error: errorMsg || '' }
+    try { saveLocalMessages(sid, [...messages, finalUser, finalAssistant]) } catch (_) {}
     setSessions((prev) => {
       const idx = prev.findIndex((s) => s.id === sid); if (idx < 0) return prev
-      const item = { ...prev[idx], updatedAt: Date.now() / 1000 }
+      const item = { ...prev[idx], updatedAt: Math.floor(Date.now() / 1000) }
       const next = prev.slice(); next.splice(idx, 1)
       return [item, ...next]
     })
@@ -475,26 +449,6 @@ export default function PlaygroundChat() {
             tone="purple"
             minWidth={140}
           />
-          {params.enableTemperature && (
-            <button
-              type="button"
-              onClick={() => setParamsOpen(true)}
-              className="inline-flex h-7 shrink-0 items-center gap-1 rounded-full border border-white/60 bg-white/55 px-2.5 text-[11.5px] font-bold text-clay-faint ring-1 ring-black/[0.04] transition hover:bg-white/80"
-              title="调整温度"
-            >
-              T {Number(params.temperature).toFixed(1)}
-            </button>
-          )}
-          {params.enableMaxTokens && (
-            <button
-              type="button"
-              onClick={() => setParamsOpen(true)}
-              className="inline-flex h-7 shrink-0 items-center gap-1 rounded-full border border-white/60 bg-white/55 px-2.5 text-[11.5px] font-bold text-clay-faint ring-1 ring-black/[0.04] transition hover:bg-white/80"
-              title="调整 max tokens"
-            >
-              max {params.max_tokens}
-            </button>
-          )}
           {params.system_prompt && (
             <button
               type="button"
@@ -565,11 +519,7 @@ export default function PlaygroundChat() {
     <PlaygroundShell tab="chat" actions={headerActions} footer={footer}>
       {/* Messages */}
       <div ref={scrollRef} className="pt-4">
-        {loadingMsgs ? (
-          <div className="flex h-40 items-center justify-center text-sm font-bold text-clay-faint">
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" /> 加载消息中…
-          </div>
-        ) : messages.length === 0 ? (
+        {messages.length === 0 ? (
           <EmptyHint
             isMobile={isMobile}
             onPick={(t) => handleSend(t)}
@@ -605,11 +555,7 @@ export default function PlaygroundChat() {
           </ClayButton>
         )}
       >
-        {loadingSessions ? (
-          <div className="flex h-32 items-center justify-center text-sm font-bold text-clay-faint">
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" /> 加载中…
-          </div>
-        ) : sessions.length === 0 ? (
+        {sessions.length === 0 ? (
           <div className="rounded-2xl bg-clay-bg px-5 py-7 text-center text-sm font-bold text-clay-faint">
             还没有会话
           </div>
@@ -659,16 +605,16 @@ export default function PlaygroundChat() {
           <label className="block">
             <span className="mb-1.5 block text-sm font-black">System Prompt</span>
             <textarea
-              className="clay-input min-h-24 resize-none text-sm"
+              className="clay-input min-h-32 resize-none text-sm"
               value={params.system_prompt}
               onChange={(e) => setParams((p) => ({ ...p, system_prompt: e.target.value }))}
               placeholder="设定助手的身份/风格，例如：你是一个简洁友好的助手。"
               maxLength={2000}
             />
+            <div className="mt-1 text-[11px] font-bold text-clay-faint">
+              提示：v1 试吃装仅保留 System Prompt。需要 Temperature / Top-p / Max Tokens 等参数请使用专业 API 客户端。
+            </div>
           </label>
-          <ParamRow label="Temperature" enabled={params.enableTemperature} onToggle={(v) => setParams((p) => ({ ...p, enableTemperature: v }))} value={params.temperature} onChange={(v) => setParams((p) => ({ ...p, temperature: v }))} min={0} max={2} step={0.1} hint="0 更稳定，>1 更发散" />
-          <ParamRow label="Top-p" enabled={params.enableTopP} onToggle={(v) => setParams((p) => ({ ...p, enableTopP: v }))} value={params.top_p} onChange={(v) => setParams((p) => ({ ...p, top_p: v }))} min={0} max={1} step={0.05} hint="核采样阈值" />
-          <ParamRow label="Max Tokens" enabled={params.enableMaxTokens} onToggle={(v) => setParams((p) => ({ ...p, enableMaxTokens: v }))} value={params.max_tokens} onChange={(v) => setParams((p) => ({ ...p, max_tokens: v }))} min={1} max={32000} step={64} hint="思考型模型建议关闭" integer />
         </div>
       </ClayModal>
     </PlaygroundShell>
@@ -689,38 +635,7 @@ function GlassIconBtn({ children, onClick, title, 'aria-label': ariaLabel }) {
   )
 }
 
-function ParamRow({ label, enabled, onToggle, value, onChange, min, max, step, hint, integer }) {
-  return (
-    <div className="rounded-2xl bg-clay-bg p-3">
-      <div className="mb-2 flex items-center justify-between">
-        <div>
-          <div className="text-sm font-black text-clay-ink">{label}</div>
-          {hint && <div className="text-[11px] font-bold text-clay-faint">{hint}</div>}
-        </div>
-        <button
-          type="button"
-          onClick={() => onToggle(!enabled)}
-          className={`inline-flex h-6 w-11 items-center rounded-full transition ${enabled ? 'bg-clay-pink-300' : 'bg-clay-bg shadow-clay-inset-sm'}`}
-          aria-pressed={enabled}
-        >
-          <span className={`ml-0.5 inline-block h-5 w-5 rounded-full bg-white shadow-clay-sm transition ${enabled ? 'translate-x-5' : ''}`} />
-        </button>
-      </div>
-      <ClayInput
-        type="number"
-        value={value}
-        onChange={(e) => {
-          const v = e.target.value
-          if (v === '') { onChange(''); return }
-          const n = integer ? parseInt(v, 10) : parseFloat(v)
-          if (!Number.isNaN(n)) onChange(n)
-        }}
-        min={min} max={max} step={step}
-        disabled={!enabled}
-      />
-    </div>
-  )
-}
+function ParamRow() { return null }
 
 function EmptyHint({ isMobile, onPick, hasSessions, onOpenSessions }) {
   return (

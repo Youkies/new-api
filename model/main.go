@@ -306,8 +306,6 @@ func migrateDB() error {
 		&UserModelAlias{},
 		&PromotionCampaign{},
 		&PromotionSku{},
-		&PlaygroundSession{},
-		&PlaygroundMessage{},
 		&PlaygroundImage{},
 	)
 	if err != nil {
@@ -377,8 +375,6 @@ func migrateDBFast() error {
 		{&UserModelAlias{}, "UserModelAlias"},
 		{&PromotionCampaign{}, "PromotionCampaign"},
 		{&PromotionSku{}, "PromotionSku"},
-		{&PlaygroundSession{}, "PlaygroundSession"},
-		{&PlaygroundMessage{}, "PlaygroundMessage"},
 		{&PlaygroundImage{}, "PlaygroundImage"},
 	}
 	// 动态计算migration数量，确保errChan缓冲区足够大

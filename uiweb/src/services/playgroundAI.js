@@ -202,68 +202,6 @@ export function dropLocalMessages(sessionId) {
   } catch (_) {}
 }
 
-// ---- Server-side session/message APIs ----
-
-export async function listServerSessions(kind = 'chat') {
-  const res = await api.get('/api/ui/playground/sessions', { params: { kind } })
-  const items = res?.data?.data?.items || []
-  return Array.isArray(items) ? items : []
-}
-
-export async function createServerSession({ kind = 'chat', title = '新对话', model = '', groupName = 'auto', config = '' } = {}) {
-  const res = await api.post('/api/ui/playground/sessions', {
-    kind,
-    title,
-    model,
-    group_name: groupName,
-    config,
-  })
-  return res?.data?.data || res?.data
-}
-
-export async function updateServerSession(id, patch) {
-  const body = {}
-  if (patch.title !== undefined) body.title = patch.title
-  if (patch.model !== undefined) body.model = patch.model
-  if (patch.groupName !== undefined) body.group_name = patch.groupName
-  if (patch.config !== undefined) body.config = patch.config
-  const res = await api.put(`/api/ui/playground/sessions/${id}`, body)
-  return res?.data
-}
-
-export async function deleteServerSession(id) {
-  const res = await api.delete(`/api/ui/playground/sessions/${id}`)
-  return res?.data
-}
-
-export async function listServerMessages(sessionId) {
-  const res = await api.get(`/api/ui/playground/sessions/${sessionId}/messages`)
-  const items = res?.data?.data?.items || []
-  return Array.isArray(items) ? items : []
-}
-
-export async function appendServerMessage(sessionId, { role, content = '', reasoning = '', model = '', groupName = '', extra = '' }) {
-  const res = await api.post(`/api/ui/playground/sessions/${sessionId}/messages`, {
-    role,
-    content,
-    reasoning,
-    model,
-    group_name: groupName,
-    extra,
-  })
-  return res?.data?.data || res?.data
-}
-
-export async function clearServerMessages(sessionId) {
-  const res = await api.delete(`/api/ui/playground/sessions/${sessionId}/messages`)
-  return res?.data
-}
-
-export async function deleteServerMessage(messageId) {
-  const res = await api.delete(`/api/ui/playground/messages/${messageId}`)
-  return res?.data
-}
-
 // ---- Image generation ----
 
 export async function generatePlaygroundImage({ payload, signal }) {

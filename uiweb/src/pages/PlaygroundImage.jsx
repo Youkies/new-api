@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
+  AlertTriangle,
+  ChevronDown,
+  ChevronUp,
   Cpu,
   Download,
   Image as ImageIcon,
@@ -17,6 +20,8 @@ import ClayModal from '../components/clay/ClayModal.jsx'
 import GlassSelect from '../components/clay/GlassSelect.jsx'
 import PlaygroundShell from '../components/layout/PlaygroundShell.jsx'
 import { useToast } from '../context/ToastContext.jsx'
+import { useUser } from '../context/UserContext.jsx'
+import { quotaToDisplay } from '../utils/quota.js'
 import {
   deleteSavedPlaygroundImage,
   filterModelsByGroup,
@@ -103,9 +108,12 @@ function formatTime(ts) {
   return `${d.getMonth() + 1}/${d.getDate()}`
 }
 
+const ADV_OPEN_KEY = 'uiweb.playground.image.advanced_open'
+
 export default function PlaygroundImage() {
   const toast = useToast()
   const isMobile = useIsMobile()
+  const { user } = useUser()
   const abortRef = useRef(null)
   const inputRef = useRef(null)
 
@@ -120,6 +128,9 @@ export default function PlaygroundImage() {
   const [moderation, setModeration] = useState(cfg0.moderation || '')
   const [n, setN] = useState(cfg0.n || 1)
   const [prompt, setPrompt] = useState('')
+  const [advancedOpen, setAdvancedOpen] = useState(() => {
+    try { return window.localStorage.getItem(ADV_OPEN_KEY) === '1' } catch (_) { return false }
+  })
 
   const [groups, setGroups] = useState([])
   const [pricing, setPricing] = useState({})
@@ -131,6 +142,7 @@ export default function PlaygroundImage() {
   const [previewId, setPreviewId] = useState(null)
 
   useEffect(() => { safeWriteConfig({ group, model, size, quality, style, background, output_format: outputFormat, moderation, n }) }, [group, model, size, quality, style, background, outputFormat, moderation, n])
+  useEffect(() => { try { window.localStorage.setItem(ADV_OPEN_KEY, advancedOpen ? '1' : '0') } catch (_) {} }, [advancedOpen])
 
   useEffect(() => {
     let cancelled = false
@@ -171,6 +183,35 @@ export default function PlaygroundImage() {
     value: m.name,
     label: m.vendor ? `${m.vendor} · ${m.name}` : m.name,
   })), [availableModels])
+
+  // ---- Cost estimation ----
+  const estimate = useMemo(() => {
+    const cur = imageModels.find((m) => m.name === model)
+    const price = parseFloat(cur?.modelPrice)
+    if (!cur || !Number.isFinite(price) || price <= 0) {
+      return { quota: 0, text: '', loaded: !!cur }
+    }
+    const ratios = pricing?.group_ratio || {}
+    let groupRatio = ratios[group]
+    if (group === 'auto' || groupRatio == null) {
+      const userGroup = ratios.default != null ? 'default' : null
+      groupRatio = userGroup != null ? ratios[userGroup] : 1
+    }
+    const gr = Number(groupRatio) || 1
+    let qpu = 500000
+    try {
+      const raw = parseFloat(window.localStorage.getItem('quota_per_unit') || '500000')
+      if (Number.isFinite(raw) && raw > 0) qpu = raw
+    } catch (_) {}
+    const nClamped = Math.max(1, Math.min(4, Number(n) || 1))
+    const quota = price * gr * nClamped * qpu
+    const text = quotaToDisplay(quota, 3).text
+    return { quota, text, loaded: true }
+  }, [imageModels, model, pricing, group, n])
+
+  const userQuota = Number(user?.quota ?? 0)
+  const insufficient = estimate.quota > 0 && userQuota > 0 && userQuota < estimate.quota * 1.1
+  const noBalance = estimate.quota > 0 && userQuota > 0 && userQuota < estimate.quota
 
   const stop = useCallback(() => {
     if (abortRef.current) { abortRef.current.abort(); abortRef.current = null }
@@ -312,27 +353,40 @@ export default function PlaygroundImage() {
             options={COUNT_PRESETS}
             minWidth={110}
           />
-          <GlassSelect
-            label="背景"
-            value={background}
-            onChange={setBackground}
-            options={BACKGROUND_PRESETS}
-            minWidth={150}
-          />
-          <GlassSelect
-            label="格式"
-            value={outputFormat}
-            onChange={setOutputFormat}
-            options={FORMAT_PRESETS}
-            minWidth={120}
-          />
-          <GlassSelect
-            label="审核"
-            value={moderation}
-            onChange={setModeration}
-            options={MODERATION_PRESETS}
-            minWidth={130}
-          />
+          <button
+            type="button"
+            onClick={() => setAdvancedOpen((v) => !v)}
+            className="inline-flex h-7 shrink-0 items-center gap-1 rounded-full border border-white/60 bg-white/55 px-2.5 text-[11.5px] font-bold text-clay-faint ring-1 ring-black/[0.04] transition hover:bg-white/80"
+            title={advancedOpen ? '收起高级参数' : '展开高级参数'}
+          >
+            高级
+            {advancedOpen ? <ChevronUp className="h-3 w-3" strokeWidth={2.8} /> : <ChevronDown className="h-3 w-3" strokeWidth={2.8} />}
+          </button>
+          {advancedOpen && (
+            <>
+              <GlassSelect
+                label="背景"
+                value={background}
+                onChange={setBackground}
+                options={BACKGROUND_PRESETS}
+                minWidth={150}
+              />
+              <GlassSelect
+                label="格式"
+                value={outputFormat}
+                onChange={setOutputFormat}
+                options={FORMAT_PRESETS}
+                minWidth={120}
+              />
+              <GlassSelect
+                label="审核"
+                value={moderation}
+                onChange={setModeration}
+                options={MODERATION_PRESETS}
+                minWidth={130}
+              />
+            </>
+          )}
         </div>
         <textarea
           ref={inputRef}
@@ -345,8 +399,18 @@ export default function PlaygroundImage() {
           style={{ minHeight: 44 }}
         />
         <div className="flex items-center justify-between gap-2 pt-1.5">
-          <div className="truncate text-[11px] font-bold text-clay-faint">
-            {prompt.length > 0 && <span>{prompt.length}/4000</span>}
+          <div className="min-w-0 flex-1 truncate text-[11px] font-bold text-clay-faint">
+            {estimate.text ? (
+              <span className={insufficient ? 'inline-flex items-center gap-1 text-clay-pink-ink' : ''}>
+                {insufficient && <AlertTriangle className="h-3 w-3" strokeWidth={2.8} />}
+                预估 {estimate.text}
+                {estimate.quota > 0 && <span className="ml-1 opacity-70">· {Math.round(estimate.quota).toLocaleString()} quota</span>}
+                {noBalance && <span className="ml-1">· 余额不足</span>}
+                {insufficient && !noBalance && <span className="ml-1">· 余额偏紧</span>}
+              </span>
+            ) : prompt.length > 0 ? (
+              <span>{prompt.length}/4000</span>
+            ) : null}
           </div>
           <div className="flex items-center gap-2">
             {generating ? (
@@ -363,7 +427,11 @@ export default function PlaygroundImage() {
                 type="button"
                 onClick={() => handleGenerate()}
                 disabled={!model || !prompt.trim()}
-                className="inline-flex h-9 items-center gap-1.5 rounded-full border border-clay-purple-200/60 bg-gradient-to-br from-clay-purple-100 to-clay-purple-200 px-4 text-[12.5px] font-black text-[#5a3a76] shadow-[0_6px_18px_-4px_rgba(180,142,232,0.55)] ring-1 ring-white/40 transition hover:brightness-105 active:scale-95 disabled:!from-white/70 disabled:!to-white/70 disabled:!text-clay-faint disabled:!shadow-none disabled:!ring-black/5 disabled:cursor-not-allowed"
+                className={`inline-flex h-9 items-center gap-1.5 rounded-full border px-4 text-[12.5px] font-black shadow-[0_6px_18px_-4px_rgba(180,142,232,0.55)] ring-1 ring-white/40 transition hover:brightness-105 active:scale-95 disabled:!from-white/70 disabled:!to-white/70 disabled:!text-clay-faint disabled:!shadow-none disabled:!ring-black/5 disabled:cursor-not-allowed ${
+                  insufficient
+                    ? 'border-clay-pink-300/60 bg-gradient-to-br from-clay-pink-200 to-clay-pink-300 text-white'
+                    : 'border-clay-purple-200/60 bg-gradient-to-br from-clay-purple-100 to-clay-purple-200 text-[#5a3a76]'
+                }`}
               >
                 <Wand2 className="h-3.5 w-3.5" strokeWidth={2.8} />
                 生成

@@ -28,6 +28,8 @@ import ApiUrls from './pages/ApiUrls.jsx'
 import PaymentReturn from './pages/PaymentReturn.jsx'
 import Notifications from './pages/Notifications.jsx'
 import Playground from './pages/Playground.jsx'
+import PlaygroundChat from './pages/PlaygroundChat.jsx'
+import PlaygroundImage from './pages/PlaygroundImage.jsx'
 import ProtectedRoute from './components/layout/ProtectedRoute.jsx'
 import AdminRoute from './components/layout/AdminRoute.jsx'
 import AdminHome from './pages/admin/AdminHome.jsx'
@@ -180,6 +182,38 @@ export default function App() {
         element={
           <ProtectedRoute>
             <Playground />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/playground/chat"
+        element={
+          <ProtectedRoute>
+            <PlaygroundChat />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/playground/image"
+        element={
+          <ProtectedRoute>
+            <PlaygroundImage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/console/playground/chat"
+        element={
+          <ProtectedRoute>
+            <PlaygroundChat />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/console/playground/image"
+        element={
+          <ProtectedRoute>
+            <PlaygroundImage />
           </ProtectedRoute>
         }
       />

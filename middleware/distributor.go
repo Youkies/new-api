@@ -87,8 +87,10 @@ func Distribute() func(c *gin.Context) {
 				}
 				var selectGroup string
 				usingGroup := common.GetContextKeyString(c, constant.ContextKeyUsingGroup)
-				// check path is /pg/chat/completions
-				if strings.HasPrefix(c.Request.URL.Path, "/pg/chat/completions") {
+				// playground endpoints (/pg/chat/completions & /pg/images/generations)
+				// allow the body to override `group` so the user can choose a group from the playground UI.
+				if strings.HasPrefix(c.Request.URL.Path, "/pg/chat/completions") ||
+					strings.HasPrefix(c.Request.URL.Path, "/pg/images/generations") {
 					playgroundRequest := &dto.PlayGroundRequest{}
 					err = common.UnmarshalBodyReusable(c, playgroundRequest)
 					if err != nil {
@@ -331,8 +333,9 @@ func getModelRequest(c *gin.Context) (*ModelRequest, bool, error) {
 		}
 		c.Set("relay_mode", relayMode)
 	}
-	if strings.HasPrefix(c.Request.URL.Path, "/pg/chat/completions") {
-		// playground chat completions
+	if strings.HasPrefix(c.Request.URL.Path, "/pg/chat/completions") ||
+		strings.HasPrefix(c.Request.URL.Path, "/pg/images/generations") {
+		// playground endpoints: capture body-provided group so it's honored downstream
 		req, err := getModelFromRequest(c)
 		if err != nil {
 			return nil, false, err

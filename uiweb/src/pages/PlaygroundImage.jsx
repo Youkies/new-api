@@ -358,8 +358,8 @@ export default function PlaygroundImage() {
       style={{ paddingBottom: 'env(safe-area-inset-bottom, 0)' }}
     >
       <div className="rounded-3xl border border-white/55 bg-white/55 px-3 py-3 shadow-[0_18px_60px_-18px_rgba(0,0,0,0.22)] ring-1 ring-black/[0.04] backdrop-blur-2xl sm:px-4 sm:py-3.5">
-        {/* Chips row */}
-        <div className="clay-scrollbar-none -mx-1 flex flex-nowrap items-center gap-1.5 overflow-x-auto px-1 pb-2 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0">
+        {/* Chips row — wrap on all sizes so mobile users can see everything */}
+        <div className="-mx-1 flex flex-wrap items-center gap-1.5 px-1 pb-2 sm:mx-0 sm:px-0">
           <GlassSelect
             icon={<Cpu className="h-3 w-3" strokeWidth={2.8} />}
             value={model}

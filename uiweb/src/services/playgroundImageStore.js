@@ -164,10 +164,23 @@ export function decodeBase64ToBlob(b64, mime = 'image/png') {
   return new Blob([arr], { type: m })
 }
 
+function getUserIdHeader() {
+  try {
+    const raw = localStorage.getItem('user')
+    if (!raw) return null
+    const u = JSON.parse(raw)
+    return u && u.id ? String(u.id) : null
+  } catch (_) { return null }
+}
+
 // Fetch a remote URL via the backend proxy (avoids CORS, applies SSRF guard).
 export async function fetchImageBlobViaProxy(remoteUrl) {
+  const headers = {}
+  const uid = getUserIdHeader()
+  if (uid) headers['New-API-User'] = uid
   const res = await fetch(`/api/ui/playground/image-proxy?url=${encodeURIComponent(remoteUrl)}`, {
     credentials: 'include',
+    headers,
   })
   if (!res.ok) {
     let msg = `HTTP ${res.status}`

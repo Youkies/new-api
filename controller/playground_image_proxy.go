@@ -23,12 +23,19 @@ const (
 // user and streams the bytes back. Lets the playground UI store images in
 // IndexedDB without hitting CORS on every upstream provider.
 //
+// Auth: session-only (TryUserAuth + check) so it works for plain fetch() that
+// cannot easily attach the New-Api-User header on mobile webviews.
+//
 // Security:
 //   - http/https only
 //   - reject literal IPs that point at internal/loopback/link-local space
 //   - cap response size at maxProxyImageBytes
 //   - require image/* response Content-Type
 func ProxyPlaygroundImage(c *gin.Context) {
+	if c.GetInt("id") <= 0 {
+		c.AbortWithStatus(http.StatusUnauthorized)
+		return
+	}
 	raw := strings.TrimSpace(c.Query("url"))
 	if raw == "" {
 		common.ApiErrorMsg(c, "missing url")

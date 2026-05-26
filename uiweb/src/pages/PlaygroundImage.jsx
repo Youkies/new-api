@@ -140,6 +140,15 @@ export default function PlaygroundImage() {
   const [loadingHistory, setLoadingHistory] = useState(true)
   const [generating, setGenerating] = useState(false)
   const [previewId, setPreviewId] = useState(null)
+  const [generatingSince, setGeneratingSince] = useState(0)
+  const [, setTick] = useState(0)
+  useEffect(() => {
+    if (!generating) { setGeneratingSince(0); return }
+    setGeneratingSince(Date.now())
+    const t = setInterval(() => setTick((x) => x + 1), 1000)
+    return () => clearInterval(t)
+  }, [generating])
+  const elapsedSec = generatingSince ? Math.max(0, Math.floor((Date.now() - generatingSince) / 1000)) : 0
 
   useEffect(() => { safeWriteConfig({ group, model, size, quality, style, background, output_format: outputFormat, moderation, n }) }, [group, model, size, quality, style, background, outputFormat, moderation, n])
   useEffect(() => { try { window.localStorage.setItem(ADV_OPEN_KEY, advancedOpen ? '1' : '0') } catch (_) {} }, [advancedOpen])
@@ -450,7 +459,7 @@ export default function PlaygroundImage() {
           <div className="flex h-40 items-center justify-center text-sm font-bold text-clay-faint">
             <Loader2 className="mr-2 h-4 w-4 animate-spin" /> 加载历史…
           </div>
-        ) : history.length === 0 ? (
+        ) : (history.length === 0 && !generating) ? (
           <EmptyHint onPick={(t) => setPrompt(t)} isMobile={isMobile} />
         ) : (
           <>
@@ -459,6 +468,12 @@ export default function PlaygroundImage() {
               <span className="text-[11px] font-bold text-clay-faint">{history.length} 张</span>
             </div>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 lg:grid-cols-4">
+              {generating && (
+                <div className="relative flex aspect-square flex-col items-center justify-center gap-2 overflow-hidden rounded-2xl border border-clay-pink-200/40 bg-gradient-to-br from-clay-pink-100/60 to-clay-purple-100/60 shadow-clay-sm">
+                  <Loader2 className="h-6 w-6 animate-spin text-clay-pink-ink" strokeWidth={2.8} />
+                  <div className="text-[12px] font-black text-clay-pink-ink">正在生成 {elapsedSec}s</div>
+                </div>
+              )}
               {history.map((it) => (
                 <button
                   key={it.id}

@@ -23,15 +23,19 @@ import { useToast } from '../context/ToastContext.jsx'
 import { useUser } from '../context/UserContext.jsx'
 import { quotaToDisplay } from '../utils/quota.js'
 import {
-  deleteSavedPlaygroundImage,
   filterModelsByGroup,
   generatePlaygroundImage,
   listPlaygroundGroups,
   listPlaygroundPricing,
-  listSavedPlaygroundImages,
   pickImageModels,
-  savePlaygroundImage,
 } from '../services/playgroundAI.js'
+import {
+  decodeBase64ToBlob,
+  deleteImage as idbDeleteImage,
+  fetchImageBlobViaProxy,
+  listImages as idbListImages,
+  saveImage as idbSaveImage,
+} from '../services/playgroundImageStore.js'
 
 const CONFIG_KEY = 'uiweb.playground.image.config'
 
@@ -167,15 +171,40 @@ export default function PlaygroundImage() {
     return () => { cancelled = true }
   }, [])
 
+  // Track active blob URLs so we can revoke them on cleanup.
+  const blobUrlsRef = useRef(new Map())
+  const ensureBlobUrl = useCallback((id, blob) => {
+    const m = blobUrlsRef.current
+    if (m.has(id)) return m.get(id)
+    const u = URL.createObjectURL(blob)
+    m.set(id, u)
+    return u
+  }, [])
+  const revokeBlobUrl = useCallback((id) => {
+    const m = blobUrlsRef.current
+    const u = m.get(id)
+    if (u) { try { URL.revokeObjectURL(u) } catch (_) {} ; m.delete(id) }
+  }, [])
+  useEffect(() => () => {
+    for (const u of blobUrlsRef.current.values()) {
+      try { URL.revokeObjectURL(u) } catch (_) {}
+    }
+    blobUrlsRef.current.clear()
+  }, [])
+
   useEffect(() => {
     let cancelled = false
     setLoadingHistory(true)
-    listSavedPlaygroundImages(60)
-      .then((items) => { if (!cancelled) setHistory(items) })
-      .catch((e) => { if (!cancelled && e?.status !== 401 && e?.response?.status !== 401) console.warn('listSavedPlaygroundImages failed', e) })
+    idbListImages(60)
+      .then((items) => {
+        if (cancelled) return
+        const enriched = items.map((it) => ({ ...it, image_url: ensureBlobUrl(it.id, it.blob) }))
+        setHistory(enriched)
+      })
+      .catch((e) => { if (!cancelled) console.warn('listImages failed', e) })
       .finally(() => { if (!cancelled) setLoadingHistory(false) })
     return () => { cancelled = true }
-  }, [])
+  }, [ensureBlobUrl])
 
   const imageModels = useMemo(() => pickImageModels(pricing), [pricing])
   const availableModels = useMemo(() => filterModelsByGroup(imageModels, group), [imageModels, group])
@@ -251,14 +280,34 @@ export default function PlaygroundImage() {
       if (!datas.length) { toast('上游未返回图片', 'error'); return }
       const saved = []
       for (const d of datas) {
-        const body = { prompt: text, model, group_name: group, size: payload.size || '', quality: payload.quality || '', style: payload.style || '' }
-        if (d?.b64_json) body.b64_json = d.b64_json
-        else if (d?.url) body.url = d.url
-        else continue
+        let blob = null
         try {
-          const view = await savePlaygroundImage(body)
-          if (view) saved.push(view)
-        } catch (e) { console.warn('savePlaygroundImage failed', e) }
+          if (d?.b64_json) {
+            blob = decodeBase64ToBlob(d.b64_json, 'image/png')
+          } else if (d?.url) {
+            blob = await fetchImageBlobViaProxy(d.url)
+          } else {
+            continue
+          }
+        } catch (e) {
+          console.warn('image decode/proxy failed', e)
+          continue
+        }
+        const meta = {
+          blob,
+          mime: blob.type,
+          prompt: text,
+          model,
+          group_name: group,
+          size: payload.size || '',
+          quality: payload.quality || '',
+          style: payload.style || '',
+        }
+        try {
+          const item = await idbSaveImage(meta)
+          const view = { ...item, image_url: ensureBlobUrl(item.id, item.blob) }
+          saved.push(view)
+        } catch (e) { console.warn('idbSaveImage failed', e) }
       }
       if (saved.length) {
         setHistory((prev) => [...saved, ...prev].slice(0, 60))
@@ -274,26 +323,25 @@ export default function PlaygroundImage() {
       abortRef.current = null
       setGenerating(false)
     }
-  }, [generating, group, model, n, prompt, quality, size, style, toast])
+  }, [ensureBlobUrl, generating, group, model, n, prompt, quality, size, style, toast])
 
   const handleDelete = useCallback(async (id) => {
     try {
-      await deleteSavedPlaygroundImage(id)
+      await idbDeleteImage(id)
+      revokeBlobUrl(id)
       setHistory((prev) => prev.filter((it) => it.id !== id))
       if (previewId === id) setPreviewId(null)
       toast('已删除', 'info')
-    } catch (e) { toast(e?.response?.data?.message || e?.message || '删除失败', 'error') }
-  }, [previewId, toast])
+    } catch (e) { toast(e?.message || '删除失败', 'error') }
+  }, [previewId, revokeBlobUrl, toast])
 
-  const handleDownload = useCallback(async (item) => {
+  const handleDownload = useCallback((item) => {
     try {
-      const res = await fetch(item.image_url, { credentials: 'include' })
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      const blob = await res.blob()
-      const url = URL.createObjectURL(blob)
+      if (!item?.blob) { toast('图片数据缺失', 'error'); return }
+      const url = URL.createObjectURL(item.blob)
       const a = document.createElement('a')
       a.href = url
-      const ext = (item.image_type || 'image/png').split('/')[1] || 'png'
+      const ext = (item.mime || 'image/png').split('/')[1] || 'png'
       a.download = `playground-${item.id}.${ext}`
       document.body.appendChild(a); a.click(); document.body.removeChild(a)
       setTimeout(() => URL.revokeObjectURL(url), 4000)

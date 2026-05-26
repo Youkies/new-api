@@ -229,19 +229,3 @@ export async function generatePlaygroundImage({ payload, signal }) {
   }
   return json
 }
-
-export async function savePlaygroundImage(payload) {
-  const res = await api.post('/api/ui/playground/images', payload)
-  return res?.data?.data || res?.data
-}
-
-export async function listSavedPlaygroundImages(limit = 60) {
-  const res = await api.get('/api/ui/playground/images', { params: { limit } })
-  const items = res?.data?.data?.items || []
-  return Array.isArray(items) ? items : []
-}
-
-export async function deleteSavedPlaygroundImage(id) {
-  const res = await api.delete(`/api/ui/playground/images/${id}`)
-  return res?.data
-}

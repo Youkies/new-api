@@ -31,6 +31,7 @@ import {
   requestPay,
   requestKpayPay,
   checkKpayPay,
+  getKpayQRCode,
   listTopups,
 } from '../services/topup.js'
 import { quotaToDisplay } from '../utils/quota.js'
@@ -188,6 +189,7 @@ export default function TopUp() {
   const [ordersLoading, setOrdersLoading] = useState(false)
   const [historyMsg, setHistoryMsg] = useState(null)
   const [checkingTradeNo, setCheckingTradeNo] = useState('')
+  const [reopeningTradeNo, setReopeningTradeNo] = useState('')
   const autoCheckedKpayTradeRef = useRef('')
   const autoCheckedHistoryTradesRef = useRef(new Set())
 
@@ -656,6 +658,30 @@ export default function TopUp() {
     }
   }
 
+  const reopenQRCode = async (order) => {
+    if (!order?.trade_no || !canCheckTopupOrder(order)) return
+    setReopeningTradeNo(order.trade_no)
+    setHistoryMsg(null)
+    try {
+      const res = await getKpayQRCode({
+        trade_no: order.trade_no,
+        provider_order_no: order.provider_order_no || '',
+      })
+      if (res?.message === 'success' && res.data) {
+        const orderPayload = { ...res.data, status: 'pending' }
+        const saved = savePendingKpayOrder(orderPayload) || orderPayload
+        setKpayOrder(saved)
+        setPayMsg(null)
+      } else {
+        setHistoryMsg({ tone: 'error', text: typeof res?.data === 'string' ? res.data : res?.message || '获取二维码失败' })
+      }
+    } catch (err) {
+      setHistoryMsg({ tone: 'error', text: err?.response?.data?.message ?? err.message ?? '获取二维码失败' })
+    } finally {
+      setReopeningTradeNo('')
+    }
+  }
+
   const onRedeem = async (e) => {
     e.preventDefault()
     if (!code.trim()) return
@@ -950,21 +976,32 @@ export default function TopUp() {
                     <div className="font-black text-clay-pink-400 text-sm">
                       {(Number(order.money) || 0).toFixed(2)} 元
                     </div>
-                    <div className="flex items-center justify-end gap-3">
+                    <div className="flex items-center justify-end gap-2 flex-wrap">
                       <span className="inline-flex items-center gap-1.5 text-xs font-extrabold text-clay-ink whitespace-nowrap">
                         <span className={`inline-block w-2 h-2 rounded-full shadow-clay-xs ${statusMeta.dot}`} aria-hidden="true" />
                         {statusMeta.label}
                       </span>
                       {canCheckTopupOrder(order) ? (
-                        <button
-                          type="button"
-                          onClick={() => checkTopupOrder(order)}
-                          disabled={checking}
-                          className="inline-flex h-8 items-center justify-center gap-1.5 rounded-clay-pill bg-clay-blue-100 px-3 text-xs font-black text-clay-blue-ink shadow-clay-sm transition-all duration-200 ease-clay hover:shadow-clay-hover active:scale-95 active:shadow-clay-active disabled:opacity-60"
-                        >
-                          <RefreshCw className={`w-3.5 h-3.5 ${checking ? 'animate-spin' : ''}`} />
-                          {checking ? '检查中' : '检查到账'}
-                        </button>
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => reopenQRCode(order)}
+                            disabled={reopeningTradeNo === order.trade_no || checking}
+                            className="inline-flex h-8 items-center justify-center gap-1.5 rounded-clay-pill bg-clay-pink-100 px-3 text-xs font-black text-clay-pink-ink shadow-clay-sm transition-all duration-200 ease-clay hover:shadow-clay-hover active:scale-95 active:shadow-clay-active disabled:opacity-60"
+                          >
+                            <QrCode className={`w-3.5 h-3.5 ${reopeningTradeNo === order.trade_no ? 'animate-pulse' : ''}`} />
+                            {reopeningTradeNo === order.trade_no ? '获取中' : '重新扫码'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => checkTopupOrder(order)}
+                            disabled={checking || !!reopeningTradeNo}
+                            className="inline-flex h-8 items-center justify-center gap-1.5 rounded-clay-pill bg-clay-blue-100 px-3 text-xs font-black text-clay-blue-ink shadow-clay-sm transition-all duration-200 ease-clay hover:shadow-clay-hover active:scale-95 active:shadow-clay-active disabled:opacity-60"
+                          >
+                            <RefreshCw className={`w-3.5 h-3.5 ${checking ? 'animate-spin' : ''}`} />
+                            {checking ? '检查中' : '检查到账'}
+                          </button>
+                        </>
                       ) : null}
                     </div>
                   </div>
@@ -1021,11 +1058,20 @@ export default function TopUp() {
                         </div>
                       </div>
                       {canCheckTopupOrder(order) ? (
-                        <div className="text-right self-end">
+                        <div className="col-span-2 flex items-center justify-end gap-2 flex-wrap">
+                          <button
+                            type="button"
+                            onClick={() => reopenQRCode(order)}
+                            disabled={reopeningTradeNo === order.trade_no || checking}
+                            className="inline-flex h-8 items-center justify-center gap-1.5 rounded-clay-pill bg-clay-pink-100 px-3 text-xs font-black text-clay-pink-ink shadow-clay-sm transition-all duration-200 ease-clay active:scale-95 disabled:opacity-60"
+                          >
+                            <QrCode className={`w-3.5 h-3.5 ${reopeningTradeNo === order.trade_no ? 'animate-pulse' : ''}`} />
+                            {reopeningTradeNo === order.trade_no ? '获取中' : '重新扫码'}
+                          </button>
                           <button
                             type="button"
                             onClick={() => checkTopupOrder(order)}
-                            disabled={checking}
+                            disabled={checking || !!reopeningTradeNo}
                             className="inline-flex h-8 items-center justify-center gap-1.5 rounded-clay-pill bg-clay-blue-100 px-3 text-xs font-black text-clay-blue-ink shadow-clay-sm transition-all duration-200 ease-clay active:scale-95 disabled:opacity-60"
                           >
                             <RefreshCw className={`w-3.5 h-3.5 ${checking ? 'animate-spin' : ''}`} />

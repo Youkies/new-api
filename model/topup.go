@@ -28,6 +28,9 @@ type TopUp struct {
 	// model.FindSkuByKey(promotion_sku_id).DeliveredYuan 给固定额度，绕过通用
 	// Amount × QuotaPerUnit 计算。空 = 普通充值。
 	PromotionSkuId string `json:"promotion_sku_id,omitempty" gorm:"type:varchar(32);default:'';index:idx_promotion_sku_user,priority:1"`
+	// QrCodeUrl — KPay 下单时返回的二维码图片 URL，用于用户关闭弹窗后重新展示。
+	// 仅 pending 订单有值；URL 由 KPay 控制有效期（约 15 分钟）。
+	QrCodeUrl string `json:"qr_code_url,omitempty" gorm:"type:varchar(512);default:''"`
 }
 
 const (

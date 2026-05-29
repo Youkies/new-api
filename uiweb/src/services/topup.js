@@ -30,6 +30,11 @@ export async function checkKpayPay(payload) {
   return res.data
 }
 
+export async function getKpayQRCode(payload) {
+  const res = await api.post('/api/user/kpay/qrcode', payload)
+  return res.data
+}
+
 export async function listTopups(params = {}) {
   const res = await api.get('/api/user/topup/self', { params })
   return res.data

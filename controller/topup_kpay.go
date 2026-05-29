@@ -575,18 +575,25 @@ func RequestKPay(c *gin.Context) {
 		return
 	}
 
+	qrURL := getKPayQRCodeURL(orderData)
+	qrDataURI := fetchKPayQRCodeDataURI(c.Request.Context(), qrURL)
+
 	providerOrderNo := strings.TrimSpace(orderData.OrderNo)
 	if providerOrderNo != "" {
 		topUp.ProviderOrderNo = providerOrderNo
+	}
+	if qrURL != "" {
+		topUp.QrCodeUrl = qrURL
+	}
+	if providerOrderNo != "" || qrURL != "" {
 		if err := topUp.Update(); err != nil {
 			logger.LogWarn(c.Request.Context(), fmt.Sprintf("KPay 保存平台订单号失败 user_id=%d trade_no=%s provider_order_no=%s error=%q", id, tradeNo, providerOrderNo, err.Error()))
 		}
+	}
+	if providerOrderNo != "" {
 		// 下单成功后启动短期高频后台跟踪，覆盖用户切后台 / 关闭浏览器 / webhook 延迟的场景
 		SchedulePostCreateKPayWatch(tradeNo, providerOrderNo)
 	}
-
-	qrURL := getKPayQRCodeURL(orderData)
-	qrDataURI := fetchKPayQRCodeDataURI(c.Request.Context(), qrURL)
 	logger.LogInfo(c.Request.Context(), fmt.Sprintf("KPay 充值订单创建成功 user_id=%d trade_no=%s provider_order_no=%s payment_method=%s amount=%d money=%.2f qr_ready=%v direct_pay_ready=%v", id, tradeNo, orderData.OrderNo, payMethod, req.Amount, payMoney, orderData.DirectQrReady, orderData.DirectPayReady))
 
 	c.JSON(http.StatusOK, gin.H{
@@ -602,6 +609,85 @@ func RequestKPay(c *gin.Context) {
 			"qr_code_data_uri":  qrDataURI,
 			"direct_pay_url":    resolveKPayURL(orderData.DirectPayUrl),
 			"warning":           orderData.Warning,
+		},
+	})
+}
+
+// GetKPayQRCode — POST /api/user/kpay/qrcode
+// 对 pending 的 KPay 订单重新获取二维码，用于用户关闭扫码弹窗后恢复支付。
+// 优先返回 DB 中缓存的 qr_code_url；如果 URL 不存在则向 KPay 查单并从响应中取码。
+func GetKPayQRCode(c *gin.Context) {
+	if !isKPayTopUpEnabled() {
+		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "KPay 支付未启用"})
+		return
+	}
+
+	var req KPayCheckRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "参数错误"})
+		return
+	}
+	req.TradeNo = strings.TrimSpace(req.TradeNo)
+	if req.TradeNo == "" {
+		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "订单号不能为空"})
+		return
+	}
+
+	topUp := model.GetTopUpByTradeNo(req.TradeNo)
+	if topUp == nil || topUp.UserId != c.GetInt("id") || topUp.PaymentProvider != model.PaymentProviderKPay {
+		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "订单不存在"})
+		return
+	}
+	if topUp.Status != "pending" {
+		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "订单已" + topUp.Status + "，无需重新获取二维码"})
+		return
+	}
+
+	providerOrderNo := strings.TrimSpace(topUp.ProviderOrderNo)
+	if providerOrderNo == "" {
+		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "订单暂无平台单号，请稍后重试"})
+		return
+	}
+
+	// 先用 DB 缓存的 URL，省一次 KPay 查单
+	qrURL := strings.TrimSpace(topUp.QrCodeUrl)
+
+	// 缓存没有或可能已过期时，向 KPay 查单取最新 URL
+	if qrURL == "" {
+		orderData, err := queryKPayOrder(c.Request.Context(), providerOrderNo)
+		if err != nil {
+			c.JSON(http.StatusOK, gin.H{"message": "error", "data": "获取二维码失败：" + err.Error()})
+			return
+		}
+		// 顺便同步一下终态，避免用户看到过期订单还能拿码
+		localStatus := mapKPayOrderStatus(*orderData)
+		if localStatus == "success" || localStatus == "failed" || localStatus == "expired" {
+			c.JSON(http.StatusOK, gin.H{"message": "error", "data": "订单已" + localStatus + "，无需重新获取二维码"})
+			return
+		}
+		qrURL = getKPayQRCodeURL(orderData)
+		if qrURL != "" {
+			// 顺手更新缓存
+			_ = model.DB.Model(&model.TopUp{}).Where("id = ?", topUp.Id).Update("qr_code_url", qrURL).Error
+		}
+	}
+
+	if qrURL == "" {
+		c.JSON(http.StatusOK, gin.H{"message": "error", "data": "暂时无法获取二维码，请稍后重试"})
+		return
+	}
+
+	qrDataURI := fetchKPayQRCodeDataURI(c.Request.Context(), qrURL)
+	c.JSON(http.StatusOK, gin.H{
+		"message": "success",
+		"data": gin.H{
+			"trade_no":          topUp.TradeNo,
+			"provider_order_no": topUp.ProviderOrderNo,
+			"qr_code_image_url": qrURL,
+			"qr_code_data_uri":  qrDataURI,
+			"payment_method":    topUp.PaymentMethod,
+			"amount":            topUp.Money,
+			"status":            topUp.Status,
 		},
 	})
 }

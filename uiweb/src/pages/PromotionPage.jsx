@@ -8,8 +8,25 @@ import ClayModal from '../components/clay/ClayModal.jsx'
 import ClayAlert from '../components/clay/ClayAlert.jsx'
 import PayMethodIcon from '../components/clay/PayMethodIcon.jsx'
 import api from '../services/api.js'
+import { getKpayQRCode } from '../services/topup.js'
 import { useToast } from '../context/ToastContext.jsx'
 import { getCurrencyConfig } from '../utils/quota.js'
+
+// 复用 TopUp 的 localStorage key，让两个页面共享同一个待支付订单状态
+const KPAY_PENDING_ORDER_KEY = 'youkies_pending_kpay_order'
+const KPAY_PENDING_ORDER_TTL_MS = 30 * 60 * 1000
+
+const savePendingKpayOrder = (order) => {
+  if (!order?.trade_no || typeof window === 'undefined') return
+  try {
+    window.localStorage?.setItem(KPAY_PENDING_ORDER_KEY, JSON.stringify({ ...order, saved_at: Date.now() }))
+  } catch (_) {}
+}
+
+const clearPendingKpayOrder = () => {
+  if (typeof window === 'undefined') return
+  try { window.localStorage?.removeItem(KPAY_PENDING_ORDER_KEY) } catch (_) {}
+}
 
 /**
  * 金额展示：最多 2 位小数，去掉尾随零。
@@ -146,6 +163,7 @@ export default function PromotionPage() {
         return
       }
       const orderPayload = { ...j.data, status: 'pending' }
+      savePendingKpayOrder(orderPayload)
       setKpayOrder(orderPayload)
       // 移动端支付宝直接拉起 App（与 TopUp 同行为）；微信不支持外部 H5 直跳，
       // 仍走二维码 + 「保存截图打开微信」提示路径
@@ -174,6 +192,7 @@ export default function PromotionPage() {
         if (next?.status && next.status !== kpayOrder.status) {
           setKpayOrder((cur) => (cur ? { ...cur, status: next.status } : cur))
           if (next.status === 'success') {
+            clearPendingKpayOrder()
             toast('支付到账，活动套餐已发放', 'success')
             load()
           }

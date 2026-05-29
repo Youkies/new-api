@@ -194,6 +194,7 @@ func SetApiRouter(router *gin.Engine) {
 				selfRoute.POST("/waffo/pay", middleware.CriticalRateLimit(), controller.RequestWaffoPay)
 				selfRoute.POST("/kpay/pay", middleware.CriticalRateLimit(), controller.RequestKPay)
 				selfRoute.POST("/kpay/check", middleware.CriticalRateLimit(), controller.CheckKPayTopUp)
+				selfRoute.POST("/kpay/qrcode", middleware.CriticalRateLimit(), controller.GetKPayQRCode)
 				// Promotion campaigns (520, future seasonal events)
 				selfRoute.GET("/promotions/active", controller.ListActivePromotions)
 				selfRoute.GET("/promotion/:slug", controller.GetPromotion)

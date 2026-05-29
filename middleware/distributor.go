@@ -90,7 +90,8 @@ func Distribute() func(c *gin.Context) {
 				// playground endpoints (/pg/chat/completions & /pg/images/generations)
 				// allow the body to override `group` so the user can choose a group from the playground UI.
 				if strings.HasPrefix(c.Request.URL.Path, "/pg/chat/completions") ||
-					strings.HasPrefix(c.Request.URL.Path, "/pg/images/generations") {
+					strings.HasPrefix(c.Request.URL.Path, "/pg/images/generations") ||
+					strings.HasPrefix(c.Request.URL.Path, "/pg/images/edits") {
 					playgroundRequest := &dto.PlayGroundRequest{}
 					err = common.UnmarshalBodyReusable(c, playgroundRequest)
 					if err != nil {

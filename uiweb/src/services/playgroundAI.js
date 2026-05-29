@@ -240,6 +240,7 @@ export async function editPlaygroundImage({ payload, images, signal }) {
     form.append(fieldName, file, file.name)
   }
   if (payload.model) form.append('model', payload.model)
+  if (payload.group) form.append('group', payload.group)
   if (payload.prompt) form.append('prompt', payload.prompt)
   if (payload.size && payload.size !== 'auto') form.append('size', payload.size)
   if (payload.quality && payload.quality !== 'auto') form.append('quality', payload.quality)

@@ -27,6 +27,14 @@ const (
 
 var ErrNoUIRefundCandidates = errors.New("暂无可提交的疑似空回记录")
 
+// imageGenModelPrefixes lists model name prefixes for image/video generation.
+// These requests return completion_tokens=0 by design and must not be treated as empty responses.
+var imageGenModelPrefixes = []string{
+	"grok-imagine", "grok-2-image",
+	"gpt-image-", "chatgpt-image-", "dall-e-",
+	"imagen", "flux", "seedream", "cogview", "kolors", "hidream",
+}
+
 type UIRefundAppeal struct {
 	Id          int64  `json:"id" gorm:"primaryKey;autoIncrement"`
 	UserId      int    `json:"user_id" gorm:"not null;index"`
@@ -213,9 +221,12 @@ func GetUIRefundCandidates(userId int, includeItems bool) (*UIRefundCandidateSum
 	summary.LatestPendingAt = pending.CreatedAt
 
 	var logs []*Log
-	err := LOG_DB.Where("user_id = ? AND type = ? AND created_at >= ? AND created_at <= ? AND quota > ? AND completion_tokens = ?",
-		userId, LogTypeConsume, windowStart, windowEnd, 0, 0).
-		Order("id desc").
+	q := LOG_DB.Where("user_id = ? AND type = ? AND created_at >= ? AND created_at <= ? AND quota > ? AND completion_tokens = ?",
+		userId, LogTypeConsume, windowStart, windowEnd, 0, 0)
+	for _, prefix := range imageGenModelPrefixes {
+		q = q.Where("model_name NOT LIKE ?", prefix+"%")
+	}
+	err := q.Order("id desc").
 		Limit(uiRefundAppealScanLimit).
 		Find(&logs).Error
 	if err != nil {

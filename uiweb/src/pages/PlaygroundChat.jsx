@@ -1,22 +1,23 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
+  ArrowDown,
+  AlertTriangle,
   Bot,
   Check,
   Copy,
+  Cpu,
+  History,
   Layers,
   Loader2,
+  Paperclip,
   Plus,
   RotateCcw,
   Send,
   Settings2,
+  Sparkles,
   SquarePen,
   Trash2,
   X,
-  Cpu,
-  AlertTriangle,
-  Sparkles,
-  History,
-  ArrowDown,
 } from 'lucide-react'
 import ClayButton from '../components/clay/ClayButton.jsx'
 import ClayModal from '../components/clay/ClayModal.jsx'
@@ -208,6 +209,10 @@ export default function PlaygroundChat() {
   const [paramsOpen, setParamsOpen] = useState(false)
   const [showJumpDown, setShowJumpDown] = useState(false)
 
+  // Chat reference image (single, cleared after each send)
+  const [chatRefImage, setChatRefImage] = useState(null) // { file, previewUrl, dataUrl }
+  const chatRefImageInput = useRef(null)
+
   useEffect(() => { safeWriteConfig({ group, model, params }) }, [group, model, params])
 
   // Scroll behavior — auto scroll on new content unless user scrolled up
@@ -299,6 +304,31 @@ export default function PlaygroundChat() {
     if (abortRef.current) { abortRef.current.abort(); abortRef.current = null }
   }, [])
 
+  const attachChatImage = useCallback((file) => {
+    if (!file || !file.type.startsWith('image/')) return
+    const previewUrl = URL.createObjectURL(file)
+    const reader = new FileReader()
+    reader.onload = () => setChatRefImage({ file, previewUrl, dataUrl: reader.result })
+    reader.readAsDataURL(file)
+  }, [])
+
+  const removeChatRefImage = useCallback(() => {
+    setChatRefImage((prev) => {
+      if (prev?.previewUrl) try { URL.revokeObjectURL(prev.previewUrl) } catch (_) {}
+      return null
+    })
+  }, [])
+
+  useEffect(() => {
+    const handlePaste = (e) => {
+      const items = Array.from(e.clipboardData?.items || [])
+      const imageItem = items.find((i) => i.type.startsWith('image/'))
+      if (imageItem) attachChatImage(imageItem.getAsFile())
+    }
+    document.addEventListener('paste', handlePaste)
+    return () => document.removeEventListener('paste', handlePaste)
+  }, [attachChatImage])
+
   const updateSessionTitleIfNew = useCallback((sid, firstUserText) => {
     const sess = sessions.find((s) => s.id === sid)
     if (!sess || (sess.title && sess.title !== '新对话')) return
@@ -315,18 +345,34 @@ export default function PlaygroundChat() {
     const sid = await ensureSession(text)
     if (!sid) return
 
+    // Capture ref image before clearing it
+    const refImg = chatRefImage
+    const userContent = refImg?.dataUrl
+      ? [{ type: 'image_url', image_url: { url: refImg.dataUrl } }, { type: 'text', text }]
+      : text
+
     const userMsg = { role: 'user', content: text, ts: Date.now(), model, groupName: group, pending: false }
     const assistantMsg = { role: 'assistant', content: '', reasoning: '', ts: Date.now(), model, groupName: group, pending: true }
     const baseMessages = [...messages, userMsg, assistantMsg]
     setMessages(baseMessages); setComposer(''); setSending(true)
+    if (refImg) removeChatRefImage()
     userScrolledUp.current = false
     updateSessionTitleIfNew(sid, text)
+
+    const historyForPayload = baseMessages.slice(0, -1).filter((m) => m.role === 'user' || m.role === 'assistant')
+    const payloadMessages = historyForPayload.map((m, idx) => {
+      // Attach image only to the last user message (current turn)
+      if (idx === historyForPayload.length - 1 && m.role === 'user' && refImg?.dataUrl) {
+        return { role: 'user', content: userContent }
+      }
+      return { role: m.role, content: m.content }
+    })
 
     const payload = {
       model, group,
       messages: [
         ...(params.system_prompt?.trim() ? [{ role: 'system', content: params.system_prompt.trim() }] : []),
-        ...baseMessages.slice(0, -1).filter((m) => m.role === 'user' || m.role === 'assistant').map((m) => ({ role: m.role, content: m.content })),
+        ...payloadMessages,
       ],
     }
 
@@ -427,6 +473,22 @@ export default function PlaygroundChat() {
       style={{ paddingBottom: 'env(safe-area-inset-bottom, 0)' }}
     >
       <div className="rounded-3xl border border-white/55 bg-white/55 px-3 py-3 shadow-[0_18px_60px_-18px_rgba(0,0,0,0.22)] ring-1 ring-black/[0.04] backdrop-blur-2xl sm:px-4 sm:py-3.5">
+        {/* Reference image thumbnail */}
+        {chatRefImage && (
+          <div className="flex items-center gap-2 pb-2">
+            <div className="relative h-10 w-10 overflow-hidden rounded-xl border border-white/70 shadow-clay-sm">
+              <img src={chatRefImage.previewUrl} alt="参考图" className="h-full w-full object-cover" />
+              <button
+                type="button"
+                onClick={removeChatRefImage}
+                className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-clay-pink-300 text-white shadow"
+              >
+                <X className="h-2.5 w-2.5" strokeWidth={3} />
+              </button>
+            </div>
+            <span className="text-[11px] font-bold text-clay-faint">参考图已附加，发送时携带</span>
+          </div>
+        )}
         {/* Chips row — wrap on all sizes so mobile users can see everything */}
         <div className="-mx-1 flex flex-wrap items-center gap-1.5 px-1 pb-2 sm:mx-0 sm:px-0">
           <GlassSelect
@@ -460,6 +522,22 @@ export default function PlaygroundChat() {
               System
             </button>
           )}
+          {/* Clip: attach reference image */}
+          <button
+            type="button"
+            onClick={() => chatRefImageInput.current?.click()}
+            title="附加参考图（支持粘贴）"
+            className={`inline-flex h-7 shrink-0 items-center gap-1 rounded-full border border-white/60 bg-white/55 px-2.5 text-[11.5px] font-bold ring-1 ring-black/[0.04] transition hover:bg-white/80 ${chatRefImage ? 'text-clay-pink-ink' : 'text-clay-faint'}`}
+          >
+            <Paperclip className="h-3 w-3" strokeWidth={2.8} />
+          </button>
+          <input
+            ref={chatRefImageInput}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => { if (e.target.files?.[0]) attachChatImage(e.target.files[0]); e.target.value = '' }}
+          />
         </div>
         {/* textarea */}
         <textarea

@@ -204,6 +204,45 @@ export function dropLocalMessages(sessionId) {
 
 // ---- Image generation ----
 
+export async function editPlaygroundImage({ payload, images, signal }) {
+  const uid = getUserHeader()
+  const headers = {}
+  if (uid) headers['New-API-User'] = uid
+
+  const form = new FormData()
+  const fieldName = images.length > 1 ? 'image[]' : 'image'
+  for (const img of images) {
+    const file = img.file instanceof File ? img.file : new File([img.file], img.name || 'reference.png', { type: img.mime || 'image/png' })
+    form.append(fieldName, file, file.name)
+  }
+  if (payload.model) form.append('model', payload.model)
+  if (payload.prompt) form.append('prompt', payload.prompt)
+  if (payload.size && payload.size !== 'auto') form.append('size', payload.size)
+  if (payload.quality && payload.quality !== 'auto') form.append('quality', payload.quality)
+  if (payload.n) form.append('n', String(payload.n))
+  form.append('response_format', 'b64_json')
+
+  const res = await fetch('/pg/images/edits', {
+    method: 'POST',
+    credentials: 'include',
+    headers,
+    body: form,
+    signal,
+  })
+
+  const text = await res.text()
+  let json
+  try { json = text ? JSON.parse(text) : null } catch (_) { json = null }
+
+  if (!res.ok) {
+    const message = json?.error?.message || json?.message || `HTTP ${res.status}`
+    const err = new Error(message)
+    err.status = res.status
+    throw err
+  }
+  return json
+}
+
 export async function generatePlaygroundImage({ payload, signal }) {
   const headers = { 'Content-Type': 'application/json' }
   const uid = getUserHeader()

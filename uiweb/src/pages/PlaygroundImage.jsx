@@ -8,12 +8,14 @@ import {
   Image as ImageIcon,
   Layers,
   Loader2,
+  Maximize2,
+  MinusCircle,
+  Paperclip,
+  RotateCcw,
   Sparkles,
   Trash2,
   Wand2,
   X,
-  RotateCcw,
-  Maximize2,
 } from 'lucide-react'
 import ClayButton from '../components/clay/ClayButton.jsx'
 import ClayModal from '../components/clay/ClayModal.jsx'
@@ -23,6 +25,7 @@ import { useToast } from '../context/ToastContext.jsx'
 import { useUser } from '../context/UserContext.jsx'
 import { quotaToDisplay } from '../utils/quota.js'
 import {
+  editPlaygroundImage,
   filterModelsByGroup,
   generatePlaygroundImage,
   listPlaygroundGroups,
@@ -40,7 +43,7 @@ import {
 const CONFIG_KEY = 'uiweb.playground.image.config'
 
 const SIZE_PRESETS = [
-  { value: 'auto', label: '自动' },
+  { value: 'auto', label: '自动（默认）' },
   { value: '1024x1024', label: '1024 × 1024' },
   { value: '1792x1024', label: '1792 × 1024' },
   { value: '1024x1792', label: '1024 × 1792' },
@@ -50,7 +53,7 @@ const SIZE_PRESETS = [
   { value: '256x256', label: '256 × 256' },
 ]
 const QUALITY_PRESETS = [
-  { value: 'auto', label: '自动' },
+  { value: 'auto', label: 'auto（默认）' },
   { value: 'low', label: '低 · 省' },
   { value: 'medium', label: '中' },
   { value: 'high', label: '高 · 清' },
@@ -58,28 +61,33 @@ const QUALITY_PRESETS = [
   { value: 'hd', label: 'HD' },
 ]
 const STYLE_PRESETS = [
-  { value: '', label: '默认' },
+  { value: '', label: '默认（无）' },
   { value: 'vivid', label: 'vivid · 鲜艳' },
   { value: 'natural', label: 'natural · 自然' },
 ]
 const BACKGROUND_PRESETS = [
-  { value: '', label: '默认' },
+  { value: '', label: '默认（auto）' },
   { value: 'auto', label: 'auto · 自动' },
   { value: 'transparent', label: 'transparent · 透明' },
   { value: 'opaque', label: 'opaque · 不透明' },
 ]
 const FORMAT_PRESETS = [
-  { value: '', label: '默认' },
+  { value: '', label: '默认（PNG）' },
   { value: 'png', label: 'PNG' },
   { value: 'jpeg', label: 'JPEG' },
   { value: 'webp', label: 'WebP' },
 ]
 const MODERATION_PRESETS = [
-  { value: '', label: '默认' },
+  { value: '', label: '默认（standard）' },
   { value: 'auto', label: 'auto · 标准' },
   { value: 'low', label: 'low · 宽松' },
 ]
-const COUNT_PRESETS = [1, 2, 3, 4].map((v) => ({ value: String(v), label: `${v} 张` }))
+const COUNT_PRESETS = [
+  { value: '1', label: '1 张（默认）' },
+  { value: '2', label: '2 张' },
+  { value: '3', label: '3 张' },
+  { value: '4', label: '4 张' },
+]
 const PROMPT_PRESETS = [
   '一只在云朵上奔跑的橘色小猫，黏土质感，柔和粉彩光',
   '清晨阳光照进窗台的咖啡杯，文艺向，胶片质感',
@@ -120,21 +128,27 @@ export default function PlaygroundImage() {
   const { user } = useUser()
   const abortRef = useRef(null)
   const inputRef = useRef(null)
+  const refImageInput = useRef(null)
 
   const cfg0 = safeReadConfig() || {}
   const [group, setGroup] = useState(cfg0.group || 'auto')
   const [model, setModel] = useState(cfg0.model || '')
-  const [size, setSize] = useState(cfg0.size || '1024x1024')
+  const [size, setSize] = useState(cfg0.size || 'auto')
   const [quality, setQuality] = useState(cfg0.quality || 'auto')
   const [style, setStyle] = useState(cfg0.style || '')
   const [background, setBackground] = useState(cfg0.background || '')
   const [outputFormat, setOutputFormat] = useState(cfg0.output_format || '')
   const [moderation, setModeration] = useState(cfg0.moderation || '')
   const [n, setN] = useState(cfg0.n || 1)
-  const [prompt, setPrompt] = useState('')
+  const [prompt, setPrompt] = useState(cfg0.prompt || '')
+  const [negativePrompt, setNegativePrompt] = useState(cfg0.negative_prompt || '')
   const [advancedOpen, setAdvancedOpen] = useState(() => {
     try { return window.localStorage.getItem(ADV_OPEN_KEY) === '1' } catch (_) { return false }
   })
+  const [inputCollapsed, setInputCollapsed] = useState(false)
+
+  // Reference images: { id, file, previewUrl, name, mime }
+  const [refImages, setRefImages] = useState([])
 
   const [groups, setGroups] = useState([])
   const [pricing, setPricing] = useState({})
@@ -154,7 +168,9 @@ export default function PlaygroundImage() {
   }, [generating])
   const elapsedSec = generatingSince ? Math.max(0, Math.floor((Date.now() - generatingSince) / 1000)) : 0
 
-  useEffect(() => { safeWriteConfig({ group, model, size, quality, style, background, output_format: outputFormat, moderation, n }) }, [group, model, size, quality, style, background, outputFormat, moderation, n])
+  useEffect(() => {
+    safeWriteConfig({ group, model, size, quality, style, background, output_format: outputFormat, moderation, n, prompt, negative_prompt: negativePrompt })
+  }, [group, model, size, quality, style, background, outputFormat, moderation, n, prompt, negativePrompt])
   useEffect(() => { try { window.localStorage.setItem(ADV_OPEN_KEY, advancedOpen ? '1' : '0') } catch (_) {} }, [advancedOpen])
 
   useEffect(() => {
@@ -251,6 +267,63 @@ export default function PlaygroundImage() {
   const insufficient = estimate.quota > 0 && userQuota > 0 && userQuota < estimate.quota * 1.1
   const noBalance = estimate.quota > 0 && userQuota > 0 && userQuota < estimate.quota
 
+  // ---- Reference images ----
+  const addRefImages = useCallback((files) => {
+    const accepted = Array.from(files || []).filter((f) => f.type.startsWith('image/'))
+    if (!accepted.length) return
+    setRefImages((prev) => {
+      const remaining = 4 - prev.length
+      if (remaining <= 0) { toast('最多 4 张参考图', 'warning'); return prev }
+      const items = accepted.slice(0, remaining).map((file) => ({
+        id: crypto.randomUUID(),
+        file,
+        previewUrl: URL.createObjectURL(file),
+        name: file.name,
+        mime: file.type,
+      }))
+      return [...prev, ...items]
+    })
+  }, [toast])
+
+  const removeRefImage = useCallback((id) => {
+    setRefImages((prev) => {
+      const item = prev.find((x) => x.id === id)
+      if (item?.previewUrl) try { URL.revokeObjectURL(item.previewUrl) } catch (_) {}
+      return prev.filter((x) => x.id !== id)
+    })
+  }, [])
+
+  const addHistoryAsRef = useCallback((item) => {
+    if (!item?.blob) return
+    setRefImages((prev) => {
+      if (prev.length >= 4) { toast('最多 4 张参考图', 'warning'); return prev }
+      const ext = (item.mime || 'image/png').split('/')[1] || 'png'
+      const file = new File([item.blob], `ref-${item.id}.${ext}`, { type: item.mime || 'image/png' })
+      const newItem = { id: crypto.randomUUID(), file, previewUrl: URL.createObjectURL(file), name: file.name, mime: file.type }
+      return [...prev, newItem]
+    })
+    toast('已加入参考图', 'info')
+  }, [toast])
+
+  // Cleanup ref image blob URLs on unmount
+  useEffect(() => () => {
+    for (const img of refImages) {
+      try { URL.revokeObjectURL(img.previewUrl) } catch (_) {}
+    }
+  }, [])
+
+  // Paste to add reference images
+  useEffect(() => {
+    const handlePaste = (e) => {
+      const items = Array.from(e.clipboardData?.items || [])
+      const files = items.filter((i) => i.type.startsWith('image/')).map((i) => i.getAsFile()).filter(Boolean)
+      if (files.length) addRefImages(files)
+    }
+    document.addEventListener('paste', handlePaste)
+    return () => document.removeEventListener('paste', handlePaste)
+  }, [addRefImages])
+
+  // ---- Generate / Stop ----
   const stop = useCallback(() => {
     if (abortRef.current) { abortRef.current.abort(); abortRef.current = null }
   }, [])
@@ -261,7 +334,10 @@ export default function PlaygroundImage() {
     if (!model) { toast('请先选择模型', 'error'); return }
     if (generating) return
 
-    const payload = { model, group, prompt: text }
+    const neg = negativePrompt.trim()
+    const fullPrompt = neg ? `${text}. No: ${neg}` : text
+
+    const payload = { model, group, prompt: fullPrompt }
     if (size && size !== 'auto') payload.size = size
     if (quality && quality !== 'auto') payload.quality = quality
     if (style) payload.style = style
@@ -275,7 +351,10 @@ export default function PlaygroundImage() {
     abortRef.current = ctrl
     setGenerating(true)
     try {
-      const res = await generatePlaygroundImage({ payload, signal: ctrl.signal })
+      const res = refImages.length > 0
+        ? await editPlaygroundImage({ payload, images: refImages, signal: ctrl.signal })
+        : await generatePlaygroundImage({ payload, signal: ctrl.signal })
+
       const datas = Array.isArray(res?.data) ? res.data : []
       if (!datas.length) { toast('上游未返回图片', 'error'); return }
       const saved = []
@@ -318,12 +397,14 @@ export default function PlaygroundImage() {
       }
     } catch (e) {
       if (e?.name === 'AbortError') toast('已中止', 'info')
-      else toast(e?.message || '生图失败', 'error')
+      else if (e?.message?.toLowerCase().includes('timeout') || e?.status === 504 || e?.status === 524)
+        toast('生图超时，模型响应较慢，请稍后重试', 'error')
+      else toast(e?.message || '生图失败，请稍后重试', 'error')
     } finally {
       abortRef.current = null
       setGenerating(false)
     }
-  }, [ensureBlobUrl, generating, group, model, n, prompt, quality, size, style, toast])
+  }, [editPlaygroundImage, ensureBlobUrl, generating, group, model, n, negativePrompt, prompt, quality, refImages, size, style, toast])
 
   const handleDelete = useCallback(async (id) => {
     try {
@@ -348,113 +429,180 @@ export default function PlaygroundImage() {
     } catch (e) { toast(e?.message || '下载失败', 'error') }
   }, [toast])
 
+  const handleDragOver = useCallback((e) => { e.preventDefault() }, [])
+  const handleDrop = useCallback((e) => {
+    e.preventDefault()
+    addRefImages(Array.from(e.dataTransfer?.files || []))
+  }, [addRefImages])
+
   const previewItem = useMemo(() => history.find((it) => it.id === previewId), [history, previewId])
 
-  const headerActions = null
+  const isExpanded = !isMobile || !inputCollapsed
 
   const footer = (
     <div
       className="fixed bottom-3 left-1/2 z-20 w-full max-w-4xl -translate-x-1/2 px-3 sm:bottom-5 sm:px-6"
       style={{ paddingBottom: 'env(safe-area-inset-bottom, 0)' }}
+      onDragOver={handleDragOver}
+      onDrop={handleDrop}
     >
       <div className="rounded-3xl border border-white/55 bg-white/55 px-3 py-3 shadow-[0_18px_60px_-18px_rgba(0,0,0,0.22)] ring-1 ring-black/[0.04] backdrop-blur-2xl sm:px-4 sm:py-3.5">
-        {/* Chips row — wrap on all sizes so mobile users can see everything */}
-        <div className="-mx-1 flex flex-wrap items-center gap-1.5 px-1 pb-2 sm:mx-0 sm:px-0">
-          <GlassSelect
-            icon={<Cpu className="h-3 w-3" strokeWidth={2.8} />}
-            value={model}
-            onChange={setModel}
-            options={modelOptions.length ? modelOptions : [{ value: '', label: loadingMeta ? '加载中…' : '无可用模型' }]}
-            disabled={loadingMeta || !modelOptions.length}
-            placeholder="选择模型"
-            tone="purple"
-            minWidth={200}
+
+        {/* Reference image thumbnails */}
+        {refImages.length > 0 && isExpanded && (
+          <div className="flex flex-wrap gap-1.5 pb-2">
+            {refImages.map((img) => (
+              <div key={img.id} className="relative h-10 w-10 overflow-hidden rounded-xl border border-white/70 shadow-clay-sm">
+                <img src={img.previewUrl} alt="参考图" className="h-full w-full object-cover" />
+                <button
+                  type="button"
+                  onClick={() => removeRefImage(img.id)}
+                  className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-clay-pink-300 text-white shadow"
+                >
+                  <X className="h-2.5 w-2.5" strokeWidth={3} />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Chips row */}
+        {isExpanded && (
+          <div className="-mx-1 flex flex-wrap items-center gap-1.5 px-1 pb-2 sm:mx-0 sm:px-0">
+            <GlassSelect
+              icon={<Cpu className="h-3 w-3" strokeWidth={2.8} />}
+              value={model}
+              onChange={setModel}
+              options={modelOptions.length ? modelOptions : [{ value: '', label: loadingMeta ? '加载中…' : '无可用模型' }]}
+              disabled={loadingMeta || !modelOptions.length}
+              placeholder="选择模型"
+              tone="purple"
+              minWidth={200}
+            />
+            <GlassSelect
+              icon={<Layers className="h-3 w-3" strokeWidth={2.8} />}
+              value={group}
+              onChange={setGroup}
+              options={groupOptions.length ? groupOptions : [{ value: 'auto', label: '自动' }]}
+              disabled={loadingMeta}
+              tone="purple"
+              minWidth={140}
+            />
+            <GlassSelect
+              icon={<ImageIcon className="h-3 w-3" strokeWidth={2.8} />}
+              label="尺寸"
+              value={size}
+              onChange={setSize}
+              options={SIZE_PRESETS}
+              minWidth={160}
+            />
+            {/* Clip icon: add reference images */}
+            <button
+              type="button"
+              onClick={() => refImageInput.current?.click()}
+              title="添加参考图（支持拖拽 / 粘贴）"
+              className={`inline-flex h-7 shrink-0 items-center gap-1 rounded-full border border-white/60 bg-white/55 px-2.5 text-[11.5px] font-bold ring-1 ring-black/[0.04] transition hover:bg-white/80 ${refImages.length > 0 ? 'text-clay-purple-ink' : 'text-clay-faint'}`}
+            >
+              <Paperclip className="h-3 w-3" strokeWidth={2.8} />
+              {refImages.length > 0 && <span>{refImages.length}/4</span>}
+            </button>
+            <input
+              ref={refImageInput}
+              type="file"
+              accept="image/*"
+              multiple
+              className="hidden"
+              onChange={(e) => { addRefImages(e.target.files); e.target.value = '' }}
+            />
+            <button
+              type="button"
+              onClick={() => setAdvancedOpen((v) => !v)}
+              className="inline-flex h-7 shrink-0 items-center gap-1 rounded-full border border-white/60 bg-white/55 px-2.5 text-[11.5px] font-bold text-clay-faint ring-1 ring-black/[0.04] transition hover:bg-white/80"
+              title={advancedOpen ? '收起高级参数' : '展开高级参数'}
+            >
+              高级
+              {advancedOpen ? <ChevronUp className="h-3 w-3" strokeWidth={2.8} /> : <ChevronDown className="h-3 w-3" strokeWidth={2.8} />}
+            </button>
+            {advancedOpen && (
+              <>
+                <GlassSelect
+                  icon={<Sparkles className="h-3 w-3" strokeWidth={2.8} />}
+                  label="质量"
+                  value={quality}
+                  onChange={setQuality}
+                  options={QUALITY_PRESETS}
+                  minWidth={140}
+                />
+                <GlassSelect
+                  icon={<Wand2 className="h-3 w-3" strokeWidth={2.8} />}
+                  label="风格"
+                  value={style}
+                  onChange={setStyle}
+                  options={STYLE_PRESETS}
+                  minWidth={140}
+                />
+                <GlassSelect
+                  label="数量"
+                  value={String(n)}
+                  onChange={(v) => setN(parseInt(v, 10) || 1)}
+                  options={COUNT_PRESETS}
+                  minWidth={110}
+                />
+                <GlassSelect
+                  label="背景"
+                  value={background}
+                  onChange={setBackground}
+                  options={BACKGROUND_PRESETS}
+                  minWidth={150}
+                />
+                <GlassSelect
+                  label="格式"
+                  value={outputFormat}
+                  onChange={setOutputFormat}
+                  options={FORMAT_PRESETS}
+                  minWidth={120}
+                />
+                <GlassSelect
+                  label="审核"
+                  value={moderation}
+                  onChange={setModeration}
+                  options={MODERATION_PRESETS}
+                  minWidth={130}
+                />
+              </>
+            )}
+          </div>
+        )}
+
+        {/* Negative prompt — shown inside advanced (full width row) */}
+        {isExpanded && advancedOpen && (
+          <div className="mb-2 flex items-center gap-2">
+            <MinusCircle className="h-3 w-3 shrink-0 text-clay-faint" strokeWidth={2.8} />
+            <input
+              type="text"
+              value={negativePrompt}
+              onChange={(e) => setNegativePrompt(e.target.value)}
+              placeholder="负面提示词：不要水印、不要文字…（追加到 prompt 末尾）"
+              className="min-w-0 flex-1 rounded-2xl border border-white/60 bg-white/55 px-3 py-1 text-[12px] font-medium text-clay-ink placeholder:text-clay-faint/70 focus:outline-none"
+            />
+          </div>
+        )}
+
+        {/* Textarea */}
+        {isExpanded && (
+          <textarea
+            ref={inputRef}
+            value={prompt}
+            onChange={(e) => setPrompt(e.target.value.slice(0, 4000))}
+            placeholder="描述你想要的画面，越具体越好…"
+            rows={isMobile ? 2 : 3}
+            disabled={generating}
+            className="block max-h-40 w-full resize-none border-0 bg-transparent px-1 py-1.5 text-[15px] font-medium text-clay-ink placeholder:font-bold placeholder:text-clay-faint/70 focus:outline-none disabled:opacity-50"
+            style={{ minHeight: 44 }}
           />
-          <GlassSelect
-            icon={<Layers className="h-3 w-3" strokeWidth={2.8} />}
-            value={group}
-            onChange={setGroup}
-            options={groupOptions.length ? groupOptions : [{ value: 'auto', label: '自动' }]}
-            disabled={loadingMeta}
-            tone="purple"
-            minWidth={140}
-          />
-          <GlassSelect
-            icon={<ImageIcon className="h-3 w-3" strokeWidth={2.8} />}
-            label="尺寸"
-            value={size}
-            onChange={setSize}
-            options={SIZE_PRESETS}
-            minWidth={160}
-          />
-          <GlassSelect
-            icon={<Sparkles className="h-3 w-3" strokeWidth={2.8} />}
-            label="质量"
-            value={quality}
-            onChange={setQuality}
-            options={QUALITY_PRESETS}
-            minWidth={140}
-          />
-          <GlassSelect
-            icon={<Wand2 className="h-3 w-3" strokeWidth={2.8} />}
-            label="风格"
-            value={style}
-            onChange={setStyle}
-            options={STYLE_PRESETS}
-            minWidth={140}
-          />
-          <GlassSelect
-            label="数量"
-            value={String(n)}
-            onChange={(v) => setN(parseInt(v, 10) || 1)}
-            options={COUNT_PRESETS}
-            minWidth={110}
-          />
-          <button
-            type="button"
-            onClick={() => setAdvancedOpen((v) => !v)}
-            className="inline-flex h-7 shrink-0 items-center gap-1 rounded-full border border-white/60 bg-white/55 px-2.5 text-[11.5px] font-bold text-clay-faint ring-1 ring-black/[0.04] transition hover:bg-white/80"
-            title={advancedOpen ? '收起高级参数' : '展开高级参数'}
-          >
-            高级
-            {advancedOpen ? <ChevronUp className="h-3 w-3" strokeWidth={2.8} /> : <ChevronDown className="h-3 w-3" strokeWidth={2.8} />}
-          </button>
-          {advancedOpen && (
-            <>
-              <GlassSelect
-                label="背景"
-                value={background}
-                onChange={setBackground}
-                options={BACKGROUND_PRESETS}
-                minWidth={150}
-              />
-              <GlassSelect
-                label="格式"
-                value={outputFormat}
-                onChange={setOutputFormat}
-                options={FORMAT_PRESETS}
-                minWidth={120}
-              />
-              <GlassSelect
-                label="审核"
-                value={moderation}
-                onChange={setModeration}
-                options={MODERATION_PRESETS}
-                minWidth={130}
-              />
-            </>
-          )}
-        </div>
-        <textarea
-          ref={inputRef}
-          value={prompt}
-          onChange={(e) => setPrompt(e.target.value.slice(0, 4000))}
-          placeholder="描述你想要的画面，越具体越好…"
-          rows={isMobile ? 2 : 3}
-          disabled={generating}
-          className="block max-h-40 w-full resize-none border-0 bg-transparent px-1 py-1.5 text-[15px] font-medium text-clay-ink placeholder:font-bold placeholder:text-clay-faint/70 focus:outline-none disabled:opacity-50"
-          style={{ minHeight: 44 }}
-        />
+        )}
+
+        {/* Bottom action bar */}
         <div className="flex items-center justify-between gap-2 pt-1.5">
           <div className="min-w-0 flex-1 truncate text-[11px] font-bold text-clay-faint">
             {estimate.text ? (
@@ -491,7 +639,20 @@ export default function PlaygroundImage() {
                 }`}
               >
                 <Wand2 className="h-3.5 w-3.5" strokeWidth={2.8} />
-                生成
+                {refImages.length > 0 ? '参考生成' : '生成'}
+              </button>
+            )}
+            {/* Mobile collapse toggle */}
+            {isMobile && (
+              <button
+                type="button"
+                onClick={() => setInputCollapsed((v) => !v)}
+                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/60 bg-white/55 text-clay-faint ring-1 ring-black/[0.04] transition hover:bg-white/80"
+                title={inputCollapsed ? '展开输入框' : '收起输入框'}
+              >
+                {inputCollapsed
+                  ? <ChevronUp className="h-4 w-4" strokeWidth={2.8} />
+                  : <ChevronDown className="h-4 w-4" strokeWidth={2.8} />}
               </button>
             )}
           </div>
@@ -501,7 +662,7 @@ export default function PlaygroundImage() {
   )
 
   return (
-    <PlaygroundShell tab="image" actions={headerActions} footer={footer}>
+    <PlaygroundShell tab="image" actions={null} footer={footer}>
       <div className="pt-4">
         {loadingHistory ? (
           <div className="flex h-40 items-center justify-center text-sm font-bold text-clay-faint">
@@ -559,6 +720,10 @@ export default function PlaygroundImage() {
             <ClayButton type="button" variant="ghost" onClick={() => { setPrompt(previewItem.prompt); setPreviewId(null); toast('已填入 prompt', 'info') }}>
               <RotateCcw className="h-4 w-4" strokeWidth={2.8} />
               再生
+            </ClayButton>
+            <ClayButton type="button" variant="ghost" onClick={() => { addHistoryAsRef(previewItem); setPreviewId(null) }}>
+              <Paperclip className="h-4 w-4" strokeWidth={2.8} />
+              以此为参考
             </ClayButton>
             <ClayButton type="button" onClick={() => handleDownload(previewItem)}>
               <Download className="h-4 w-4" strokeWidth={2.8} />

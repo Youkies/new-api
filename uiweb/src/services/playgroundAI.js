@@ -204,6 +204,29 @@ export function dropLocalMessages(sessionId) {
 
 // ---- Image generation ----
 
+// Compress an image File/Blob to at most maxBytes, targeting maxDim × maxDim px.
+async function compressImageFile(file, { maxDim = 1024, maxBytes = 3 * 1024 * 1024 } = {}) {
+  if (file.size <= maxBytes) return file
+  return new Promise((resolve) => {
+    const img = new Image()
+    const url = URL.createObjectURL(file)
+    img.onload = () => {
+      URL.revokeObjectURL(url)
+      const scale = Math.min(1, maxDim / Math.max(img.width, img.height))
+      const w = Math.round(img.width * scale)
+      const h = Math.round(img.height * scale)
+      const canvas = document.createElement('canvas')
+      canvas.width = w; canvas.height = h
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h)
+      canvas.toBlob((blob) => {
+        resolve(blob ? new File([blob], file.name.replace(/\.\w+$/, '.png'), { type: 'image/png' }) : file)
+      }, 'image/png')
+    }
+    img.onerror = () => { URL.revokeObjectURL(url); resolve(file) }
+    img.src = url
+  })
+}
+
 export async function editPlaygroundImage({ payload, images, signal }) {
   const uid = getUserHeader()
   const headers = {}
@@ -212,7 +235,8 @@ export async function editPlaygroundImage({ payload, images, signal }) {
   const form = new FormData()
   const fieldName = images.length > 1 ? 'image[]' : 'image'
   for (const img of images) {
-    const file = img.file instanceof File ? img.file : new File([img.file], img.name || 'reference.png', { type: img.mime || 'image/png' })
+    let file = img.file instanceof File ? img.file : new File([img.file], img.name || 'reference.png', { type: img.mime || 'image/png' })
+    file = await compressImageFile(file)
     form.append(fieldName, file, file.name)
   }
   if (payload.model) form.append('model', payload.model)

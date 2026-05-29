@@ -301,8 +301,8 @@ func getModelRequest(c *gin.Context) (*ModelRequest, bool, error) {
 	}
 	if strings.HasPrefix(c.Request.URL.Path, "/v1/images/generations") {
 		modelRequest.Model = common.GetStringIfEmpty(modelRequest.Model, "dall-e")
-	} else if strings.HasPrefix(c.Request.URL.Path, "/v1/images/edits") {
-		//modelRequest.Model = common.GetStringIfEmpty(c.PostForm("model"), "gpt-image-1")
+	} else if strings.HasPrefix(c.Request.URL.Path, "/v1/images/edits") ||
+		strings.HasPrefix(c.Request.URL.Path, "/pg/images/edits") {
 		contentType := c.ContentType()
 		if slices.Contains([]string{gin.MIMEPOSTForm, gin.MIMEMultipartPOSTForm}, contentType) {
 			req, err := getModelFromRequest(c)

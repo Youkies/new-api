@@ -291,7 +291,7 @@ export default function PromotionPage() {
 
       {/* SKU 网格 */}
       {isKids61 ? (
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
           {campaign.skus.map((sku, idx) => (
             <Kids61SkuCard
               key={sku.id}

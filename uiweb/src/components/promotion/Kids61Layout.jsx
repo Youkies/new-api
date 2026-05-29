@@ -237,35 +237,74 @@ export function Kids61SkuCard({ sku, colorIndex, currencySymbol, selected, disab
         transition-shadow
       `}
     >
-      {/* 顶部：emoji + 标题 + 角标 */}
-      <div className="flex items-start gap-2.5 mb-3">
-        <span className="text-3xl sm:text-4xl select-none flex-shrink-0 leading-none">{sku.emoji || '🎁'}</span>
-        <div className="flex-1 min-w-0">
-          <div className="text-sm sm:text-base font-black text-clay-ink leading-tight truncate">{sku.label}</div>
-          {sku.subtitle && (
-            <div className="text-[11px] text-clay-faint font-bold mt-0.5 truncate">{sku.subtitle}</div>
-          )}
+      {/* 移动端：左右横排（emoji+标题 左，badge+金额 右）；桌面：竖排 */}
+      <div className="flex sm:block items-center gap-3 mb-3 sm:mb-0">
+
+        {/* 左：emoji + 标题 + 副标题 */}
+        <div className="flex items-start gap-2.5 flex-1 min-w-0 sm:mb-3">
+          <span className="text-3xl sm:text-4xl select-none flex-shrink-0 leading-none">{sku.emoji || '🎁'}</span>
+          <div className="min-w-0">
+            <div className="text-sm sm:text-base font-black text-clay-ink leading-tight">{sku.label}</div>
+            {sku.subtitle && (
+              <div className="text-[11px] text-clay-faint font-bold mt-0.5">{sku.subtitle}</div>
+            )}
+            {/* 移动端：badge 跟在副标题下 */}
+            <div className="mt-1.5 sm:hidden">
+              {selected ? (
+                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-clay-pill shadow-clay-sm text-[10px] font-black ${c.selChip}`}>
+                  <CheckCircle2 className="w-3 h-3" strokeWidth={2.6} />已选
+                </span>
+              ) : isSpecial ? (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-clay-pill bg-clay-pink-100 text-clay-pink-ink shadow-clay-sm text-[10px] font-black">
+                  🔥 限量特惠
+                </span>
+              ) : sku.highlight ? (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-clay-pill bg-clay-yellow-100 text-clay-yellow-ink shadow-clay-sm text-[10px] font-black">
+                  <Sparkles className="w-3 h-3" strokeWidth={2.6} />主推
+                </span>
+              ) : null}
+            </div>
+          </div>
         </div>
-        {selected ? (
-          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-clay-pill shadow-clay-sm text-[10px] font-black flex-shrink-0 ${c.selChip}`}>
-            <CheckCircle2 className="w-3 h-3" strokeWidth={2.6} />已选
-          </span>
-        ) : isSpecial ? (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-clay-pill bg-clay-pink-100 text-clay-pink-ink shadow-clay-sm text-[10px] font-black flex-shrink-0">
-            🔥 限量特惠
-          </span>
-        ) : sku.highlight ? (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-clay-pill bg-clay-yellow-100 text-clay-yellow-ink shadow-clay-sm text-[10px] font-black flex-shrink-0">
-            <Sparkles className="w-3 h-3" strokeWidth={2.6} />主推
-          </span>
-        ) : null}
+
+        {/* 右：移动端金额横排；桌面端隐藏（下方独立渲染） */}
+        <div className="flex-shrink-0 text-right sm:hidden">
+          <div className="text-[10px] uppercase tracking-wider text-clay-faint font-black mb-0.5">到 账</div>
+          <div className={`text-3xl font-black tabular-nums leading-none ${c.inkText}`}>
+            {currencySymbol}{skuDelivered(sku)}
+          </div>
+          <div className="text-[10px] uppercase tracking-wider text-clay-faint font-black mt-1.5 mb-0.5">付 款</div>
+          <div className="text-sm font-black tabular-nums text-clay-ink leading-none">
+            {currencySymbol}{skuPrice(sku)}
+          </div>
+        </div>
+
+        {/* 桌面端 badge（右上角） */}
+        <div className="hidden sm:block sm:mb-3">
+          <div className="flex items-start gap-2.5">
+            <div className="flex-1" />
+            {selected ? (
+              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-clay-pill shadow-clay-sm text-[10px] font-black flex-shrink-0 ${c.selChip}`}>
+                <CheckCircle2 className="w-3 h-3" strokeWidth={2.6} />已选
+              </span>
+            ) : isSpecial ? (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-clay-pill bg-clay-pink-100 text-clay-pink-ink shadow-clay-sm text-[10px] font-black flex-shrink-0">
+                🔥 限量特惠
+              </span>
+            ) : sku.highlight ? (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-clay-pill bg-clay-yellow-100 text-clay-yellow-ink shadow-clay-sm text-[10px] font-black flex-shrink-0">
+                <Sparkles className="w-3 h-3" strokeWidth={2.6} />主推
+              </span>
+            ) : null}
+          </div>
+        </div>
       </div>
 
-      {/* 到账金额 hero */}
-      <div className="flex items-end justify-between gap-2 mb-3">
+      {/* 桌面端金额 hero（移动端已在右侧显示，这里隐藏） */}
+      <div className="hidden sm:flex items-end justify-between gap-2 mb-3">
         <div className="min-w-0">
           <div className="text-[10px] uppercase tracking-wider text-clay-faint font-black mb-0.5">到 账</div>
-          <div className={`text-3xl sm:text-4xl font-black tabular-nums leading-none ${c.inkText}`}>
+          <div className={`text-4xl font-black tabular-nums leading-none ${c.inkText}`}>
             {currencySymbol}{skuDelivered(sku)}
           </div>
         </div>

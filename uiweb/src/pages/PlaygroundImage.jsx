@@ -130,7 +130,7 @@ export default function PlaygroundImage() {
   const refImageInput = useRef(null)
 
   const cfg0 = safeReadConfig() || {}
-  const group = 'auto'
+  const group = '图片与视频生成'
   const [model, setModel] = useState(cfg0.model || '')
   const [size, setSize] = useState(cfg0.size || 'auto')
   const [quality, setQuality] = useState(cfg0.quality || 'auto')

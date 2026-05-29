@@ -25,6 +25,7 @@ type PromotionCampaign struct {
 	Subtitle             string         `json:"subtitle" gorm:"type:varchar(255);default:''"`
 	Emoji                string         `json:"emoji" gorm:"type:varchar(16);default:''"`
 	ThemeColor           string         `json:"theme_color" gorm:"type:varchar(16);default:'pink'"`
+	LayoutVariant        string         `json:"layout_variant" gorm:"type:varchar(32);default:''"`
 	StartsAt             int64          `json:"starts_at" gorm:"bigint;not null"`
 	EndsAt               int64          `json:"ends_at" gorm:"bigint;not null"`
 	Enabled              bool           `json:"enabled" gorm:"default:false;index"`
@@ -344,6 +345,7 @@ func UpdateCampaign(c *PromotionCampaign) error {
 			"subtitle":               c.Subtitle,
 			"emoji":                  c.Emoji,
 			"theme_color":            c.ThemeColor,
+			"layout_variant":         c.LayoutVariant,
 			"starts_at":              c.StartsAt,
 			"ends_at":                c.EndsAt,
 			"enabled":                c.Enabled,
@@ -795,6 +797,123 @@ func seed520() error {
 			TotalLimit:       99,
 			PerUserLimit:     1,
 			Enabled:          true,
+		},
+	}
+	return DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Create(&campaign).Error; err != nil {
+			return err
+		}
+		for i := range skus {
+			skus[i].CampaignId = campaign.Id
+			skus[i].CreatedTime = now
+			skus[i].UpdatedTime = now
+		}
+		return tx.Create(&skus).Error
+	})
+}
+
+// EnsureKids61Campaign — 幂等写入六一儿童节活动。
+// 仅在 slug="children-day-2026" 不存在时插入；已存在则跳过（admin 可自由修改）。
+// 活动默认 enabled=false，需 admin 手动开启。
+func EnsureKids61Campaign() error {
+	var n int64
+	if err := DB.Unscoped().Model(&PromotionCampaign{}).
+		Where("slug = ?", "children-day-2026").Count(&n).Error; err != nil {
+		return err
+	}
+	if n > 0 {
+		return nil
+	}
+	return seedKids61()
+}
+
+func seedKids61() error {
+	now := time.Now().Unix()
+	// 默认窗口：即时开始 ~ 2026-06-01 23:59:59 +08:00
+	startsAt := now
+	endsAt, _ := time.Parse(time.RFC3339, "2026-06-01T23:59:59+08:00")
+
+	campaign := PromotionCampaign{
+		Slug:            "children-day-2026",
+		Title:           "六一儿童节",
+		Subtitle:        "世界很大，今天先做个小孩。",
+		Emoji:           "🎈",
+		ThemeColor:      "pink",
+		LayoutVariant:   "kids_61",
+		StartsAt:        startsAt,
+		EndsAt:          endsAt.Unix(),
+		Enabled:         false, // admin 手动开启
+		ShowTopupBanner: true,
+		SortOrder:       10,
+		CreatedTime:     now,
+		UpdatedTime:     now,
+	}
+	skus := []PromotionSku{
+		{
+			SkuKey:        "p61-sku-1",
+			SortOrder:     1,
+			Label:         "六一特惠",
+			Subtitle:      "每人限购一次",
+			Emoji:         "🎁",
+			PriceYuan:     decimal.NewFromFloat(6.1),
+			DeliveredYuan: decimal.NewFromFloat(10),
+			PriceDisplay:  "6.1",
+			TotalLimit:    100,
+			PerUserLimit:  1,
+			Enabled:       true,
+		},
+		{
+			SkuKey:        "p61-sku-2",
+			SortOrder:     2,
+			Label:         "小熊礼包",
+			Emoji:         "🎈",
+			PriceYuan:     decimal.NewFromFloat(28),
+			DeliveredYuan: decimal.NewFromFloat(30),
+			PerUserLimit:  5,
+			Enabled:       true,
+		},
+		{
+			SkuKey:        "p61-sku-3",
+			SortOrder:     3,
+			Label:         "儿童礼包",
+			Subtitle:      "呼应节日数字",
+			Emoji:         "🌈",
+			PriceYuan:     decimal.NewFromFloat(56),
+			DeliveredYuan: decimal.NewFromFloat(61),
+			PerUserLimit:  3,
+			Enabled:       true,
+		},
+		{
+			SkuKey:        "p61-sku-4",
+			SortOrder:     4,
+			Label:         "成长礼包",
+			Emoji:         "🌟",
+			PriceYuan:     decimal.NewFromFloat(98),
+			DeliveredYuan: decimal.NewFromFloat(108),
+			PerUserLimit:  2,
+			Enabled:       true,
+		},
+		{
+			SkuKey:        "p61-sku-5",
+			SortOrder:     5,
+			Label:         "欢乐礼包",
+			Subtitle:      "最受欢迎",
+			Emoji:         "⭐",
+			PriceYuan:     decimal.NewFromFloat(168),
+			DeliveredYuan: decimal.NewFromFloat(188),
+			Highlight:     true,
+			PerUserLimit:  2,
+			Enabled:       true,
+		},
+		{
+			SkuKey:        "p61-sku-6",
+			SortOrder:     6,
+			Label:         "童年礼包",
+			Emoji:         "🎊",
+			PriceYuan:     decimal.NewFromFloat(255),
+			DeliveredYuan: decimal.NewFromFloat(288),
+			PerUserLimit:  1,
+			Enabled:       true,
 		},
 	}
 	return DB.Transaction(func(tx *gorm.DB) error {

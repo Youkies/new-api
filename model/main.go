@@ -208,6 +208,10 @@ func InitDB() (err error) {
 			if seedErr := SeedDefaultPromotions(); seedErr != nil {
 				common.SysLog("seed default promotions failed: " + seedErr.Error())
 			}
+			// Ensure 六一 campaign exists (idempotent, enabled=false by default).
+			if seedErr := EnsureKids61Campaign(); seedErr != nil {
+				common.SysLog("seed kids61 campaign failed: " + seedErr.Error())
+			}
 		}
 		return err
 	} else {

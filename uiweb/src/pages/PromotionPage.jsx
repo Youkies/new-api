@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { Sparkles, QrCode, AlertCircle, CheckCircle2, Clock, Heart, ArrowDown, X as XIcon } from 'lucide-react'
 import ClayConsoleShell from '../components/layout/ClayConsoleShell.jsx'
 import ClayCard from '../components/clay/ClayCard.jsx'
+import { Kids61Hero, Kids61SkuCard, KIDS61_COLORS } from '../components/promotion/Kids61Layout.jsx'
 import ClayModal from '../components/clay/ClayModal.jsx'
 import ClayAlert from '../components/clay/ClayAlert.jsx'
 import PayMethodIcon from '../components/clay/PayMethodIcon.jsx'
@@ -70,6 +71,13 @@ export default function PromotionPage() {
   const { symbol: currencySymbol } = useMemo(() => getCurrencyConfig(), [])
 
   const load = useCallback(async () => {
+    // dev 预览：/promotion/__preview_61 直接用本地 mock，不走 API
+    if (slug === '__preview_61') {
+      setCampaign(MOCK_KIDS61)
+      setErr('')
+      setLoading(false)
+      return
+    }
     try {
       const res = await api.get(`/api/user/promotion/${encodeURIComponent(slug)}`)
       const j = res.data
@@ -201,60 +209,58 @@ export default function PromotionPage() {
   const inactive = !campaign.active
   const ended = countdown?.ended
   const theme = campaign.theme_color || 'pink'
+  const isKids61 = campaign.layout_variant === 'kids_61'
 
   return (
     <ClayConsoleShell showAssistantWidget={false}>
-      {/* Hero 头图区 — 移动端垂直居中堆叠 / 桌面横向；不挤位 */}
-      <ClayCard
-        className={`relative overflow-hidden mb-6 bg-gradient-to-br from-clay-${theme}-50 via-white to-clay-${theme}-100`}
-      >
-        {/* 背景装饰：左下 + 右上 emoji halo */}
-        <div className="pointer-events-none absolute -left-6 -bottom-10 text-[180px] opacity-10 rotate-12 select-none" aria-hidden>
-          {campaign.emoji || '🎉'}
-        </div>
-        <div className="pointer-events-none absolute -right-4 -top-8 text-[120px] opacity-10 -rotate-12 select-none" aria-hidden>
-          {campaign.emoji || '🎉'}
-        </div>
-
-        <div className="relative flex flex-col sm:flex-row items-center sm:items-center gap-3 sm:gap-6 py-2 text-center sm:text-left">
-          {/* 主 emoji */}
-          <div className="text-6xl select-none flex-shrink-0" aria-hidden>
+      {/* Hero 头图区 */}
+      {isKids61 ? (
+        <Kids61Hero campaign={campaign} countdown={countdown} />
+      ) : (
+        <ClayCard
+          className={`relative overflow-hidden mb-6 bg-gradient-to-br from-clay-${theme}-50 via-white to-clay-${theme}-100`}
+        >
+          <div className="pointer-events-none absolute -left-6 -bottom-10 text-[180px] opacity-10 rotate-12 select-none" aria-hidden>
             {campaign.emoji || '🎉'}
           </div>
-
-          {/* 标题 + 副标题 + 署名 */}
-          <div className="flex-1 min-w-0 w-full sm:w-auto">
-            <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-clay-ink leading-tight">
-              {campaign.title}
-            </h1>
-            <SubtitleWithSignature subtitle={campaign.subtitle} />
+          <div className="pointer-events-none absolute -right-4 -top-8 text-[120px] opacity-10 -rotate-12 select-none" aria-hidden>
+            {campaign.emoji || '🎉'}
           </div>
-
-          {/* 倒计时 / 状态 */}
-          <div className="flex-shrink-0">
-            {ended ? (
-              <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-clay-pill bg-clay-bg shadow-clay-inset-sm text-xs font-black text-clay-faint">
-                已结束
-              </span>
-            ) : inactive ? (
-              <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-clay-pill bg-clay-yellow-100 shadow-clay-sm text-xs font-black text-clay-yellow-ink">
-                未开始
-              </span>
-            ) : (
-              <div className="inline-flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 rounded-clay-pill bg-white shadow-clay-sm">
-                <Clock className={`w-3.5 h-3.5 text-clay-${theme}-ink`} strokeWidth={2.5} />
-                <span className="text-xs sm:text-sm font-black text-clay-ink tabular-nums whitespace-nowrap">
-                  {countdown.d > 0 ? `${countdown.d}天` : ''}
-                  {String(countdown.h).padStart(2, '0')}:
-                  {String(countdown.m).padStart(2, '0')}:
-                  {String(countdown.s).padStart(2, '0')}
+          <div className="relative flex flex-col sm:flex-row items-center sm:items-center gap-3 sm:gap-6 py-2 text-center sm:text-left">
+            <div className="text-6xl select-none flex-shrink-0" aria-hidden>
+              {campaign.emoji || '🎉'}
+            </div>
+            <div className="flex-1 min-w-0 w-full sm:w-auto">
+              <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-clay-ink leading-tight">
+                {campaign.title}
+              </h1>
+              <SubtitleWithSignature subtitle={campaign.subtitle} />
+            </div>
+            <div className="flex-shrink-0">
+              {ended ? (
+                <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-clay-pill bg-clay-bg shadow-clay-inset-sm text-xs font-black text-clay-faint">
+                  已结束
                 </span>
-                <span className="hidden sm:inline text-xs text-clay-faint font-bold">后结束</span>
-              </div>
-            )}
+              ) : inactive ? (
+                <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-clay-pill bg-clay-yellow-100 shadow-clay-sm text-xs font-black text-clay-yellow-ink">
+                  未开始
+                </span>
+              ) : (
+                <div className="inline-flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 rounded-clay-pill bg-white shadow-clay-sm">
+                  <Clock className={`w-3.5 h-3.5 text-clay-${theme}-ink`} strokeWidth={2.5} />
+                  <span className="text-xs sm:text-sm font-black text-clay-ink tabular-nums whitespace-nowrap">
+                    {countdown.d > 0 ? `${countdown.d}天` : ''}
+                    {String(countdown.h).padStart(2, '0')}:
+                    {String(countdown.m).padStart(2, '0')}:
+                    {String(countdown.s).padStart(2, '0')}
+                  </span>
+                  <span className="hidden sm:inline text-xs text-clay-faint font-bold">后结束</span>
+                </div>
+              )}
+            </div>
           </div>
-        </div>
-      </ClayCard>
+        </ClayCard>
+      )}
 
       {/* 提示文案 */}
       {!inactive && !ended && (
@@ -265,19 +271,35 @@ export default function PromotionPage() {
       )}
 
       {/* SKU 网格 */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-        {campaign.skus.map((sku) => (
-          <SkuCard
-            key={sku.id}
-            sku={sku}
-            theme={theme}
-            currencySymbol={currencySymbol}
-            selected={selectedSkuId === sku.id}
-            disabled={inactive || ended}
-            onSelect={() => setSelectedSkuId(sku.id)}
-          />
-        ))}
-      </div>
+      {isKids61 ? (
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-6">
+          {campaign.skus.map((sku, idx) => (
+            <Kids61SkuCard
+              key={sku.id}
+              sku={sku}
+              colorIndex={idx}
+              currencySymbol={currencySymbol}
+              selected={selectedSkuId === sku.id}
+              disabled={inactive || ended}
+              onSelect={() => setSelectedSkuId(sku.id)}
+            />
+          ))}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+          {campaign.skus.map((sku) => (
+            <SkuCard
+              key={sku.id}
+              sku={sku}
+              theme={theme}
+              currencySymbol={currencySymbol}
+              selected={selectedSkuId === sku.id}
+              disabled={inactive || ended}
+              onSelect={() => setSelectedSkuId(sku.id)}
+            />
+          ))}
+        </div>
+      )}
 
       {/* 防滥用门槛提示 */}
       {(campaign.require_email_verified || campaign.min_account_age_days > 0) && (
@@ -607,4 +629,60 @@ function PayButton({ method, label, paying, disabled, onClick }) {
       {paying && <Heart className="w-3.5 h-3.5 animate-pulse text-clay-pink-400" />}
     </button>
   )
+}
+
+// ─── Dev 预览 mock（访问 /promotion/__preview_61 触发） ───────────────────────
+
+const MOCK_KIDS61 = {
+  id: 999,
+  slug: '__preview_61',
+  title: '六一儿童节',
+  subtitle: '世界很大，今天先做个小孩。',
+  emoji: '🎈',
+  theme_color: 'pink',
+  layout_variant: 'kids_61',
+  active: true,
+  enabled: true,
+  starts_at: Math.floor(Date.now() / 1000) - 3600,
+  ends_at: Math.floor(new Date('2026-06-01T23:59:59+08:00').getTime() / 1000),
+  require_email_verified: false,
+  min_account_age_days: 0,
+  skus: [
+    {
+      id: 'preview-1', sku_key: 'preview-1', label: '六一特惠', subtitle: '每人限购一次',
+      emoji: '🎁', price_yuan: 6.1, delivered_yuan: 10, price_display: '6.1',
+      total_limit: 100, per_user_limit: 1, sold_count: 37,
+      highlight: false, state: 'purchasable', user_can_buy_n: 1, user_bought_n: 0,
+    },
+    {
+      id: 'preview-2', sku_key: 'preview-2', label: '小熊礼包', subtitle: '',
+      emoji: '🎈', price_yuan: 28, delivered_yuan: 30, price_display: '',
+      total_limit: 0, per_user_limit: 5, sold_count: 0,
+      highlight: false, state: 'purchasable', user_can_buy_n: 5, user_bought_n: 0,
+    },
+    {
+      id: 'preview-3', sku_key: 'preview-3', label: '儿童礼包', subtitle: '呼应节日数字',
+      emoji: '🌈', price_yuan: 56, delivered_yuan: 61, price_display: '',
+      total_limit: 0, per_user_limit: 3, sold_count: 0,
+      highlight: false, state: 'purchasable', user_can_buy_n: 3, user_bought_n: 0,
+    },
+    {
+      id: 'preview-4', sku_key: 'preview-4', label: '成长礼包', subtitle: '',
+      emoji: '🌟', price_yuan: 98, delivered_yuan: 108, price_display: '',
+      total_limit: 0, per_user_limit: 2, sold_count: 0,
+      highlight: false, state: 'purchasable', user_can_buy_n: 2, user_bought_n: 0,
+    },
+    {
+      id: 'preview-5', sku_key: 'preview-5', label: '欢乐礼包', subtitle: '最受欢迎',
+      emoji: '⭐', price_yuan: 168, delivered_yuan: 188, price_display: '',
+      total_limit: 0, per_user_limit: 2, sold_count: 0,
+      highlight: true, state: 'purchasable', user_can_buy_n: 2, user_bought_n: 0,
+    },
+    {
+      id: 'preview-6', sku_key: 'preview-6', label: '童年礼包', subtitle: '',
+      emoji: '🎊', price_yuan: 255, delivered_yuan: 288, price_display: '',
+      total_limit: 0, per_user_limit: 1, sold_count: 0,
+      highlight: false, state: 'purchasable', user_can_buy_n: 1, user_bought_n: 0,
+    },
+  ],
 }

@@ -476,6 +476,19 @@ function CampaignEditModal({ visible, campaign, onClose, onSaved }) {
               </select>
             </Form.Slot>
           </Col>
+          <Col span={6}>
+            <Form.Slot label='页面模板' extra='留空=通用；kids_61=六一儿童节'>
+              <select
+                className='semi-input'
+                style={{ width: '100%', padding: '6px 12px', borderRadius: 6, border: '1px solid #d8d8d8' }}
+                value={form.layout_variant || ''}
+                onChange={(e) => setForm({ ...form, layout_variant: e.target.value })}
+              >
+                <option value=''>通用默认</option>
+                <option value='kids_61'>🎈 六一儿童节</option>
+              </select>
+            </Form.Slot>
+          </Col>
           <Col span={9}>
             <Form.Slot label='开始时间'>
               <input

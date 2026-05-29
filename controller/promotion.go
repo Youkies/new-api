@@ -50,6 +50,7 @@ type promotionView struct {
 	Subtitle             string             `json:"subtitle"`
 	Emoji                string             `json:"emoji"`
 	ThemeColor           string             `json:"theme_color"`
+	LayoutVariant        string             `json:"layout_variant"`
 	StartsAt             int64              `json:"starts_at"`
 	EndsAt               int64              `json:"ends_at"`
 	Now                  int64              `json:"now"`
@@ -140,6 +141,7 @@ func GetPromotion(c *gin.Context) {
 			Subtitle:             p.Subtitle,
 			Emoji:                p.Emoji,
 			ThemeColor:           p.ThemeColor,
+			LayoutVariant:        p.LayoutVariant,
 			StartsAt:             p.StartsAt,
 			EndsAt:               p.EndsAt,
 			Now:                  now,

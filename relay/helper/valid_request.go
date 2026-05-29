@@ -148,13 +148,19 @@ func GetAndValidOpenAIImageRequest(c *gin.Context, relayMode int) (*dto.ImageReq
 			if err != nil {
 				return nil, fmt.Errorf("failed to parse image edit form request: %w", err)
 			}
-			formData := c.Request.PostForm
-			imageRequest.Prompt = formData.Get("prompt")
-			imageRequest.Model = formData.Get("model")
-			imageRequest.N = common.GetPointer(uint(common.String2Int(formData.Get("n"))))
-			imageRequest.Quality = formData.Get("quality")
-			imageRequest.Size = formData.Get("size")
-			if imageValue := formData.Get("image"); imageValue != "" {
+			mf := c.Request.MultipartForm
+			getField := func(key string) string {
+				if vals, ok := mf.Value[key]; ok && len(vals) > 0 {
+					return vals[0]
+				}
+				return ""
+			}
+			imageRequest.Prompt = getField("prompt")
+			imageRequest.Model = getField("model")
+			imageRequest.N = common.GetPointer(uint(common.String2Int(getField("n"))))
+			imageRequest.Quality = getField("quality")
+			imageRequest.Size = getField("size")
+			if imageValue := getField("image"); imageValue != "" {
 				imageRequest.Image, _ = common.Marshal(imageValue)
 			}
 
@@ -167,9 +173,8 @@ func GetAndValidOpenAIImageRequest(c *gin.Context, relayMode int) (*dto.ImageReq
 				imageRequest.N = common.GetPointer(uint(1))
 			}
 
-			hasWatermark := formData.Has("watermark")
-			if hasWatermark {
-				watermark := formData.Get("watermark") == "true"
+			if wv := getField("watermark"); wv != "" {
+				watermark := wv == "true"
 				imageRequest.Watermark = &watermark
 			}
 			break

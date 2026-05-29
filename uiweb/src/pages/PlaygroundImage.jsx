@@ -6,7 +6,6 @@ import {
   Cpu,
   Download,
   Image as ImageIcon,
-  Layers,
   Loader2,
   Maximize2,
   MinusCircle,
@@ -131,7 +130,7 @@ export default function PlaygroundImage() {
   const refImageInput = useRef(null)
 
   const cfg0 = safeReadConfig() || {}
-  const [group, setGroup] = useState(cfg0.group || 'auto')
+  const group = 'auto'
   const [model, setModel] = useState(cfg0.model || '')
   const [size, setSize] = useState(cfg0.size || 'auto')
   const [quality, setQuality] = useState(cfg0.quality || 'auto')
@@ -169,7 +168,7 @@ export default function PlaygroundImage() {
   const elapsedSec = generatingSince ? Math.max(0, Math.floor((Date.now() - generatingSince) / 1000)) : 0
 
   useEffect(() => {
-    safeWriteConfig({ group, model, size, quality, style, background, output_format: outputFormat, moderation, n, prompt, negative_prompt: negativePrompt })
+    safeWriteConfig({ model, size, quality, style, background, output_format: outputFormat, moderation, n, prompt, negative_prompt: negativePrompt })
   }, [group, model, size, quality, style, background, outputFormat, moderation, n, prompt, negativePrompt])
   useEffect(() => { try { window.localStorage.setItem(ADV_OPEN_KEY, advancedOpen ? '1' : '0') } catch (_) {} }, [advancedOpen])
 
@@ -180,7 +179,6 @@ export default function PlaygroundImage() {
       .then(([gs, pr]) => {
         if (cancelled) return
         setGroups(gs); setPricing(pr)
-        if (!group || !gs.some((g) => g.name === group)) setGroup(gs[0]?.name || 'auto')
       })
       .catch((e) => { if (!cancelled) toast(e?.response?.data?.message || e?.message || '加载失败', 'error') })
       .finally(() => { if (!cancelled) setLoadingMeta(false) })
@@ -478,15 +476,6 @@ export default function PlaygroundImage() {
               placeholder="选择模型"
               tone="purple"
               minWidth={200}
-            />
-            <GlassSelect
-              icon={<Layers className="h-3 w-3" strokeWidth={2.8} />}
-              value={group}
-              onChange={setGroup}
-              options={groupOptions.length ? groupOptions : [{ value: 'auto', label: '自动' }]}
-              disabled={loadingMeta}
-              tone="purple"
-              minWidth={140}
             />
             <GlassSelect
               icon={<ImageIcon className="h-3 w-3" strokeWidth={2.8} />}

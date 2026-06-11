@@ -80,6 +80,7 @@ const RegisterForm = () => {
     email: '',
     verification_code: '',
     wechat_verification_code: '',
+    invite_code: '',
   });
   const { username, password, password2 } = inputs;
   const [userState, userDispatch] = useContext(UserContext);
@@ -142,9 +143,11 @@ const RegisterForm = () => {
   );
 
   const [showEmailVerification, setShowEmailVerification] = useState(false);
+  const [inviteOnly, setInviteOnly] = useState(false);
 
   useEffect(() => {
     setShowEmailVerification(!!status?.email_verification);
+    setInviteOnly(!!status?.invite_only_register);
     if (status?.turnstile_check) {
       setTurnstileEnabled(true);
       setTurnstileSiteKey(status.turnstile_site_key);
@@ -222,6 +225,10 @@ const RegisterForm = () => {
     }
     if (password !== password2) {
       showInfo('两次输入的密码不一致');
+      return;
+    }
+    if (inviteOnly && !inputs.invite_code.trim()) {
+      showInfo('请填写邀请码');
       return;
     }
     if (username && password) {
@@ -635,6 +642,18 @@ const RegisterForm = () => {
                       prefix={<IconKey />}
                     />
                   </>
+                )}
+
+                {inviteOnly && (
+                  <Form.Input
+                    field='invite_code'
+                    label={t('邀请码')}
+                    placeholder={t('请输入 8 位邀请码')}
+                    name='invite_code'
+                    onChange={(value) => handleChange('invite_code', value.toUpperCase())}
+                    prefix={<IconKey />}
+                    maxLength={8}
+                  />
                 )}
 
                 {(hasUserAgreement || hasPrivacyPolicy) && (

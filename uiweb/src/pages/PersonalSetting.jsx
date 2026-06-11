@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useEffect } from 'react'
 import {
   User,
   ShieldCheck,
@@ -11,6 +11,10 @@ import {
   Camera,
   ZoomIn,
   ZoomOut,
+  Mail,
+  Copy,
+  Check,
+  Plus,
 } from 'lucide-react'
 import ClayCard from '../components/clay/ClayCard.jsx'
 import ClayField from '../components/clay/ClayField.jsx'
@@ -35,12 +39,14 @@ import {
   deleteAvatar,
 } from '../services/user.js'
 import { logout as apiLogout } from '../services/auth.js'
+import api from '../services/api.js'
 
 const TABS = [
   { value: 'account', label: '账号', icon: User },
   { value: 'security', label: '安全', icon: ShieldCheck },
   { value: 'notifications', label: '通知', icon: Bell },
   { value: 'preferences', label: '偏好', icon: Palette },
+  { value: 'invite', label: '邀请', icon: Mail },
 ]
 
 export default function PersonalSetting() {
@@ -56,6 +62,7 @@ export default function PersonalSetting() {
       {tab === 'security' && <SecurityTab toast={toast} />}
       {tab === 'notifications' && <NotificationsTab user={user} setUser={setUser} toast={toast} />}
       {tab === 'preferences' && <PreferencesTab user={user} setUser={setUser} toast={toast} />}
+      {tab === 'invite' && <InviteTab toast={toast} />}
     </ClayConsoleShell>
   )
 }
@@ -603,6 +610,140 @@ function PreferencesTab({ user, setUser, toast }) {
           {saving ? '保存中…' : (<><Save className="w-4 h-4" /> 保存</>)}
         </ClayButton>
       </div>
+    </ClayCard>
+  )
+}
+
+const STATUS_PENDING = 0
+const STATUS_USED = 1
+
+function fmtDate(unix) {
+  return new Date(unix * 1000).toLocaleString('zh-CN', {
+    month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
+  })
+}
+
+function InviteTab({ toast }) {
+  const [data, setData] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [generating, setGenerating] = useState(false)
+  const [copied, setCopied] = useState(null)
+
+  const load = useCallback(async () => {
+    try {
+      const res = await api.get('/api/user/invite')
+      if (res.data?.success) setData(res.data)
+    } catch (_) {}
+    finally { setLoading(false) }
+  }, [])
+
+  useEffect(() => { load() }, [load])
+
+  const handleGenerate = async () => {
+    setGenerating(true)
+    try {
+      const res = await api.post('/api/user/invite')
+      if (res.data?.success) {
+        toast('邀请码已生成', 'success')
+        await load()
+      } else {
+        toast(res.data?.message ?? '生成失败', 'error')
+      }
+    } catch (err) {
+      toast(err?.response?.data?.message ?? '生成失败', 'error')
+    } finally {
+      setGenerating(false)
+    }
+  }
+
+  const handleCopy = (code) => {
+    navigator.clipboard.writeText(code).then(() => {
+      setCopied(code)
+      toast('已复制', 'success')
+      setTimeout(() => setCopied(null), 2000)
+    })
+  }
+
+  const canGenerate = data?.has_top_up &&
+    (data?.today_used ?? 0) < (data?.today_max ?? 2) &&
+    (data?.active_count ?? 0) < (data?.active_max ?? 2)
+
+  const now = Date.now() / 1000
+
+  return (
+    <ClayCard className="p-6 space-y-6">
+      <div>
+        <h3 className="font-semibold text-base mb-1">邀请码</h3>
+        <p className="text-sm opacity-60">将邀请码分享给真正需要的朋友，凭码即可注册。</p>
+      </div>
+
+      {/* 配额状态 */}
+      <div className="grid grid-cols-2 gap-3 text-sm">
+        <div className="rounded-lg border border-black/10 dark:border-white/10 px-4 py-3">
+          <div className="opacity-50 text-xs mb-0.5">今日已生成</div>
+          <div className="font-bold">{data?.today_used ?? 0} / {data?.today_max ?? 2}</div>
+        </div>
+        <div className="rounded-lg border border-black/10 dark:border-white/10 px-4 py-3">
+          <div className="opacity-50 text-xs mb-0.5">当前有效码</div>
+          <div className="font-bold">{data?.active_count ?? 0} / {data?.active_max ?? 2}</div>
+        </div>
+      </div>
+
+      {!loading && !data?.has_top_up && (
+        <p className="text-sm text-amber-600 dark:text-amber-400">完成充值后即可生成邀请码。</p>
+      )}
+
+      <ClayButton
+        variant="primary"
+        size="sm"
+        disabled={!canGenerate || generating || loading}
+        loading={generating}
+        onClick={handleGenerate}
+        className="gap-1.5"
+      >
+        <Plus className="w-4 h-4" />
+        生成邀请码
+      </ClayButton>
+
+      {/* 码列表 */}
+      {data?.data?.length > 0 && (
+        <div className="space-y-2">
+          {data.data.map((ic) => {
+            const isActive = ic.status === STATUS_PENDING && now <= ic.expired_at
+            const isUsed = ic.status === STATUS_USED
+            return (
+              <div
+                key={ic.id}
+                className="flex items-center justify-between rounded-xl border border-black/10 dark:border-white/10 px-4 py-3"
+              >
+                <div>
+                  <span className={`font-mono font-bold tracking-widest text-base ${!isActive ? 'opacity-40' : ''}`}>
+                    {ic.code}
+                  </span>
+                  <div className="text-xs opacity-50 mt-0.5">
+                    {isUsed ? '已使用' : isActive ? `有效至 ${fmtDate(ic.expired_at)}` : '已过期'}
+                  </div>
+                </div>
+                {isActive && (
+                  <button
+                    onClick={() => handleCopy(ic.code)}
+                    className="p-2 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
+                  >
+                    {copied === ic.code
+                      ? <Check className="w-4 h-4 text-green-500" />
+                      : <Copy className="w-4 h-4 opacity-50" />
+                    }
+                  </button>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {!loading && (!data?.data || data.data.length === 0) && (
+        <p className="text-sm opacity-40 text-center py-4">暂无邀请码</p>
+      )}
     </ClayCard>
   )
 }

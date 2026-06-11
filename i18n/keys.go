@@ -114,6 +114,12 @@ const (
 	MsgUserTelegramNotBound          = "user.telegram_not_bound"
 	MsgUserLinuxDOIdEmpty            = "user.linux_do_id_empty"
 	MsgUserQuotaChangeZero           = "user.quota_change_zero"
+	MsgUserInviteCodeRequired        = "user.invite_code_required"
+	MsgUserInviteCodeInvalid         = "user.invite_code_invalid"
+	MsgUserInviteCodeNoTopUp         = "user.invite_code_no_topup"
+	MsgUserInviteCodeDailyLimit      = "user.invite_code_daily_limit"
+	MsgUserInviteCodeActiveLimit     = "user.invite_code_active_limit"
+	MsgUserInviteCodeGenFailed       = "user.invite_code_gen_failed"
 )
 
 // Quota related messages

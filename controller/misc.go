@@ -122,6 +122,8 @@ func GetStatus(c *gin.Context) {
 		// 在 slave_pioneer_only=true 时对 pioneer=false 的登录用户展示「返回主站」引导。
 		"slave_pioneer_only": !common.IsMasterNode && common.SlavePioneerOnly,
 		"primary_site_url":   common.PrimarySiteURL,
+
+		"invite_only_register": common.InviteOnlyRegister,
 	}
 
 	// 根据启用状态注入可选内容

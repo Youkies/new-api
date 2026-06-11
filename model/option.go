@@ -55,6 +55,7 @@ func InitOptionMap() {
 	common.OptionMap["ChannelDisableThreshold"] = strconv.FormatFloat(common.ChannelDisableThreshold, 'f', -1, 64)
 	common.OptionMap["EmailDomainRestrictionEnabled"] = strconv.FormatBool(common.EmailDomainRestrictionEnabled)
 	common.OptionMap["EmailAliasRestrictionEnabled"] = strconv.FormatBool(common.EmailAliasRestrictionEnabled)
+	common.OptionMap["InviteOnlyRegister"] = strconv.FormatBool(common.InviteOnlyRegister)
 	common.OptionMap["EmailDomainWhitelist"] = strings.Join(common.EmailDomainWhitelist, ",")
 	common.OptionMap["SMTPServer"] = ""
 	common.OptionMap["SMTPFrom"] = ""
@@ -258,6 +259,9 @@ func updateOptionMap(key string, value string) (err error) {
 		case "ImageDownloadPermission":
 			common.ImageDownloadPermission = intValue
 		}
+	}
+	if key == "InviteOnlyRegister" {
+		common.InviteOnlyRegister = value == "true"
 	}
 	if strings.HasSuffix(key, "Enabled") || key == "DefaultCollapseSidebar" || key == "DefaultUseAutoGroup" || key == "SMTPForceAuthLogin" {
 		boolValue := value == "true"

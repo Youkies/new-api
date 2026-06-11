@@ -310,6 +310,7 @@ func migrateDB() error {
 		&UserModelAlias{},
 		&PromotionCampaign{},
 		&PromotionSku{},
+		&InviteCode{},
 	)
 	if err != nil {
 		return err

@@ -50,6 +50,8 @@ export function SignUpForm({
   const [isWeChatSubmitting, setIsWeChatSubmitting] = useState(false)
   const legalConsentErrorMessage = t('Please agree to the legal terms first')
 
+  const [inviteCode, setInviteCode] = useState('')
+
   const { status } = useStatus()
   const {
     isTurnstileEnabled,
@@ -81,6 +83,8 @@ export function SignUpForm({
 
   const emailValue = form.watch('email')
   const emailVerificationRequired = !!status?.email_verification
+  const inviteOnlyRegister =
+    status?.invite_only_register ?? status?.data?.invite_only_register ?? false
   const hasUserAgreement = Boolean(status?.user_agreement_enabled)
   const hasPrivacyPolicy = Boolean(status?.privacy_policy_enabled)
   const requiresLegalConsent = hasUserAgreement || hasPrivacyPolicy
@@ -130,6 +134,11 @@ export function SignUpForm({
       }
     }
 
+    if (inviteOnlyRegister && !inviteCode.trim()) {
+      toast.error(t('Please enter an invite code'))
+      return
+    }
+
     setIsLoading(true)
     try {
       const res = await register({
@@ -138,6 +147,7 @@ export function SignUpForm({
         email: data.email || undefined,
         verification_code: verificationCode || undefined,
         aff: getAffiliateCode(),
+        invite_code: inviteOnlyRegister ? inviteCode.trim() : undefined,
         turnstile: turnstileToken,
       })
 
@@ -310,6 +320,20 @@ export function SignUpForm({
               </div>
             )}
           </>
+        )}
+
+        {inviteOnlyRegister && (
+          <div className='grid gap-1.5'>
+            <Label htmlFor='invite-code'>{t('Invite code')}</Label>
+            <Input
+              id='invite-code'
+              placeholder={t('Enter invite code')}
+              value={inviteCode}
+              onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
+              autoComplete='off'
+              maxLength={8}
+            />
+          </div>
         )}
 
         <LegalConsent

@@ -164,6 +164,12 @@ func Register(c *gin.Context) {
 			return
 		}
 	}
+	if common.InviteOnlyRegister {
+		if user.InviteCode == "" {
+			common.ApiErrorI18n(c, i18n.MsgUserInviteCodeRequired)
+			return
+		}
+	}
 	exist, err := model.CheckUserExistOrDeleted(user.Username, user.Email)
 	if err != nil {
 		common.ApiErrorI18n(c, i18n.MsgDatabaseError)
@@ -174,19 +180,16 @@ func Register(c *gin.Context) {
 		common.ApiErrorI18n(c, i18n.MsgUserExists)
 		return
 	}
-	affCode := user.AffCode // this code is the inviter's code, not the user's own code
-	inviterId, _ := model.GetUserIdByAffCode(affCode)
 	cleanUser := model.User{
 		Username:    user.Username,
 		Password:    user.Password,
 		DisplayName: user.Username,
-		InviterId:   inviterId,
-		Role:        common.RoleCommonUser, // 明确设置角色为普通用户
+		Role:        common.RoleCommonUser,
 	}
 	if common.EmailVerificationEnabled {
 		cleanUser.Email = user.Email
 	}
-	if err := cleanUser.Insert(inviterId); err != nil {
+	if err := cleanUser.Insert(0); err != nil {
 		common.ApiError(c, err)
 		return
 	}
@@ -196,6 +199,15 @@ func Register(c *gin.Context) {
 	if err := model.DB.Where("username = ?", cleanUser.Username).First(&insertedUser).Error; err != nil {
 		common.ApiErrorI18n(c, i18n.MsgUserRegisterFailed)
 		return
+	}
+
+	if common.InviteOnlyRegister {
+		if _, err := model.ConsumeInviteCode(user.InviteCode, insertedUser.Id); err != nil {
+			// roll back: delete the just-created user so the invite code remains unused
+			model.DB.Unscoped().Delete(&insertedUser)
+			common.ApiErrorI18n(c, i18n.MsgUserInviteCodeInvalid)
+			return
+		}
 	}
 	// 生成默认令牌
 	if constant.GenerateDefaultToken {

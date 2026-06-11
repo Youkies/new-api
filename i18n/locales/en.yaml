@@ -102,6 +102,12 @@ user.telegram_id_empty: "Telegram ID is empty!"
 user.telegram_not_bound: "This Telegram account is not bound"
 user.linux_do_id_empty: "Linux DO ID is empty!"
 user.quota_change_zero: "Quota change amount cannot be zero"
+user.invite_code_required: "An invite code is required to register"
+user.invite_code_invalid: "Invite code is invalid or has expired"
+user.invite_code_no_topup: "You have not made a top-up yet and cannot generate invite codes"
+user.invite_code_daily_limit: "You have reached today's invite code generation limit"
+user.invite_code_active_limit: "You already have 2 active invite codes; wait for one to be used or expire"
+user.invite_code_gen_failed: "Failed to generate invite code, please try again later"
 
 # Quota messages
 quota.negative: "Quota cannot be negative!"

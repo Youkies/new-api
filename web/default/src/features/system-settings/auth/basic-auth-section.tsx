@@ -24,6 +24,7 @@ const basicAuthSchema = z.object({
   PasswordRegisterEnabled: z.boolean(),
   EmailVerificationEnabled: z.boolean(),
   RegisterEnabled: z.boolean(),
+  InviteOnlyRegister: z.boolean(),
   EmailDomainRestrictionEnabled: z.boolean(),
   EmailAliasRestrictionEnabled: z.boolean(),
   EmailDomainWhitelist: z.string(),
@@ -145,6 +146,29 @@ export function BasicAuthSection({ defaultValues }: BasicAuthSectionProps) {
                   </FormLabel>
                   <FormDescription>
                     {t('Allow registration with password')}
+                  </FormDescription>
+                </div>
+                <FormControl>
+                  <Switch
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                  />
+                </FormControl>
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name='InviteOnlyRegister'
+            render={({ field }) => (
+              <FormItem className='flex flex-row items-center justify-between rounded-lg border p-4'>
+                <div className='space-y-0.5'>
+                  <FormLabel className='text-base'>
+                    {t('Invite-only Registration')}
+                  </FormLabel>
+                  <FormDescription>
+                    {t('Require a valid invite code to register. Users with top-up history can generate up to 2 invite codes per day.')}
                   </FormDescription>
                 </div>
                 <FormControl>

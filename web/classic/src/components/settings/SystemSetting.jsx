@@ -1031,11 +1031,17 @@ const SystemSetting = () => {
                       <Form.Checkbox
                         field='InviteOnlyRegister'
                         noLabel
+                        disabled={inputs.RegisterEnabled !== true}
                         onChange={(e) =>
                           handleCheckboxChange('InviteOnlyRegister', e)
                         }
                       >
                         {t('开启邀请码注册（半封闭模式）')}
+                        {inputs.RegisterEnabled !== true && (
+                          <span style={{ marginLeft: 6, color: '#999', fontSize: 12 }}>
+                            {t('（请先开启「允许新用户注册」）')}
+                          </span>
+                        )}
                       </Form.Checkbox>
                       <Form.Checkbox
                         field='TurnstileCheckEnabled'

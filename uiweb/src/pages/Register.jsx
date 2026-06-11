@@ -18,6 +18,7 @@ export default function Register() {
 
   const emailVerification = !!status?.email_verification
   const registerEnabled = status?.register_enabled !== false
+  const inviteOnly = !!status?.invite_only_register
 
   const [form, setForm] = useState({
     username: '',
@@ -25,6 +26,7 @@ export default function Register() {
     password2: '',
     email: '',
     verification_code: '',
+    invite_code: '',
   })
   const [loading, setLoading] = useState(false)
   const [sending, setSending] = useState(false)
@@ -77,6 +79,10 @@ export default function Register() {
     }
     if (emailVerification && !form.verification_code) {
       setError('请填写邮箱验证码')
+      return
+    }
+    if (inviteOnly && !form.invite_code.trim()) {
+      setError('请填写邀请码')
       return
     }
     setLoading(true)
@@ -195,6 +201,18 @@ export default function Register() {
               </div>
             </div>
           </>
+        )}
+
+        {inviteOnly && (
+          <ClayField
+            label="邀请码"
+            required
+            value={form.invite_code}
+            onChange={(e) => update('invite_code', e.target.value.toUpperCase())}
+            placeholder="8 位邀请码"
+            autoComplete="off"
+            maxLength={8}
+          />
         )}
 
         <ClayButton variant="primary" className="w-full" type="submit" disabled={loading}>

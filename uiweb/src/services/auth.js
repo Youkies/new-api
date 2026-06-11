@@ -11,7 +11,7 @@ export async function login({ username, password, turnstile }) {
   return res.data
 }
 
-export async function register({ username, password, password2, email, verification_code, turnstile }) {
+export async function register({ username, password, password2, email, verification_code, invite_code, turnstile }) {
   const qs = turnstile ? `?turnstile=${encodeURIComponent(turnstile)}` : ''
   const res = await api.post(`/api/user/register${qs}`, {
     username,
@@ -19,6 +19,7 @@ export async function register({ username, password, password2, email, verificat
     password2,
     email,
     verification_code,
+    invite_code: invite_code || undefined,
   })
   return res.data
 }

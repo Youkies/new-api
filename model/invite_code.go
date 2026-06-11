@@ -88,18 +88,24 @@ func UserHasTopUp(userId int) (bool, error) {
 // already verified quota (daily limit + active limit + topup eligibility).
 func CreateInviteCode(ownerId int) (*InviteCode, error) {
 	var code string
-	var err error
-	// retry up to 5 times on collision
+	var found bool
 	for i := 0; i < 5; i++ {
-		code, err = generateInviteCodeString()
+		candidate, err := generateInviteCodeString()
 		if err != nil {
 			return nil, err
 		}
-		code = strings.ToUpper(code)
+		candidate = strings.ToUpper(candidate)
 		var existing InviteCode
-		if result := DB.Where("code = ?", code).First(&existing); result.Error != nil {
-			break // not found — safe to use
+		result := DB.Where("code = ?", candidate).First(&existing)
+		if result.Error != nil {
+			// ErrRecordNotFound means the code is free
+			code = candidate
+			found = true
+			break
 		}
+	}
+	if !found {
+		return nil, errors.New("failed to generate unique invite code")
 	}
 
 	ic := &InviteCode{
@@ -132,16 +138,23 @@ func ConsumeInviteCode(code string, usedById int) (int, error) {
 	if ic.Status != InviteCodeStatusPending {
 		return 0, ErrInviteCodeInvalid
 	}
-	if time.Now().Unix() > ic.ExpiredAt {
-		// mark expired lazily
+	now := time.Now().Unix()
+	if now > ic.ExpiredAt {
 		DB.Model(&ic).Updates(map[string]interface{}{"status": InviteCodeStatusExpired})
 		return 0, ErrInviteCodeInvalid
 	}
-	if err := DB.Model(&ic).Updates(map[string]interface{}{
-		"status":     InviteCodeStatusUsed,
-		"used_by_id": usedById,
-	}).Error; err != nil {
-		return 0, err
+	// atomic CAS: only update if status is still pending, preventing double-use
+	result := DB.Model(&InviteCode{}).
+		Where("id = ? AND status = ?", ic.Id, InviteCodeStatusPending).
+		Updates(map[string]interface{}{
+			"status":     InviteCodeStatusUsed,
+			"used_by_id": usedById,
+		})
+	if result.Error != nil {
+		return 0, result.Error
+	}
+	if result.RowsAffected == 0 {
+		return 0, ErrInviteCodeInvalid
 	}
 	return ic.OwnerId, nil
 }

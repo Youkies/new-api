@@ -106,7 +106,7 @@ func generateArchiveShareCode() (string, error) {
 }
 
 func archiveSlugExists(userId int, slug string, excludeId int) (bool, error) {
-	q := DB.Unscoped().Model(&UserModelArchive{}).Where("user_id = ? AND slug = ? AND deleted_at IS NULL", userId, slug)
+	q := DB.Unscoped().Model(&UserModelArchive{}).Where("user_id = ? AND slug = ?", userId, slug)
 	if excludeId > 0 {
 		q = q.Where("id <> ?", excludeId)
 	}

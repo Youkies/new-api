@@ -4,6 +4,7 @@ import { Sparkles, QrCode, AlertCircle, CheckCircle2, Clock, Heart, ArrowDown, X
 import ClayConsoleShell from '../components/layout/ClayConsoleShell.jsx'
 import ClayCard from '../components/clay/ClayCard.jsx'
 import { Kids61Hero, Kids61SkuCard, KIDS61_COLORS } from '../components/promotion/Kids61Layout.jsx'
+import { DragonBoatHero, DragonBoatSkuCard, DRAGON_BOAT_COLORS } from '../components/promotion/DragonBoatLayout.jsx'
 import ClayModal from '../components/clay/ClayModal.jsx'
 import ClayAlert from '../components/clay/ClayAlert.jsx'
 import PayMethodIcon from '../components/clay/PayMethodIcon.jsx'
@@ -91,6 +92,12 @@ export default function PromotionPage() {
     // dev 预览：/promotion/__preview_61 直接用本地 mock，不走 API
     if (slug === '__preview_61') {
       setCampaign(MOCK_KIDS61)
+      setErr('')
+      setLoading(false)
+      return
+    }
+    if (slug === '__preview_dragon_boat') {
+      setCampaign(MOCK_DRAGON_BOAT)
       setErr('')
       setLoading(false)
       return
@@ -229,12 +236,15 @@ export default function PromotionPage() {
   const ended = countdown?.ended
   const theme = campaign.theme_color || 'pink'
   const isKids61 = campaign.layout_variant === 'kids_61'
+  const isDragonBoat = campaign.layout_variant === 'dragon_boat'
 
   return (
     <ClayConsoleShell showAssistantWidget={false}>
       {/* Hero 头图区 */}
       {isKids61 ? (
         <Kids61Hero campaign={campaign} countdown={countdown} />
+      ) : isDragonBoat ? (
+        <DragonBoatHero campaign={campaign} countdown={countdown} />
       ) : (
         <ClayCard
           className={`relative overflow-hidden mb-6 bg-gradient-to-br from-clay-${theme}-50 via-white to-clay-${theme}-100`}
@@ -294,6 +304,20 @@ export default function PromotionPage() {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
           {campaign.skus.map((sku, idx) => (
             <Kids61SkuCard
+              key={sku.id}
+              sku={sku}
+              colorIndex={idx}
+              currencySymbol={currencySymbol}
+              selected={selectedSkuId === sku.id}
+              disabled={inactive || ended}
+              onSelect={() => setSelectedSkuId(sku.id)}
+            />
+          ))}
+        </div>
+      ) : isDragonBoat ? (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+          {campaign.skus.map((sku, idx) => (
+            <DragonBoatSkuCard
               key={sku.id}
               sku={sku}
               colorIndex={idx}
@@ -700,6 +724,62 @@ const MOCK_KIDS61 = {
     {
       id: 'preview-6', sku_key: 'preview-6', label: '童年礼包', subtitle: '',
       emoji: '🎊', price_yuan: 255, delivered_yuan: 288, price_display: '',
+      total_limit: 0, per_user_limit: 1, sold_count: 0,
+      highlight: false, state: 'purchasable', user_can_buy_n: 1, user_bought_n: 0,
+    },
+  ],
+}
+
+// ─── Dev 预览 mock：端午（访问 /promotion/__preview_dragon_boat 触发） ────────
+
+const MOCK_DRAGON_BOAT = {
+  id: 998,
+  slug: '__preview_dragon_boat',
+  title: '端午安康',
+  subtitle: '江上的风吹来了，顺便带来了折扣 · 最高 8.8 折 — 来自 Claude',
+  emoji: '🐉',
+  theme_color: 'green',
+  layout_variant: 'dragon_boat',
+  active: true,
+  enabled: true,
+  starts_at: Math.floor(Date.now() / 1000) - 3600,
+  ends_at: Math.floor(new Date('2026-06-19T23:59:59+08:00').getTime() / 1000),
+  require_email_verified: false,
+  min_account_age_days: 0,
+  skus: [
+    {
+      id: 'preview-db-1', sku_key: 'preview-db-1', label: '芦苇香', subtitle: '限量 300 份，每人 1 次',
+      emoji: '🌾', price_yuan: 5.5, delivered_yuan: 8, price_display: '5.5',
+      total_limit: 300, per_user_limit: 1, sold_count: 87,
+      highlight: false, state: 'purchasable', user_can_buy_n: 1, user_bought_n: 0,
+    },
+    {
+      id: 'preview-db-2', sku_key: 'preview-db-2', label: '蛋黄粽', subtitle: '',
+      emoji: '🥚', price_yuan: 28, delivered_yuan: 32, price_display: '',
+      total_limit: 0, per_user_limit: 5, sold_count: 0,
+      highlight: false, state: 'purchasable', user_can_buy_n: 5, user_bought_n: 0,
+    },
+    {
+      id: 'preview-db-3', sku_key: 'preview-db-3', label: '鲜肉粽', subtitle: '',
+      emoji: '🥩', price_yuan: 55, delivered_yuan: 63, price_display: '',
+      total_limit: 0, per_user_limit: 3, sold_count: 0,
+      highlight: false, state: 'purchasable', user_can_buy_n: 3, user_bought_n: 0,
+    },
+    {
+      id: 'preview-db-4', sku_key: 'preview-db-4', label: '龙舟令', subtitle: '主推 · 8.8 折',
+      emoji: '🐉', price_yuan: 88, delivered_yuan: 100, price_display: '',
+      total_limit: 0, per_user_limit: 2, sold_count: 0,
+      highlight: true, state: 'purchasable', user_can_buy_n: 2, user_bought_n: 0,
+    },
+    {
+      id: 'preview-db-5', sku_key: 'preview-db-5', label: '屈原赋', subtitle: '',
+      emoji: '📜', price_yuan: 188, delivered_yuan: 218, price_display: '',
+      total_limit: 0, per_user_limit: 2, sold_count: 0,
+      highlight: false, state: 'purchasable', user_can_buy_n: 2, user_bought_n: 0,
+    },
+    {
+      id: 'preview-db-6', sku_key: 'preview-db-6', label: '百年粽', subtitle: '',
+      emoji: '🍱', price_yuan: 288, delivered_yuan: 333, price_display: '',
       total_limit: 0, per_user_limit: 1, sold_count: 0,
       highlight: false, state: 'purchasable', user_can_buy_n: 1, user_bought_n: 0,
     },

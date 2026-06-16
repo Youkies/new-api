@@ -212,6 +212,10 @@ func InitDB() (err error) {
 			if seedErr := EnsureKids61Campaign(); seedErr != nil {
 				common.SysLog("seed kids61 campaign failed: " + seedErr.Error())
 			}
+			// Ensure 端午 2026 campaign exists (idempotent, enabled=false by default).
+			if seedErr := EnsureDragonBoat2026Campaign(); seedErr != nil {
+				common.SysLog("seed dragon-boat-2026 campaign failed: " + seedErr.Error())
+			}
 		}
 		return err
 	} else {

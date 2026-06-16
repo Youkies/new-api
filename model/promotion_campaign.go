@@ -827,6 +827,122 @@ func EnsureKids61Campaign() error {
 	return seedKids61()
 }
 
+// EnsureDragonBoat2026Campaign — 幂等写入 2026 端午节活动。
+// 仅在 slug="dragon-boat-2026" 不存在时插入；已存在则跳过（admin 可自由修改）。
+// 活动默认 enabled=false，需 admin 手动开启。
+func EnsureDragonBoat2026Campaign() error {
+	var n int64
+	if err := DB.Unscoped().Model(&PromotionCampaign{}).
+		Where("slug = ?", "dragon-boat-2026").Count(&n).Error; err != nil {
+		return err
+	}
+	if n > 0 {
+		return nil
+	}
+	return seedDragonBoat2026()
+}
+
+func seedDragonBoat2026() error {
+	now := time.Now().Unix()
+	// 默认窗口：2026-06-18 12:00 ~ 2026-06-19 23:59:59 +08:00（约 36 小时）
+	startsAt, _ := time.Parse(time.RFC3339, "2026-06-18T12:00:00+08:00")
+	endsAt, _ := time.Parse(time.RFC3339, "2026-06-19T23:59:59+08:00")
+
+	campaign := PromotionCampaign{
+		Slug:            "dragon-boat-2026",
+		Title:           "端午安康",
+		Subtitle:        "江上的风吹来了，顺便带来了折扣 · 最高 8.8 折 — 来自 Claude",
+		Emoji:           "🐉",
+		ThemeColor:      "green",
+		LayoutVariant:   "dragon_boat",
+		StartsAt:        startsAt.Unix(),
+		EndsAt:          endsAt.Unix(),
+		Enabled:         false, // admin 手动开启
+		ShowTopupBanner: true,
+		SortOrder:       20,
+		CreatedTime:     now,
+		UpdatedTime:     now,
+	}
+	skus := []PromotionSku{
+		{
+			SkuKey:        "pdragon-boat-2026-sku-1",
+			SortOrder:     1,
+			Label:         "芦苇香",
+			Subtitle:      "限量 300 份，每人 1 次",
+			Emoji:         "🌾",
+			PriceYuan:     decimal.NewFromFloat(5.5),
+			DeliveredYuan: decimal.NewFromFloat(8),
+			PriceDisplay:  "5.5",
+			TotalLimit:    300,
+			PerUserLimit:  1,
+			Enabled:       true,
+		},
+		{
+			SkuKey:        "pdragon-boat-2026-sku-2",
+			SortOrder:     2,
+			Label:         "蛋黄粽",
+			Emoji:         "🥚",
+			PriceYuan:     decimal.NewFromFloat(28),
+			DeliveredYuan: decimal.NewFromFloat(32),
+			PerUserLimit:  5,
+			Enabled:       true,
+		},
+		{
+			SkuKey:        "pdragon-boat-2026-sku-3",
+			SortOrder:     3,
+			Label:         "鲜肉粽",
+			Emoji:         "🥩",
+			PriceYuan:     decimal.NewFromFloat(55),
+			DeliveredYuan: decimal.NewFromFloat(63),
+			PerUserLimit:  3,
+			Enabled:       true,
+		},
+		{
+			SkuKey:        "pdragon-boat-2026-sku-4",
+			SortOrder:     4,
+			Label:         "龙舟令",
+			Subtitle:      "主推 · 8.8 折",
+			Emoji:         "🐉",
+			PriceYuan:     decimal.NewFromFloat(88),
+			DeliveredYuan: decimal.NewFromFloat(100),
+			Highlight:     true,
+			PerUserLimit:  2,
+			Enabled:       true,
+		},
+		{
+			SkuKey:        "pdragon-boat-2026-sku-5",
+			SortOrder:     5,
+			Label:         "屈原赋",
+			Emoji:         "📜",
+			PriceYuan:     decimal.NewFromFloat(188),
+			DeliveredYuan: decimal.NewFromFloat(218),
+			PerUserLimit:  2,
+			Enabled:       true,
+		},
+		{
+			SkuKey:        "pdragon-boat-2026-sku-6",
+			SortOrder:     6,
+			Label:         "百年粽",
+			Emoji:         "🍱",
+			PriceYuan:     decimal.NewFromFloat(288),
+			DeliveredYuan: decimal.NewFromFloat(333),
+			PerUserLimit:  1,
+			Enabled:       true,
+		},
+	}
+	return DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Create(&campaign).Error; err != nil {
+			return err
+		}
+		for i := range skus {
+			skus[i].CampaignId = campaign.Id
+			skus[i].CreatedTime = now
+			skus[i].UpdatedTime = now
+		}
+		return tx.Create(&skus).Error
+	})
+}
+
 func seedKids61() error {
 	now := time.Now().Unix()
 	// 默认窗口：即时开始 ~ 2026-06-01 23:59:59 +08:00

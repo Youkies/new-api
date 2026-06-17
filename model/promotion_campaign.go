@@ -884,7 +884,7 @@ func seedDragonBoat2026() error {
 			Emoji:         "🥚",
 			PriceYuan:     decimal.NewFromFloat(28),
 			DeliveredYuan: decimal.NewFromFloat(30),
-			PerUserLimit:  5,
+			PerUserLimit:  1,
 			Enabled:       true,
 		},
 		{
@@ -894,7 +894,7 @@ func seedDragonBoat2026() error {
 			Emoji:         "🥩",
 			PriceYuan:     decimal.NewFromFloat(55),
 			DeliveredYuan: decimal.NewFromFloat(60),
-			PerUserLimit:  3,
+			PerUserLimit:  1,
 			Enabled:       true,
 		},
 		{
@@ -906,7 +906,7 @@ func seedDragonBoat2026() error {
 			PriceYuan:     decimal.NewFromFloat(88),
 			DeliveredYuan: decimal.NewFromFloat(96),
 			Highlight:     true,
-			PerUserLimit:  2,
+			PerUserLimit:  1,
 			Enabled:       true,
 		},
 		{
@@ -916,7 +916,7 @@ func seedDragonBoat2026() error {
 			Emoji:         "📜",
 			PriceYuan:     decimal.NewFromFloat(188),
 			DeliveredYuan: decimal.NewFromFloat(205),
-			PerUserLimit:  2,
+			PerUserLimit:  1,
 			Enabled:       true,
 		},
 		{
